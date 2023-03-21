@@ -20,7 +20,8 @@ RUN apt-get update && apt-get install -y \
     liblz4-dev \
     g++ \
     g++-multilib \
-    doxygen
+    doxygen \
+    vim
 
 RUN pip3 install gdown
 
