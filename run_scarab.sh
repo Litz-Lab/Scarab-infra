@@ -16,13 +16,13 @@ help()
   echo "Options:"
   echo "h     Print this Help."
   echo "a     Application name (cassandra, kafka, tomcat, chirper, http, drupal7, mediawiki, wordpress) e.g) -a cassandra"
-  echo "p     Scarab parameters. e.g) -p '--frontend memtrace --cbp_trace_r0=<absolute/path/to/trace> --memtrace_modules_log=<absolute/path/to/modules.log> --fetch_off_path_ops 0 --fdip_enable 1'"
+  echo "p     Scarab parameters except for --cbp_trace_r0=<absolute/path/to/trace> --memtrace_modules_log=<absolute/path/to/modules.log>. e.g) -p '--frontend memtrace --fetch_off_path_ops 0 --fdip_enable 1 --inst_limit 999900'"
   echo "o     Output directory. e.g) -o ."
   echo "t     Collect traces. Run without collecting traces if not given. e.g) -t"
   echo "b     Build a docker image. Run a container of existing docker image without bulding an image if not given. e.g) -b"
 }
 
-SHORT=h:,a:,p:,o:,t:,b
+SHORT=h:,a:,p:,o:,t,b
 LONG=help:,appname:,parameters:,outdir:,tracing:,build
 OPTS=$(getopt -a -n run_scarab.sh --options $SHORT --longoptions $LONG -- "$@")
 
@@ -30,6 +30,7 @@ VALID_ARGUMENTS=$# # Returns the count of arguments that are in short or long op
 
 if [ "$VALID_ARGUMENTS" -eq 0 ]; then
   help
+  exit 0
 fi
 
 eval set -- "$OPTS"
@@ -103,6 +104,10 @@ if [ $BUILD ]; then
       echo "HHVM OSS-performance applications"
       docker build . -f ./OSS/Dockerfile --no-cache -t $APPNAME:latest
       ;;
+    template)
+      echo "example"
+      docker build . -f ./template/Dockerfile --no-cache -t $APPNAME:latest
+      ;;
     *)
       echo "unknown application"
       ;;
@@ -112,29 +117,52 @@ fi
 docCommand=""
 # collect traces
 if [ $COLLECTTRACES ]; then
-docCommand+="mkdir /home/memtrace/scarab/traces ; cd /home/memtrace/scarab/traces ; ../src/build/opt/deps/dynamorio/bin64/drrun "
+docCommand+="cd /home/memtrace/traces && ../DynamoRIO-Linux-9.0.1/bin64/drrun "
   case $APPNAME in
     cassandra | kafka | tomcat)
       echo "trace DaCapo applications"
-    docCommand+="-disable_traces -no_hw_cache_consistency -no_sandbox_writes -no_enable_reset -t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 200M -outdir ./ -- java -jar dacapo-evaluation-git+309e1fa-java8.jar "$APPNAME" -n 10 ; "
+      # TODO: Java does not work under DynamoRIO
+      docCommand+="-disable_traces -no_hw_cache_consistency -no_sandbox_writes -no_enable_reset -sandbox2ro_threshold 0 -ro2sandbox_threshold 0 -t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 101M -outdir ./ -- java -jar ../../dacapo-evaluation-git+309e1fa-java8.jar $APPNAME -n 10 "
     ;;
     chirper | http)
       echo "trace Renaissance applications"
-      docCommand+="-disable_traces -no_hw_cache_consistency -no_sandbox_writes -no_enable_reset -t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 200M -outdir ./ -- java -jar renaissance-gpl-0.10.0.jar finagle-"$APPNAME" -r 10 ; "
+      # TODO: Java does not work under DynamoRIO
+      docCommand+="-disable_traces -no_hw_cache_consistency -no_sandbox_writes -no_enable_reset -sandbox2ro_threshold 0 -ro2sandbox_threshold 0 -t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 101M -outdir ./ -- java -jar ../../renaissance-gpl-0.10.0.jar finagle-$APPNAME -r 10 "
+      ;;
+    drupal7 | mediawiki | wordpress)
+      echo "trace HHVM OSS applications"
+      # TODO: hhvm does not work
+      docCommand+="-t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 101M -outdir ./ -- \$HHVM /home/memtrace/oss-performance/perf.php --$APPNAME --hhvm=:$(echo \$HHVM)"
+      ;;
+    template)
+      echo "trace example"
+      docCommand+="-t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 101M -outdir ./ -- ls"
       ;;
     *)
       echo "unknown application"
       ;;
   esac
+docCommand+="&& "
+echo $docCommand
 fi
-docCommand+="bash ../../../scarab/utils/memtrace/run_portabilize_trace.sh ; "
+
+# convert traces
+docCommand+="cd /home/memtrace/traces && read TRACEDIR < <(bash ../scarab/utils/memtrace/run_portabilize_trace.sh) && "
 
 # run Scarab
-traceDir=$(cd /home/memtrace/scarab/exp && find ../traces/* -maxdepth 0 -type d)
-docCommand+="../src/scarab --frontend memtrace --inst_limit 500000 --fetch_off_path_ops 0 --cbp_trace_r0=$traceDir/trace --memtrace_module_log=$traceDir/bin"
+docCommand+="cd /home/memtrace/exp && ../scarab/src/scarab --cbp_trace_r0=../traces/\$TRACEDIR/traces --memtrace_modules_log=../traces/\$TRACEDIR/raw "
+docCommand+=$SCARABPARAMS
+echo $docCommand
 
-# run a docker container
-CID=$(docker run -it $APPNAME:latest /bin/bash -c $docCommand)
+# run a docker container - collect traces
+docker volume create $APPNAME
+docker run -dit --rm --privileged --name $APPNAME -v $APPNAME:/home/memtrace $APPNAME:latest /bin/bash -c $docCommand &
+docker logs -f --until=10s $APPNAME &
+BACK_PID=$!
+echo "run Scarab.."
+wait $BACK_PID
 
+# copy traces
+#docker cp $APPNAME:/home/memtrace/traces $OUTDIR
 # copy Scarab results
-docker cp $CID:/home/memtrace/scarab/exp ./exp
+docker cp $APPNAME:/home/memtrace/exp $OUTDIR
