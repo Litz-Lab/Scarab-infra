@@ -95,7 +95,7 @@ docker run -it --privileged --name example -v example:/home/memtrace example:lat
 
 ## Developers
 When you add an application support of a docker image, please expand ‘’ script so that the memtraces and Scarab results can be provided by running a single script. The rule of thumb is 1) to try to build a simple image where the basic essential packages are installed on a proper Ubuntu version (first version of Dockerfile), 2) to run a container of the image, 3) to run the application, 4) to run the application with DynamoRIO (if 3) works), 5) to run Scarab with memtrace frontend feeding the collected traces from 4). 
-If all 1) to 5) steps are working, you can add the process you added after 1) to the Dockerfile and expand the script. Make sure if running the script is providing the same environment and results as 1~5 steps.
+If all 1) to 5) steps are working, you can add the processes you added after 1) to the Dockerfile and expand the script. Make sure if running the script is providing the same environment and results as 1~5 steps.
 
 ## Notes
 * DaCapo (cassandra, kafka, tomcat) - DynamoRIO, Scarab, and applications are successfully running, but DynamoRIO doesn't support jvm applications. memtraces cannot be collected. Only execution-driven simulation available.
