@@ -117,7 +117,7 @@ fi
 docCommand=""
 # collect traces
 if [ $COLLECTTRACES ]; then
-docCommand+="cd /home/memtrace/traces && ../DynamoRIO-Linux-9.0.1/bin64/drrun "
+docCommand+="cd /home/memtrace/traces && /home/memtrace/dynamorio/build/bin64/drrun "
   case $APPNAME in
     cassandra | kafka | tomcat)
       echo "trace DaCapo applications"
@@ -136,7 +136,7 @@ docCommand+="cd /home/memtrace/traces && ../DynamoRIO-Linux-9.0.1/bin64/drrun "
       ;;
     template)
       echo "trace example"
-      docCommand+="-t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 101M -outdir ./ -- ls"
+      docCommand+="-t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 101M -outdir ./ -- echo hello world"
       ;;
     *)
       echo "unknown application"
@@ -156,13 +156,16 @@ echo $docCommand
 
 # run a docker container - collect traces
 docker volume create $APPNAME
-docker run -dit --rm --privileged --name $APPNAME -v $APPNAME:/home/memtrace $APPNAME:latest /bin/bash -c $docCommand &
+docker run -dit --privileged --name $APPNAME -v $APPNAME:/home/memtrace $APPNAME:latest /bin/bash -c $docCommand &
 docker logs -f --until=10s $APPNAME &
 BACK_PID=$!
 echo "run Scarab.."
 wait $BACK_PID
 
 # copy traces
-#docker cp $APPNAME:/home/memtrace/traces $OUTDIR
+docker cp $APPNAME:/home/memtrace/traces $OUTDIR
 # copy Scarab results
 docker cp $APPNAME:/home/memtrace/exp $OUTDIR
+
+# remove docker container
+docker rm $APPNAME

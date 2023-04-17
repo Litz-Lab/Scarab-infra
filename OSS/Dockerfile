@@ -7,6 +7,7 @@ FROM ubuntu:18.04
 
 INCLUDE+ ./scarab_memtrace/Dockerfile.oss
 
+USER root
 # Should install python2 to run scarab/utils/memtrace/run_portabilize_trace.sh (cannot installed in Dockerfile.common because of ubuntu version
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y python-minimal
 
