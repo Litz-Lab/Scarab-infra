@@ -104,9 +104,9 @@ if [ $BUILD ]; then
       echo "HHVM OSS-performance applications"
       docker build . -f ./OSS/Dockerfile --no-cache -t $APPNAME:latest
       ;;
-    template)
+    example)
       echo "example"
-      docker build . -f ./template/Dockerfile --no-cache -t $APPNAME:latest
+      docker build . -f ./example/Dockerfile --no-cache -t $APPNAME:latest
       ;;
     *)
       echo "unknown application"
@@ -134,7 +134,7 @@ docCommand+="cd /home/memtrace/traces && /home/memtrace/dynamorio/build/bin64/dr
       # TODO: hhvm does not work
       docCommand+="-t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 101M -outdir ./ -- \$HHVM /home/memtrace/oss-performance/perf.php --$APPNAME --hhvm=:$(echo \$HHVM)"
       ;;
-    template)
+    example)
       echo "trace example"
       docCommand+="-t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 101M -outdir ./ -- echo hello world"
       ;;
