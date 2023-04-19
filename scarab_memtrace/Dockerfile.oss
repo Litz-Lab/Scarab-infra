@@ -39,14 +39,14 @@ RUN git clone https://github.com/hpsresearchgroup/scarab.git
 
 # Install Scarab dependencies
 RUN pip3 install -r /home/memtrace/scarab/bin/requirements.txt
-RUN gdown https://drive.google.com/uc?id=1FPaVO8A6rFyiZtXymZlFiw0OjQYVWbIN && tar -xf pinplay-drdebug-3.5-pin-3.5-97503-gac534ca30-gcc-linux.tar.bz2
+RUN wget https://software.intel.com/sites/landingpage/pintool/downloads/pin-3.15-98253-gb56e429b1-gcc-linux.tar.gz && tar -xzvf pin-3.15-98253-gb56e429b1-gcc-linux.tar.gz
 
 # Build Scarab
-ENV PIN_ROOT /home/memtrace/pinplay-drdebug-3.5-pin-3.5-97503-gac534ca30-gcc-linux
+ENV PIN_ROOT /home/memtrace/pin-3.15-98253-gb56e429b1-gcc-linux
 # TODO: need to update to 'ENV SCARAB_ENABLE_PT_MEMTRACE 1' after switching to scarab_hlitz
 ENV SCARAB_ENABLE_MEMTRACE 1
-ENV LD_LIBRARY_PATH /home/memtrace/pinplay-drdebug-3.5-pin-3.5-97503-gac534ca30-gcc-linux/extras/xed-intel64/lib
-ENV LD_LIBRARY_PATH /home/memtrace/pinplay-drdebug-3.5-pin-3.5-97503-gac534ca30-gcc-linux/intel64/runtime/pincrt:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH /home/memtrace/pin-3.15-98253-gb56e429b1-gcc-linux/extras/xed-intel64/lib
+ENV LD_LIBRARY_PATH /home/memtrace/pin-3.15-98253-gb56e429b1-gcc-linux/intel64/runtime/pincrt:$LD_LIBRARY_PATH
 #RUN cd /home/memtrace/scarab/src && \
     #make
 RUN mkdir /home/memtrace/exp
