@@ -98,7 +98,7 @@ if [ $BUILD ]; then
       ;;
     chirper | http)
       echo "build Renaissance applications"
-      docker build . -f ./Renaissance/Dockerfile --no-cache -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa.pub)"
+      docker build . -f ./Renaissance/Dockerfile --no-cache -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
       ;;
     drupal7 | mediawiki | wordpress)
       echo "HHVM OSS-performance applications"
@@ -106,8 +106,7 @@ if [ $BUILD ]; then
       ;;
     compression | hashing | mem | proto | cold_swissmap | hot_swissmap | empirical_driver)
       echo "fleetbench applications"
-      #docker build . -f ./Fleetbench/Dockerfile --no-cache -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
-      docker build . -f ./Fleetbench/Dockerfile -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+      docker build . -f ./Fleetbench/Dockerfile --no-cache -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
       ;;
     example)
       echo "example"
