@@ -3,7 +3,7 @@
 # Use focal (20.04) instead of latest (22.04) - rseq in DynamoRIO is dependent to glibc library and not working with too recent glibc in the 22.04 linux kernel
 FROM ubuntu:focal
 
-INCLUDE+ ./scarab_memtrace/Dockerfile.common
+INCLUDE+ ./common/Dockerfile.common
 
 # Should install python2 to run scarab/utils/memtrace/run_portabilize_trace.sh (cannot installed in Dockerfile.common because of ubuntu version
 #RUN DEBIAN_FRONTEND=noninteractive apt-get install -y python2

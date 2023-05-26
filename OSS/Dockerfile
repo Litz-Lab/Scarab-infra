@@ -5,7 +5,7 @@ FROM ubuntu:18.04
 # Ubuntu 14:04 with HHVM installed
 #FROM hhvm/hhvm
 
-INCLUDE+ ./scarab_memtrace/Dockerfile.oss
+INCLUDE+ ./common/Dockerfile.oss
 
 USER root
 # Should install python2 to run scarab/utils/memtrace/run_portabilize_trace.sh (cannot installed in Dockerfile.common because of ubuntu version

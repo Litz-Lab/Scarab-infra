@@ -10,13 +10,13 @@ help()
                 [ -a | --appname ]
                 [ -p | --parameters ]
                 [ -o | --outdir ]
-                [ -t | --tracing ]
+                [ -t | --collect_traces]
                 [ -b | --build]"
   echo
   echo "Options:"
   echo "h     Print this Help."
-  echo "a     Application name (cassandra, kafka, tomcat, chirper, http, drupal7, mediawiki, wordpress) e.g) -a cassandra"
-  echo "p     Scarab parameters except for --cbp_trace_r0=<absolute/path/to/trace> --memtrace_modules_log=<absolute/path/to/modules.log>. e.g) -p '--frontend memtrace --fetch_off_path_ops 0 --fdip_enable 1 --inst_limit 999900'"
+  echo "a     Application name (cassandra, kafka, tomcat, chirper, http, drupal7, mediawiki, wordpress, compression, hashing, mem, proto, cold_swissmap, hot_swissmap, empirical_driver) e.g) -a cassandra"
+  echo "p     Scarab parameters. e.g) -p '--frontend memtrace --fetch_off_path_ops 1 --fdip_enable 1 --inst_limit 999900 --uop_cache_enable 0'"
   echo "o     Output directory. e.g) -o ."
   echo "t     Collect traces. Run without collecting traces if not given. e.g) -t"
   echo "b     Build a docker image. Run a container of existing docker image without bulding an image if not given. e.g) -b"
@@ -94,25 +94,53 @@ if [ $BUILD ]; then
   case $APPNAME in
     cassandra | kafka | tomcat)
       echo "build DaCapo applications"
-      docker build . -f ./DaCapo/Dockerfile --no-cache -t $APPNAME:latest
+      docker build . -f ./DaCapo/Dockerfile --no-cache -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
       ;;
     chirper | http)
       echo "build Renaissance applications"
-      docker build . -f ./Renaissance/Dockerfile --no-cache -t $APPNAME:latest
+      docker build . -f ./Renaissance/Dockerfile --no-cache -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa.pub)"
       ;;
     drupal7 | mediawiki | wordpress)
       echo "HHVM OSS-performance applications"
-      docker build . -f ./OSS/Dockerfile --no-cache -t $APPNAME:latest
+      docker build . -f ./OSS/Dockerfile --no-cache -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+      ;;
+    compression | hashing | mem | proto | cold_swissmap | hot_swissmap | empirical_driver)
+      echo "fleetbench applications"
+      #docker build . -f ./Fleetbench/Dockerfile --no-cache -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+      docker build . -f ./Fleetbench/Dockerfile -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
       ;;
     example)
       echo "example"
-      docker build . -f ./example/Dockerfile --no-cache -t $APPNAME:latest
+      docker build . -f ./example/Dockerfile --no-cache -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
       ;;
     *)
       echo "unknown application"
       ;;
   esac
 fi
+
+# set BINPATH
+case $APPNAME in
+  compression)
+    BINPATH="/home/memtrace/.cache/bazel/_bazel_memtrace/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/compression/compression_benchmark"
+    ;;
+  hashing)
+    BINPATH="/home/memtrace/.cache/bazel/_bazel_memtrace/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/hashing/hashing_benchmark"
+    ;;
+  mem)
+    BINPATH="/home/memtrace/.cache/bazel/_bazel_memtrace/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/libc/mem_benchmark"
+    ;;
+  proto)
+    BINPATH="/home/memtrace/.cache/bazel/_bazel_memtrace/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/proto/proto_benchmark"
+    ;;
+  cold_swissmap | hot_swissmap)
+    BINPATH="/home/memtrace/.cache/bazel/_bazel_memtrace/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/swissmap/$APPNAME"
+    BINPATH+="_benchmark"
+    ;;
+  empirical_driver)
+    BINPATH="/home/memtrace/.cache/bazel/_bazel_memtrace/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/tcmalloc/empirical_driver"
+    ;;
+esac
 
 docCommand=""
 # collect traces
@@ -134,6 +162,30 @@ docCommand+="cd /home/memtrace/traces && /home/memtrace/dynamorio/build/bin64/dr
       # TODO: hhvm does not work
       docCommand+="-t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 101M -outdir ./ -- \$HHVM /home/memtrace/oss-performance/perf.php --$APPNAME --hhvm=:$(echo \$HHVM)"
       ;;
+    compression)
+      echo "trace fleetbench compression benchmark"
+      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINPATH "
+      ;;
+    hashing)
+      echo "trace fleetbench hashing benchmark"
+      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINPATH "
+      ;;
+    mem)
+      echo "trace fleetbench libc mem benchmark"
+      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINPATH "
+      ;;
+    proto)
+      echo "trace fleetbench proto benchmark"
+      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINPATH "
+      ;;
+    cold_swissmap | hot_swissmap)
+      echo "trace fleetbench swissmap benchmark"
+      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINPATH "
+      ;;
+    empirical_driver)
+      echo "trace fleetbench tcmalloc empirical_driver benchmark"
+      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINPATH "
+      ;;
     example)
       echo "trace example"
       docCommand+="-t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 101M -outdir ./ -- echo hello world"
@@ -143,29 +195,30 @@ docCommand+="cd /home/memtrace/traces && /home/memtrace/dynamorio/build/bin64/dr
       ;;
   esac
 docCommand+="&& "
+# convert traces
+docCommand+="cd /home/memtrace/traces && read TRACEDIR < <(bash ../scarab_hlitz/utils/memtrace/run_portabilize_trace.sh) && "
 echo $docCommand
 fi
 
-# convert traces
-docCommand+="cd /home/memtrace/traces && read TRACEDIR < <(bash ../scarab/utils/memtrace/run_portabilize_trace.sh) && "
-
 # run Scarab
-docCommand+="cd /home/memtrace/exp && ../scarab/src/scarab --cbp_trace_r0=../traces/\$TRACEDIR/traces --memtrace_modules_log=../traces/\$TRACEDIR/raw "
-docCommand+=$SCARABPARAMS
+docCommand+="cd /home/memtrace/exp && python3 /home/memtrace/scarab_hlitz/bin/scarab_launch.py --program '$BINPATH' --param '/home/memtrace/scarab_hlitz/src/PARAMS.sunny_cove' --scarab_args '$SCARABPARAMS'"
 echo $docCommand
 
-# run a docker container - collect traces
+# run a docker container
 docker volume create $APPNAME
-docker run -dit --privileged --name $APPNAME -v $APPNAME:/home/memtrace $APPNAME:latest /bin/bash -c $docCommand &
-docker logs -f --until=10s $APPNAME &
-BACK_PID=$!
 echo "run Scarab.."
-wait $BACK_PID
+docker run -it --privileged --name $APPNAME -v $APPNAME:/home/memtrace $APPNAME:latest /bin/bash -c "$docCommand"
 
+echo "copy results.."
 # copy traces
-docker cp $APPNAME:/home/memtrace/traces $OUTDIR
+if [ $COLLECTTRACES ]; then
+  docker cp $APPNAME:/home/memtrace/traces $OUTDIR
+fi
 # copy Scarab results
 docker cp $APPNAME:/home/memtrace/exp $OUTDIR
 
 # remove docker container
 docker rm $APPNAME
+
+# remove docker volume
+docker volume rm $APPNAME

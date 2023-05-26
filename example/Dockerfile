@@ -3,7 +3,7 @@
 # choose a ubuntu version
 FROM ubuntu:focal
 
-INCLUDE+ ./scarab_memtrace/Dockerfile.common
+INCLUDE+ ./common/Dockerfile.common
 
 # TODO: Install required packages
 
