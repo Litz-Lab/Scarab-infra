@@ -150,7 +150,7 @@ docCommand+="cd /home/memtrace/traces && /home/memtrace/dynamorio/build/bin64/dr
       echo "trace DaCapo applications"
       # TODO: Java does not work under DynamoRIO
       docCommand+="-disable_traces -no_hw_cache_consistency -no_sandbox_writes -no_enable_reset -sandbox2ro_threshold 0 -ro2sandbox_threshold 0 -t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 101M -outdir ./ -- java -jar ../../dacapo-evaluation-git+309e1fa-java8.jar $APPNAME -n 10 "
-    ;;
+      ;;
     chirper | http)
       echo "trace Renaissance applications"
       # TODO: Java does not work under DynamoRIO
