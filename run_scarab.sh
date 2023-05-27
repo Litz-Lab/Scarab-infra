@@ -15,7 +15,7 @@ help()
   echo
   echo "Options:"
   echo "h     Print this Help."
-  echo "a     Application name (cassandra, kafka, tomcat, chirper, http, drupal7, mediawiki, wordpress, compression, hashing, mem, proto, cold_swissmap, hot_swissmap, empirical_driver) e.g) -a cassandra"
+  echo "a     Application name (cassandra, kafka, tomcat, chirper, http, drupal7, mediawiki, wordpress, compression, hashing, mem, proto, cold_swissmap, hot_swissmap, empirical_driver, verilator) e.g) -a cassandra"
   echo "p     Scarab parameters. e.g) -p '--frontend memtrace --fetch_off_path_ops 1 --fdip_enable 1 --inst_limit 999900 --uop_cache_enable 0'"
   echo "o     Output directory. e.g) -o ."
   echo "t     Collect traces. Run without collecting traces if not given. e.g) -t"
@@ -108,6 +108,10 @@ if [ $BUILD ]; then
       echo "fleetbench applications"
       docker build . -f ./Fleetbench/Dockerfile --no-cache -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
       ;;
+    verilator)
+      echo "verilator"
+      docker build . -f ./Verilator/Dockerfile --no-cache -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+      ;;
     example)
       echo "example"
       docker build . -f ./example/Dockerfile --no-cache -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
@@ -118,26 +122,29 @@ if [ $BUILD ]; then
   esac
 fi
 
-# set BINPATH
+# set BINCMD
 case $APPNAME in
   compression)
-    BINPATH="/home/memtrace/.cache/bazel/_bazel_memtrace/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/compression/compression_benchmark"
+    BINCMD="/home/memtrace/.cache/bazel/_bazel_memtrace/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/compression/compression_benchmark"
     ;;
   hashing)
-    BINPATH="/home/memtrace/.cache/bazel/_bazel_memtrace/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/hashing/hashing_benchmark"
+    BINCMD="/home/memtrace/.cache/bazel/_bazel_memtrace/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/hashing/hashing_benchmark"
     ;;
   mem)
-    BINPATH="/home/memtrace/.cache/bazel/_bazel_memtrace/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/libc/mem_benchmark"
+    BINCMD="/home/memtrace/.cache/bazel/_bazel_memtrace/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/libc/mem_benchmark"
     ;;
   proto)
-    BINPATH="/home/memtrace/.cache/bazel/_bazel_memtrace/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/proto/proto_benchmark"
+    BINCMD="/home/memtrace/.cache/bazel/_bazel_memtrace/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/proto/proto_benchmark"
     ;;
   cold_swissmap | hot_swissmap)
-    BINPATH="/home/memtrace/.cache/bazel/_bazel_memtrace/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/swissmap/$APPNAME"
-    BINPATH+="_benchmark"
+    BINCMD="/home/memtrace/.cache/bazel/_bazel_memtrace/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/swissmap/$APPNAME"
+    BINCMD+="_benchmark"
     ;;
   empirical_driver)
-    BINPATH="/home/memtrace/.cache/bazel/_bazel_memtrace/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/tcmalloc/empirical_driver"
+    BINCMD="/home/memtrace/.cache/bazel/_bazel_memtrace/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/tcmalloc/empirical_driver"
+    ;;
+  verilator)
+    BINCMD="/home/memtrace/rocket-chip/emulator/emulator-freechips.rocketchip.system-freechips.rocketchip.system.DefaultConfig /home/memtrace/rocket-chip/riscv/riscv64-unknown-elf/share/riscv-tests/benchmarks/dhrystone.riscv"
     ;;
 esac
 
@@ -163,27 +170,31 @@ docCommand+="cd /home/memtrace/traces && /home/memtrace/dynamorio/build/bin64/dr
       ;;
     compression)
       echo "trace fleetbench compression benchmark"
-      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINPATH "
+      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINCMD "
       ;;
     hashing)
       echo "trace fleetbench hashing benchmark"
-      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINPATH "
+      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINCMD "
       ;;
     mem)
       echo "trace fleetbench libc mem benchmark"
-      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINPATH "
+      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINCMD "
       ;;
     proto)
       echo "trace fleetbench proto benchmark"
-      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINPATH "
+      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINCMD "
       ;;
     cold_swissmap | hot_swissmap)
       echo "trace fleetbench swissmap benchmark"
-      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINPATH "
+      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINCMD "
       ;;
     empirical_driver)
       echo "trace fleetbench tcmalloc empirical_driver benchmark"
-      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINPATH "
+      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINCMD "
+      ;;
+    verilator)
+      echo "trace verilator"
+      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINCMD "
       ;;
     example)
       echo "trace example"
@@ -200,7 +211,7 @@ echo $docCommand
 fi
 
 # run Scarab
-docCommand+="cd /home/memtrace/exp && python3 /home/memtrace/scarab_hlitz/bin/scarab_launch.py --program '$BINPATH' --param '/home/memtrace/scarab_hlitz/src/PARAMS.sunny_cove' --scarab_args '$SCARABPARAMS'"
+docCommand+="cd /home/memtrace/exp && python3 /home/memtrace/scarab_hlitz/bin/scarab_launch.py --program '$BINCMD' --param '/home/memtrace/scarab_hlitz/src/PARAMS.sunny_cove' --scarab_args '$SCARABPARAMS'"
 echo $docCommand
 
 # run a docker container
