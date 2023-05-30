@@ -231,11 +231,11 @@ docCommand+="cd /home/memtrace/traces && /home/memtrace/dynamorio/build/bin64/dr
   esac
 docCommand+="&& "
 # convert traces
-docCommand+="cd /home/memtrace/traces && read TRACEDIR < <(bash ../scarab_hlitz/utils/memtrace/run_portabilize_trace.sh) && "
+docCommand+="cd /home/memtrace/traces && read TRACEDIR < <(bash ../scarab/utils/memtrace/run_portabilize_trace.sh) && "
 echo $docCommand
 
 # run Scarab
-docCommand+="cd /home/memtrace/exp && python3 /home/memtrace/scarab_hlitz/bin/scarab_launch.py --program '$BINCMD' --param '/home/memtrace/scarab_hlitz/src/PARAMS.sunny_cove' --scarab_args '$SCARABPARAMS'"
+docCommand+="cd /home/memtrace/exp && python3 /home/memtrace/scarab/bin/scarab_launch.py --program '$BINCMD' --param '/home/memtrace/scarab/src/PARAMS.sunny_cove' --scarab_args '$SCARABPARAMS'"
 echo $docCommand
 
 # run a docker container
@@ -256,7 +256,8 @@ if [ $SIMPOINT ]; then
   fi
 
   # run scripts for simpoint
-  docker exec -dit --privileged $APP_GROUPNAME /home/memtrace/run_simpoint.sh $APP_GROUPNAME &
+  # docker exec -dit --privileged $APP_GROUPNAME /home/memtrace/run_simpoint.sh $APP_GROUPNAME &
+  docker exec -it --privileged $APP_GROUPNAME /home/memtrace/run_simpoint.sh $APP_GROUPNAME
 fi
 
 echo "copy results.."
