@@ -100,34 +100,42 @@ if [ $BUILD ]; then
   case $APPNAME in
     cassandra | kafka | tomcat)
       echo "build DaCapo applications"
-      docker build . -f ./DaCapo/Dockerfile --no-cache -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+      APP_GROUPNAME="dacapo"
+      docker build . -f ./DaCapo/Dockerfile --no-cache -t $APP_GROUPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
       ;;
     chirper | http)
       echo "build Renaissance applications"
-      docker build . -f ./Renaissance/Dockerfile --no-cache -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+      APP_GROUPNAME="renaissance"
+      docker build . -f ./Renaissance/Dockerfile --no-cache -t $APP_GROUPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
       ;;
     drupal7 | mediawiki | wordpress)
       echo "HHVM OSS-performance applications"
-      docker build . -f ./OSS/Dockerfile --no-cache -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+      APP_GROUPNAME="oss"
+      docker build . -f ./OSS/Dockerfile --no-cache -t $APP_GROUPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
       ;;
     compression | hashing | mem | proto | cold_swissmap | hot_swissmap | empirical_driver)
       echo "fleetbench applications"
-      docker build . -f ./Fleetbench/Dockerfile --no-cache -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+      APP_GROUPNAME="fleetbench"
+      docker build . -f ./Fleetbench/Dockerfile --no-cache -t $APP_GROUPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
       ;;
     verilator)
       echo "verilator"
-      docker build . -f ./Verilator/Dockerfile --no-cache -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+      APP_GROUPNAME="verilator"
+      docker build . -f ./Verilator/Dockerfile --no-cache -t $APP_GROUPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
       ;;
     example)
       echo "example"
-      docker build . -f ./example/Dockerfile --no-cache -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+      APP_GROUPNAME="example"
+      docker build . -f ./example/Dockerfile --no-cache -t $APP_GROUPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
       ;;
     # TODO: add all SPEC names
     502.gcc_r)
-      echo "build SPEC2017"
-      docker build . -f ./SPEC2017/Dockerfile --no-cache -t $APPNAME:latest
+      echo "spec2017"
+      APP_GROUPNAME="spec2017"
+      docker build . -f ./SPEC2017/Dockerfile --no-cache -t $APP_GROUPNAME:latest
       ;;
     *)
+      APP_GROUPNAME="unknown"
       echo "unknown application"
       ;;
   esac
@@ -159,14 +167,11 @@ case $APPNAME in
     ;;
 esac
 
-# TODO: for SPEC, what if run multiple apps from the same container?
-# let the dockerfile create the volume instead?
-# since those apps could share the same volume
-# use group name? e.g., SPEC17
-docker volume create $APPNAME
+# create volume for the app group
+docker volume create $APP_GROUPNAME
 
 # start container
-docker run -dit --privileged --name $APPNAME -v $APPNAME:/home/memtrace $APPNAME:latest /bin/bash
+docker run -dit --privileged --name $APP_GROUPNAME -v $APP_GROUPNAME:/home/memtrace $APP_GROUPNAME:latest /bin/bash
 
 # collect traces
 docCommand=""
@@ -235,35 +240,37 @@ echo $docCommand
 
 # run a docker container
 echo "run Scarab.."
-docker exec -it --privileged $APPNAME /bin/bash -c "$docCommand"
+docker exec -it --privileged $APP_GROUPNAME /bin/bash -c "$docCommand"
 fi
 
 # the simpoint workflow
 if [ $SIMPOINT ]; then
 
   # mount and install spec benchmark if not yet
-  if [ $BUILD ]; then
+  if [ $BUILD ] && [ $APP_GROUPNAME == "spec2017" ]; then
     # TODO: make it inside docker build
     # no detach, wait for it to terminate
-    docker exec -it --privileged $APPNAME cd /home/memtrace && mkdir cpu2017_install && echo "memtrace" | sudo -S mount -t iso9660 -o ro,exec,loop cpu2017-1_0_5.iso ./cpu2017_install
-    docker exec -it --privileged $APPNAME cd /home/memtrace && mkdir cpu2017 && cd cpu2017_install && echo "yes" | ./install.sh -d /home/memtrace/cpu2017
-    docker cp ./SPEC2017/memtrace.cfg $APPNAME:/home/memtrace/cpu2017/config/memtrace.cfg
+    docker exec -it --privileged $APP_GROUPNAME cd /home/memtrace && mkdir cpu2017_install && echo "memtrace" | sudo -S mount -t iso9660 -o ro,exec,loop cpu2017-1_0_5.iso ./cpu2017_install
+    docker exec -it --privileged $APP_GROUPNAME cd /home/memtrace && mkdir cpu2017 && cd cpu2017_install && echo "yes" | ./install.sh -d /home/memtrace/cpu2017
+    docker cp ./SPEC2017/memtrace.cfg $APP_GROUPNAME:/home/memtrace/cpu2017/config/memtrace.cfg
   fi
 
   # run scripts for simpoint
-  docker exec -dit --privileged $APPNAME /home/memtrace/run_simpoint.sh $APPNAME &
+  docker exec -dit --privileged $APP_GROUPNAME /home/memtrace/run_simpoint.sh $APP_GROUPNAME &
 fi
 
 echo "copy results.."
 # copy traces
 if [ $COLLECTTRACES ]; then
-  docker cp $APPNAME:/home/memtrace/traces $OUTDIR
+  docker cp $APP_GROUPNAME:/home/memtrace/traces $OUTDIR
 fi
 # copy Scarab results
-docker cp $APPNAME:/home/memtrace/exp $OUTDIR
+docker cp $APP_GROUPNAME:/home/memtrace/exp $OUTDIR
 
 # remove docker container
-docker rm $APPNAME
+# TODO: may not want to remove immediately -- in case of running multiple apps using same image/container
+docker rm $APP_GROUPNAME
 
 # remove docker volume
-docker volume rm $APPNAME
+# TODO: may not want to remove immediately -- in case of running multiple apps using same image/container
+docker volume rm $APP_GROUPNAME
