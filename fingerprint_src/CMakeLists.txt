@@ -1,0 +1,17 @@
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
+add_library(fpg SHARED fpg.cpp)
+find_package(DynamoRIO)
+if (NOT DynamoRIO_FOUND)
+  message(FATAL_ERROR "DynamoRIO package required to build")
+endif(NOT DynamoRIO_FOUND)
+configure_DynamoRIO_client(fpg)
+use_DynamoRIO_extension(fpg drmgr)
+use_DynamoRIO_extension(fpg drutil)
+use_DynamoRIO_extension(fpg droption) 

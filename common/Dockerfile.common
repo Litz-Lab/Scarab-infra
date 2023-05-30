@@ -12,6 +12,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     cmake \
     binutils \
     libunwind-dev \
+    libboost-dev \
     zlib1g-dev \
     libsnappy-dev \
     liblz4-dev \
@@ -55,6 +56,23 @@ USER memtrace
 # DynamoRIO build from source
 RUN git clone --recursive https://github.com/DynamoRIO/dynamorio.git && cd dynamorio && git reset --hard release_9.0.1 && mkdir build && cd build && cmake .. && make -j 40
 
+# Build DynamoRIO package for fingerprint client
+RUN mkdir /home/memtrace/dynamorio/package && \
+    cd /home/memtrace/dynamorio/package && \
+    ctest -V -S ../make/package.cmake,build=1\;no32
+ENV DYNAMORIO_HOME=/home/memtrace/dynamorio/package/build_release-64/
+
+# Build fingerprint client
+COPY --chown=memtrace fingerprint_src /home/memtrace/fingerprint_src/
+RUN mkdir /home/memtrace/fingerprint_src/build && \
+    cd /home/memtrace/fingerprint_src/build && \
+    cmake -DDynamoRIO_DIR=$DYNAMORIO_HOME/cmake .. && \
+    make && \
+    cp ./libfpg.so /home/memtrace/libfpg.so
+
+# Copy simpoint script
+COPY --chown=memtrace run_simpoint.sh /home/memtrace/run_simpoint.sh
+
 # Clone the Scarab repository
 RUN cd /home/memtrace && git clone git@github.com:hlitz/scarab_hlitz.git && \
     cd scarab_hlitz && git checkout -b decoupled_fe origin/decoupled_fe && \
@@ -73,6 +91,16 @@ RUN cd /home/memtrace/scarab_hlitz/src && \
     make
 RUN mkdir /home/memtrace/exp
 RUN mkdir -p /home/memtrace/traces
+
+# Build SimPoint 3.2
+# Reference:
+# https://github.com/intel/pinplay-tools/blob/main/pinplay-scripts/PinPointsHome/Linux/bin/Makefile
+RUN cd /home/memtrace/ && \
+    wget -O - http://cseweb.ucsd.edu/~calder/simpoint/releases/SimPoint.3.2.tar.gz | tar -x -f - -z && \
+    wget https://raw.githubusercontent.com/intel/pinplay-tools/main/pinplay-scripts/PinPointsHome/Linux/bin/simpoint_modern_gcc.patch -P SimPoint.3.2/ && \
+    patch --directory=SimPoint.3.2 --strip=1 < SimPoint.3.2/simpoint_modern_gcc.patch && \
+    make -C SimPoint.3.2 && \
+    ln -s SimPoint.3.2/bin/simpoint ./simpoint
 
 ENV DOCKER_BUILDKIT 1
 ENV COMPOSE_DOCKER_CLI_BUILD 1
