@@ -11,7 +11,8 @@ help()
                 [ -p | --parameters ]
                 [ -o | --outdir ]
                 [ -t | --collect_traces]
-                [ -b | --build]"
+                [ -b | --build]
+                [ -sp | --simpoint ]"
   echo
   echo "Options:"
   echo "h     Print this Help."
@@ -20,10 +21,11 @@ help()
   echo "o     Output directory. e.g) -o ."
   echo "t     Collect traces. Run without collecting traces if not given. e.g) -t"
   echo "b     Build a docker image. Run a container of existing docker image without bulding an image if not given. e.g) -b"
+  echo "sp    Run SimPoint workflow. Collect fingerprint, trace, simulate, and report. e.g) -sp"
 }
 
-SHORT=h:,a:,p:,o:,t,b
-LONG=help:,appname:,parameters:,outdir:,tracing:,build
+SHORT=h:,a:,p:,o:,t,b,sp
+LONG=help:,appname:,parameters:,outdir:,tracing:,build:,simpoint
 OPTS=$(getopt -a -n run_scarab.sh --options $SHORT --longoptions $LONG -- "$@")
 
 VALID_ARGUMENTS=$# # Returns the count of arguments that are in short or long options
@@ -61,6 +63,10 @@ do
       ;;
     -b | --build) # build a docker image
       BUILD=true
+      shift
+      ;;
+    -sp | --simpoint) # simpoint method
+      SIMPOINT=true
       shift
       ;;
     --)
@@ -116,6 +122,11 @@ if [ $BUILD ]; then
       echo "example"
       docker build . -f ./example/Dockerfile --no-cache -t $APPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
       ;;
+    # TODO: add all SPEC names
+    502.gcc_r)
+      echo "build SPEC2017"
+      docker build . -f ./SPEC2017/Dockerfile --no-cache -t $APPNAME:latest
+      ;;
     *)
       echo "unknown application"
       ;;
@@ -148,8 +159,17 @@ case $APPNAME in
     ;;
 esac
 
-docCommand=""
+# TODO: for SPEC, what if run multiple apps from the same container?
+# let the dockerfile create the volume instead?
+# since those apps could share the same volume
+# use group name? e.g., SPEC17
+docker volume create $APPNAME
+
+# start container
+docker run -dit --privileged --name $APPNAME -v $APPNAME:/home/memtrace $APPNAME:latest /bin/bash
+
 # collect traces
+docCommand=""
 if [ $COLLECTTRACES ]; then
 docCommand+="cd /home/memtrace/traces && /home/memtrace/dynamorio/build/bin64/drrun "
   case $APPNAME in
@@ -208,16 +228,31 @@ docCommand+="&& "
 # convert traces
 docCommand+="cd /home/memtrace/traces && read TRACEDIR < <(bash ../scarab_hlitz/utils/memtrace/run_portabilize_trace.sh) && "
 echo $docCommand
-fi
 
 # run Scarab
 docCommand+="cd /home/memtrace/exp && python3 /home/memtrace/scarab_hlitz/bin/scarab_launch.py --program '$BINCMD' --param '/home/memtrace/scarab_hlitz/src/PARAMS.sunny_cove' --scarab_args '$SCARABPARAMS'"
 echo $docCommand
 
 # run a docker container
-docker volume create $APPNAME
 echo "run Scarab.."
-docker run -it --privileged --name $APPNAME -v $APPNAME:/home/memtrace $APPNAME:latest /bin/bash -c "$docCommand"
+docker exec -it --privileged $APPNAME /bin/bash -c "$docCommand"
+fi
+
+# the simpoint workflow
+if [ $SIMPOINT ]; then
+
+  # mount and install spec benchmark if not yet
+  if [ $BUILD ]; then
+    # TODO: make it inside docker build
+    # no detach, wait for it to terminate
+    docker exec -it --privileged $APPNAME cd /home/memtrace && mkdir cpu2017_install && echo "memtrace" | sudo -S mount -t iso9660 -o ro,exec,loop cpu2017-1_0_5.iso ./cpu2017_install
+    docker exec -it --privileged $APPNAME cd /home/memtrace && mkdir cpu2017 && cd cpu2017_install && echo "yes" | ./install.sh -d /home/memtrace/cpu2017
+    docker cp ./SPEC2017/memtrace.cfg $APPNAME:/home/memtrace/cpu2017/config/memtrace.cfg
+  fi
+
+  # run scripts for simpoint
+  docker exec -dit --privileged $APPNAME /home/memtrace/run_simpoint.sh $APPNAME &
+fi
 
 echo "copy results.."
 # copy traces
