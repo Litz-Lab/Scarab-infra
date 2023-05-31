@@ -132,7 +132,7 @@ if [ $BUILD ]; then
     502.gcc_r)
       echo "spec2017"
       APP_GROUPNAME="spec2017"
-      docker build . -f ./SPEC2017/Dockerfile --no-cache -t $APP_GROUPNAME:latest
+      docker build . -f ./SPEC2017/Dockerfile --no-cache -t $APP_GROUPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
       ;;
     *)
       APP_GROUPNAME="unknown"
