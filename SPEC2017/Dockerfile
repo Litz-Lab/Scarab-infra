@@ -3,7 +3,7 @@
 # choose a ubuntu version
 FROM ubuntu:focal
 
-INCLUDE+ ./scarab_memtrace/Dockerfile.common
+INCLUDE+ ./common/Dockerfile.common
 
 # Copy SPEC2017
 COPY ./SPEC2017/cpu2017-1_0_5.iso /home/memtrace/

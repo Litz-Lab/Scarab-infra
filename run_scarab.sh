@@ -85,7 +85,7 @@ if [ -z "$APPNAME" ]; then
   exit
 fi
 
-if [ -z "$SCARABPARAMS" ]; then
+if [ $COLLECTTRACES ] && [ -z "$SCARABPARAMS" ]; then
   echo "parameters is unset"
   exit
 fi
@@ -132,7 +132,7 @@ if [ $BUILD ]; then
     502.gcc_r)
       echo "spec2017"
       APP_GROUPNAME="spec2017"
-      docker build . -f ./SPEC2017/Dockerfile --no-cache -t $APP_GROUPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+      DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build . -f ./SPEC2017/Dockerfile --no-cache -t $APP_GROUPNAME:latest --build-arg ssh_prv_key="$(cat /home/mxu61_bak/.ssh/id_rsa)"
       ;;
     *)
       APP_GROUPNAME="unknown"
@@ -172,10 +172,19 @@ docker volume create $APP_GROUPNAME
 
 # start container
 docker run -dit --privileged --name $APP_GROUPNAME -v $APP_GROUPNAME:/home/memtrace $APP_GROUPNAME:latest /bin/bash
+# mount and install spec benchmark
+if [ $BUILD ] && [ $APP_GROUPNAME == "spec2017" ]; then
+  # TODO: make it inside docker file?
+  # no detach, wait for it to terminate
+  echo "installing spec 2017..."
+  docker exec -it --privileged $APP_GROUPNAME /bin/bash -c "cd /home/memtrace && mkdir cpu2017_install && echo \"memtrace\" | sudo -S mount -t iso9660 -o ro,exec,loop cpu2017-1_0_5.iso ./cpu2017_install"
+  docker exec -it --privileged $APP_GROUPNAME /bin/bash -c "cd /home/memtrace && mkdir cpu2017 && cd cpu2017_install && echo \"yes\" | ./install.sh -d /home/memtrace/cpu2017"
+  docker cp ./SPEC2017/memtrace.cfg $APP_GROUPNAME:/home/memtrace/cpu2017/config/memtrace.cfg
+fi
 
 # collect traces
-docCommand=""
 if [ $COLLECTTRACES ]; then
+docCommand=""
 docCommand+="cd /home/memtrace/traces && /home/memtrace/dynamorio/build/bin64/drrun "
   case $APPNAME in
     cassandra | kafka | tomcat)
@@ -245,16 +254,6 @@ fi
 
 # the simpoint workflow
 if [ $SIMPOINT ]; then
-
-  # mount and install spec benchmark if not yet
-  if [ $BUILD ] && [ $APP_GROUPNAME == "spec2017" ]; then
-    # TODO: make it inside docker build
-    # no detach, wait for it to terminate
-    docker exec -it --privileged $APP_GROUPNAME cd /home/memtrace && mkdir cpu2017_install && echo "memtrace" | sudo -S mount -t iso9660 -o ro,exec,loop cpu2017-1_0_5.iso ./cpu2017_install
-    docker exec -it --privileged $APP_GROUPNAME cd /home/memtrace && mkdir cpu2017 && cd cpu2017_install && echo "yes" | ./install.sh -d /home/memtrace/cpu2017
-    docker cp ./SPEC2017/memtrace.cfg $APP_GROUPNAME:/home/memtrace/cpu2017/config/memtrace.cfg
-  fi
-
   # run scripts for simpoint
   # docker exec -dit --privileged $APP_GROUPNAME /home/memtrace/run_simpoint.sh $APP_GROUPNAME &
   docker exec -it --privileged $APP_GROUPNAME /home/memtrace/run_simpoint.sh $APP_GROUPNAME
