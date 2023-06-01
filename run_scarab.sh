@@ -173,7 +173,7 @@ docker volume create $APP_GROUPNAME
 # start container
 docker run -dit --privileged --name $APP_GROUPNAME -v $APP_GROUPNAME:/home/memtrace $APP_GROUPNAME:latest /bin/bash
 # mount and install spec benchmark
-if [ $BUILD ] && [ $APP_GROUPNAME == "spec2017" ]; then
+if [ $BUILD ] && [ "$APP_GROUPNAME" == "spec2017" ]; then
   # TODO: make it inside docker file?
   # no detach, wait for it to terminate
   echo "installing spec 2017..."
@@ -256,7 +256,7 @@ fi
 if [ $SIMPOINT ]; then
   # run scripts for simpoint
   # docker exec -dit --privileged $APP_GROUPNAME /home/memtrace/run_simpoint.sh $APP_GROUPNAME &
-  docker exec -it --privileged $APP_GROUPNAME /home/memtrace/run_simpoint.sh $APP_GROUPNAME
+  docker exec -it --privileged $APP_GROUPNAME /home/memtrace/run_simpoint.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SCARABPARAMS"
 fi
 
 echo "copy results.."
