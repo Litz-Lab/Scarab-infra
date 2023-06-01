@@ -8,6 +8,8 @@ Install Docker based on the instructions from official [docker docs](https://doc
 To run scarab_hlitz in a docker container, the host machine should have ssh private key ~/.ssh/id_rsa permitted to clone 'scarab_hlitz' github repository.
 Only use this for images that are private and will always be! The private key will be visible in the container.
 
+To run the SPEC2017 benchmarks, the host machine should have the image `cpu2017-1_0_5.iso` under `SPEC2017/`.
+
 ## Build a Docker image and run a container of a built image
 
 ### By using a script
@@ -18,7 +20,8 @@ Usage: ./run_scarab.sh [ -h | --help ]
                 [ -p | --parameters ]
                 [ -o | --outdir ]
                 [ -t | --tracing ]
-                [ -b | --build]
+                [ -b | --build ]
+                [ -sp | --simpoint ]
 
 Options:
 h     Print this Help.
@@ -27,6 +30,7 @@ p     Scarab parameters except for --cbp_trace_r0=<absolute/path/to/trace> --mem
 o     Output directory. e.g) -o .
 t     Collect traces. Run without collecting traces if not given. e.g) -t
 b     Build a docker image. Run a container of existing docker image without bulding an image if not given. e.g) -b
+sp    Run SimPoint workflow. Collect fingerprint, trace, simulate, and report. e.g) -sp
 ```
 #### Build an image and run a container to collect traces and to run Scarab in a single command
 ```
@@ -74,6 +78,13 @@ A built image should exist already.
 ```
 ./run_scarab.sh -a example -p '--frontend memtrace --inst_limit 999900' -o . -t
 ```
+
+### Run the SimPoint flow for an application
+A built image should exist already.
+```
+./run_scarab.sh -a 502.gcc_r -sp -p '--mtage_realistic_sc_40k 1' -o . -t
+```
+
 #### Run a container of a built image
 A built image should exist already.
 ```
@@ -105,3 +116,4 @@ If all 1) to 5) steps are working, you can add the processes you added after 1) 
 * DaCapo (cassandra, kafka, tomcat) - DynamoRIO, Scarab, and applications are successfully running, but DynamoRIO doesn't support jvm applications. memtraces cannot be collected. Only execution-driven simulation available.
 * Renaissance (chirper, http)
 * HHVM OSS (drupal7, mediawiki, wordpress) - Scarab complilation failed.
+* SPEC2017 - only 502.gcc_r has been added. The SimPoint flow fixes the input size to `train` and the segment size to `100000000`.
