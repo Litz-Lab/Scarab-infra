@@ -7,7 +7,9 @@ INCLUDE+ ./common/Dockerfile.common
 
 # Copy SPEC2017
 COPY ./SPEC2017/cpu2017-1_0_5.iso /home/memtrace/
-# USER root
+
+USER root
+RUN apt-get install -y gfortran
 # RUN mount -t iso9660 -o ro,exec,loop cpu2017-1_0_5.iso ./cpu2017
 
 # Switch to the memtrace user
