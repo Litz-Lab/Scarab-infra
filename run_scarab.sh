@@ -12,7 +12,8 @@ help()
                 [ -o | --outdir ]
                 [ -t | --collect_traces]
                 [ -b | --build]
-                [ -sp | --simpoint ]"
+                [ -sp | --simpoint ]
+                [ -tb | --trace_based ]"
   echo
   echo "Options:"
   echo "h     Print this Help."
@@ -22,6 +23,7 @@ help()
   echo "t     Collect traces. Run without collecting traces if not given. e.g) -t"
   echo "b     Build a docker image. Run a container of existing docker image without bulding an image if not given. e.g) -b"
   echo "sp    Run SimPoint workflow. Collect fingerprint, trace, simulate, and report. e.g) -sp"
+  echo "tb    Run trace-based simulations for the SimPoint workflow. Otherwise, run executable-driven simulations. e.g) -tb"
 }
 
 SHORT=h:,a:,p:,o:,t,b,sp
@@ -67,6 +69,10 @@ do
       ;;
     -sp | --simpoint) # simpoint method
       SIMPOINT=true
+      shift
+      ;;
+    -tb | --trace_based) # simulation type for simpoint method
+      TRACE_BASED=true
       shift
       ;;
     --)
@@ -256,7 +262,7 @@ fi
 if [ $SIMPOINT ]; then
   # run scripts for simpoint
   # docker exec -dit --privileged $APP_GROUPNAME /home/memtrace/run_simpoint.sh $APP_GROUPNAME &
-  docker exec -it --privileged $APP_GROUPNAME /home/memtrace/run_simpoint.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SCARABPARAMS"
+  docker exec -it --privileged $APP_GROUPNAME /home/memtrace/run_simpoint.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SCARABPARAMS" "$TRACE_BASED"
 fi
 
 echo "copy results.."
