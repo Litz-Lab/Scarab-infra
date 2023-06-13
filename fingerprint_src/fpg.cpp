@@ -153,7 +153,7 @@ event_exit(void)
     std::ofstream myfile, mycsv, mymarker;
     myfile.open (op_output.get_value());
     mycsv.open (op_output.get_value() + ".csv");
-    mymarker.open(op_output.get_value() + ".mk");
+    // mymarker.open(op_output.get_value() + ".mk");
     // T:1540:4   :1541:2
 
     uint64 total_in_fingerprints = 0;
@@ -162,7 +162,7 @@ event_exit(void)
     // WARN: actually if counts_dynamic.total_size % seg size == 0,
     // fingerprints would be one size greater than pc_markers.size()
     // rare but then the implementation would be off
-    DR_ASSERT(fingerprints.size() == pc_markers.size());
+    // DR_ASSERT(fingerprints.size() == pc_markers.size());
     for (uint i = 0; i < fingerprints.size(); i++) {
         std::map<uint64, uint64> fp = fingerprints[i];
         myfile << "T";
@@ -199,11 +199,11 @@ event_exit(void)
         }
         mycsv << std::endl;
 
-        mymarker << (void *)pc_markers[i].pc << "," << pc_markers[i].freq << std::endl;
+        // mymarker << (void *)pc_markers[i].pc << "," << pc_markers[i].freq << std::endl;
     }
     myfile.close();
     mycsv.close();
-    mymarker.close();
+    // mymarker.close();
 
     DR_ASSERT(witness_total);
     std::cout << "total within fingerprints: " << total_in_fingerprints << std::endl;
@@ -226,21 +226,22 @@ clean_call(uint instruction_count, uint64 bb_id, uint64 segment_size, uint non_f
     // increment PC map
     // push the marker
     // the (to_new_vector_count + 1)th pc
-    const std::vector<app_pc>& bb_pc = bb_pc_map[bb_id];
-    DR_ASSERT(bb_pc.size() == instruction_count);
-    for (uint i = 0; i < bb_pc.size(); i++) {
-        app_pc cur_pc = bb_pc[i];
-        cur_counter++;
-        pc_map[cur_pc]++;
-        if (cur_counter % segment_size == 1) {
-            pc_markers.push_back(pc_marker(cur_pc, pc_map[cur_pc]));
-            std::cout<<"marker pushed: " << (void *)cur_pc << ", " << pc_map[cur_pc] << std::endl;
-            printf("marker pushed: %ld, %ld\n", cur_pc, pc_map[cur_pc]);
-            printf("marker pushed: %ld, %ld\n", (void *)cur_pc, pc_map[cur_pc]);
-            printf("marker pushed: %p, %ld\n", cur_pc, pc_map[cur_pc]);
-            printf("marker pushed: %p, %ld\n", (void *)cur_pc, pc_map[cur_pc]);
-        }
-    }
+    // const std::vector<app_pc>& bb_pc = bb_pc_map[bb_id];
+    // DR_ASSERT(bb_pc.size() == instruction_count);
+    cur_counter += instruction_count;
+    // for (uint i = 0; i < bb_pc.size(); i++) {
+        // app_pc cur_pc = bb_pc[i];
+        // cur_counter++;
+        // pc_map[cur_pc]++;
+        // if (cur_counter % segment_size == 1) {
+        //     pc_markers.push_back(pc_marker(cur_pc, pc_map[cur_pc]));
+        //     std::cout<<"marker pushed: " << (void *)cur_pc << ", " << pc_map[cur_pc] << std::endl;
+        //     printf("marker pushed: %ld, %ld\n", cur_pc, pc_map[cur_pc]);
+        //     printf("marker pushed: %ld, %ld\n", (void *)cur_pc, pc_map[cur_pc]);
+        //     printf("marker pushed: %p, %ld\n", cur_pc, pc_map[cur_pc]);
+        //     printf("marker pushed: %p, %ld\n", (void *)cur_pc, pc_map[cur_pc]);
+        // }
+    // }
 
     non_fetched_dynamic += non_fetched_count;
 
@@ -295,10 +296,10 @@ clean_call(uint instruction_count, uint64 bb_id, uint64 segment_size, uint non_f
         }
     }
 
-    if (cur_counter == 0)
-        DR_ASSERT(fingerprints.size() == pc_markers.size() + 1);
-    else
-        DR_ASSERT(fingerprints.size() == pc_markers.size());
+    // if (cur_counter == 0)
+    //     DR_ASSERT(fingerprints.size() == pc_markers.size() + 1);
+    // else
+    //     DR_ASSERT(fingerprints.size() == pc_markers.size());
     dr_mutex_unlock(count_lock);
 }
 
@@ -371,7 +372,7 @@ event_app_analysis(void *drcontext, void *tag, instrlist_t *bb,
     bool is_emulation = false;
     uint emulation_length = 0;
     // bb_pc_map[counts_as_built.blocks+1] = std::vector<app_pc>();
-    std::vector<app_pc>& bb_pc = bb_pc_map[counts_as_built.blocks+1];
+    // std::vector<app_pc>& bb_pc = bb_pc_map[counts_as_built.blocks+1];
     for (instr = instrlist_first(bb); instr != NULL; instr = instr_get_next(instr)) {
         if (drmgr_is_emulation_start(instr)) {
             /* Each emulated instruction is replaced by a series of native
@@ -380,7 +381,7 @@ event_app_analysis(void *drcontext, void *tag, instrlist_t *bb,
              * emulation client to place the start/stop labels correctly.
              */
             DR_ASSERT(instr == instrlist_first(bb));
-            bb_pc.push_back(instr_get_app_pc(instr));
+            // bb_pc.push_back(instr_get_app_pc(instr));
             num_instrs++;
             local_non_fetched_as_built++;
             is_emulation = true;
@@ -406,11 +407,11 @@ event_app_analysis(void *drcontext, void *tag, instrlist_t *bb,
             local_inspect_case++;
             continue;
         }
-        bb_pc.push_back(instr_get_app_pc(instr));
+        // bb_pc.push_back(instr_get_app_pc(instr));
         num_instrs++;
     }
 
-    DR_ASSERT(num_instrs == bb_pc.size());
+    // DR_ASSERT(num_instrs == bb_pc.size());
     // for (int ii = 0; ii < bb_pc.size(); ii++) {
     //     printf("%ld pc: %ld", counts_as_built.blocks+1, bb_pc[ii]);
     // }
