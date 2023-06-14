@@ -12,8 +12,8 @@ help()
                 [ -o | --outdir ]
                 [ -t | --collect_traces]
                 [ -b | --build]
-                [ -sp | --simpoint ]
-                [ -tb | --trace_based ]"
+                [ -s | --simpoint ]
+                [ -x | --trace_based ]"
   echo
   echo "Options:"
   echo "h     Print this Help."
@@ -22,12 +22,12 @@ help()
   echo "o     Output directory. e.g) -o ."
   echo "t     Collect traces. Run without collecting traces if not given. e.g) -t"
   echo "b     Build a docker image. Run a container of existing docker image without bulding an image if not given. e.g) -b"
-  echo "sp    Run SimPoint workflow. Collect fingerprint, trace, simulate, and report. e.g) -sp"
-  echo "tb    Run trace-based simulations for the SimPoint workflow. Otherwise, run executable-driven simulations. e.g) -tb"
+  echo "s     Run SimPoint workflow. Collect fingerprint, trace, simulate, and report. e.g) -s"
+  echo "x     Run trace-based simulations for the SimPoint workflow. Otherwise, run executable-driven simulations. e.g) -x"
 }
 
-SHORT=h:,a:,p:,o:,t,b,sp
-LONG=help:,appname:,parameters:,outdir:,tracing:,build:,simpoint
+SHORT=h:,a:,p:,o:,t,b,s,x
+LONG=help:,appname:,parameters:,outdir:,tracing:,build:,simpoint:,trace_based
 OPTS=$(getopt -a -n run_scarab.sh --options $SHORT --longoptions $LONG -- "$@")
 
 VALID_ARGUMENTS=$# # Returns the count of arguments that are in short or long options
@@ -67,11 +67,11 @@ do
       BUILD=true
       shift
       ;;
-    -sp | --simpoint) # simpoint method
+    -s | --simpoint) # simpoint method
       SIMPOINT=true
       shift
       ;;
-    -tb | --trace_based) # simulation type for simpoint method
+    -x | --trace_based) # simulation type for simpoint method
       TRACE_BASED=true
       shift
       ;;

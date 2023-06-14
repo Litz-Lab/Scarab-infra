@@ -98,6 +98,8 @@ done < $APPHOME/simpoints/opt.p
 
 if [ "$TRACE_BASED" == "true" ]; then
   # tracing, raw2trace
+  taskPids=()
+  start=`date +%s`
   for clusterID in "${!clusterMap[@]}"
   do
     mkdir -p $APPHOME/traces/$clusterID
@@ -117,8 +119,6 @@ if [ "$TRACE_BASED" == "true" ]; then
     sleep 2
   done
 
-  taskPids=()
-  start=`date +%s`
   echo "wait for all tracing to finish..."
   # ref: https://stackoverflow.com/a/29535256
   for taskPid in ${taskPids[@]}; do

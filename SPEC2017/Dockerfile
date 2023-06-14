@@ -13,7 +13,7 @@ RUN apt-get install -y gfortran
 # RUN mount -t iso9660 -o ro,exec,loop cpu2017-1_0_5.iso ./cpu2017
 
 # Switch to the memtrace user
-# USER memtrace
+USER memtrace
 
 
 # Start your application
