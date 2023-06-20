@@ -136,8 +136,8 @@ if [ $BUILD ]; then
       ;;
     # TODO: add all SPEC names
     508.namd_r | 519.lbm_r | 520.omnetpp_r | 527.cam4_r | 548.exchange2_r | 549.fotonik3d_r)
-      echo "spec2017"
-      APP_GROUPNAME="spec2017"
+      echo "spec2017_a"
+      APP_GROUPNAME="spec2017_a"
       DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build . -f ./SPEC2017/Dockerfile --no-cache -t $APP_GROUPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
       ;;
     *)
@@ -179,7 +179,7 @@ docker volume create $APP_GROUPNAME
 # start container
 docker run -dit --privileged --name $APP_GROUPNAME -v $APP_GROUPNAME:/home/memtrace $APP_GROUPNAME:latest /bin/bash
 # mount and install spec benchmark
-if [ $BUILD ] && [ "$APP_GROUPNAME" == "spec2017" ]; then
+if [ $BUILD ] && [ "$APP_GROUPNAME" == "spec2017_a" ]; then
   # TODO: make it inside docker file?
   # no detach, wait for it to terminate
   echo "installing spec 2017..."
@@ -250,7 +250,7 @@ docCommand+="cd /home/memtrace/traces && read TRACEDIR < <(bash ../scarab/utils/
 echo $docCommand
 
 # run Scarab
-docCommand+="cd /home/memtrace/exp && python3 /home/memtrace/scarab/bin/scarab_launch.py --program '$BINCMD' --param '/home/memtrace/scarab/src/PARAMS.sunny_cove' --scarab_args '$SCARABPARAMS'"
+docCommand+="cd /home/memtrace/exp && python3 /home/memtrace/scarab/bin/scarab_launch.py --program '$BINCMD' --param '/home/memtrace/scarab/src/PARAMS.kaby_lake' --scarab_args '$SCARABPARAMS'"
 echo $docCommand
 
 # run a docker container

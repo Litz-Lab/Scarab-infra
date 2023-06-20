@@ -15,7 +15,7 @@ mkdir -p fingerprint simpoints traces simulations evaluations
 APPHOME=/home/memtrace/simpoint_flow/$APPNAME
 
 # Get command to run for Spe17
-if [ "$APP_GROUPNAME" == "spec2017" ]; then
+if [ "$APP_GROUPNAME" == "spec2017_a" ]; then
   # environment
   cd /home/memtrace/cpu2017
   source ./shrc
@@ -187,10 +187,10 @@ start=`date +%s`
 for clusterID in "${!clusterMap[@]}"
 do
   mkdir -p $APPHOME/simulations/$clusterID
-  cp /home/memtrace/scarab/src/PARAMS.sunny_cove $APPHOME/simulations/$clusterID/PARAMS.in
+  cp /home/memtrace/scarab/src/PARAMS.kaby_lake $APPHOME/simulations/$clusterID/PARAMS.in
   cd $APPHOME/simulations/$clusterID
   if [ "$TRACE_BASED" == "true" ]; then
-    scarabCmd="/home/memtrace/scarab/src/scarab --frontend memtrace --cbp_trace_r0=$APPHOME/traces/$clusterID/trace/window.0000/${traceMap[$clusterID]} --memtrace_modules_log=$APPHOME/traces/$clusterID/raw/ $SCARABPARAMS &> sim.log"
+    scarabCmd="/home/memtrace/scarab/src/scarab --frontend memtrace --fetch_off_path_ops 0 --cbp_trace_r0=$APPHOME/traces/$clusterID/trace/window.0000/${traceMap[$clusterID]} --memtrace_modules_log=$APPHOME/traces/$clusterID/raw/ $SCARABPARAMS &> sim.log"
   else
     segID=${clusterMap[$clusterID]}
     start_inst=$(( $segID * $SEGSIZE ))
