@@ -32,14 +32,11 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
 # Switch to the memtrace user
 USER memtrace
 
-RUN git clone https://github.com/ucb-bar/rocket-chip.git
-RUN cd rocket-chip && git submodule update --init
+run git clone https://github.com/ucb-bar/rocket-chip.git
+run cd rocket-chip && git checkout aca2f0c3b9fb81f42e4d1 && git submodule update --init riscv-tools && cd riscv-tools && git submodule update --init riscv-fesvr
 
-RUN mkdir riscv
+RUN mkdir /home/memtrace/rocket-chip/riscv
 ENV RISCV=/home/memtrace/rocket-chip/riscv
-RUN git clone https://github.com/freechipsproject/rocket-tools
-RUN cd rocket-tools && git submodule update --init --recursive
-ENV MAKEFLAGS="$MAKEFLAGS -j40"
-RUN cd rocket-tools && ./build.sh
-
-RUN cd /home/memtrace/rocket-chip/emulator && make
+RUN cd /home/memtrace/rocket-chip/riscv-tools/riscv-fesvr && mkdir build && cd build && ../configure --prefix=$RISCV --target=riscv64-unknown-elf && make install
+RUN cd /home/memtrace/rocket-chip && gdown https://drive.google.com/uc?id=1WnrYhhYTGUMpndvoNpnzJOjgxdTOBHyL && tar -xvf emulator.tar.gz
+ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/home/memtrace/rocket-chip/riscv/lib"

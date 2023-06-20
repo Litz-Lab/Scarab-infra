@@ -117,3 +117,4 @@ If all 1) to 5) steps are working, you can add the processes you added after 1) 
 * Renaissance (chirper, http)
 * HHVM OSS (drupal7, mediawiki, wordpress) - Scarab complilation failed.
 * SPEC2017 - only 502.gcc_r has been added. The SimPoint flow fixes the input size to `train` and the segment size to `100000000`.
+* Verilator - setup based on https://github.com/efeslab/ispy-ripple. Clustering aborted due to out of memory.

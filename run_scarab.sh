@@ -169,7 +169,7 @@ case $APPNAME in
     BINCMD="/home/memtrace/.cache/bazel/_bazel_memtrace/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/tcmalloc/empirical_driver"
     ;;
   verilator)
-    BINCMD="/home/memtrace/rocket-chip/emulator/emulator-freechips.rocketchip.system-freechips.rocketchip.system.DefaultConfig /home/memtrace/rocket-chip/riscv/riscv64-unknown-elf/share/riscv-tests/benchmarks/dhrystone.riscv"
+    BINCMD="/home/memtrace/rocket-chip/emulator/emulator-freechips.rocketchip.system-DefaultConfigN8 +cycle-count /home/memtrace/rocket-chip/emulator/dhrystone-head.riscv"
     ;;
 esac
 
