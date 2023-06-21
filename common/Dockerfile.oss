@@ -70,3 +70,4 @@ RUN mkdir -p /home/memtrace/traces
 
 ENV DOCKER_BUILDKIT 1
 ENV COMPOSE_DOCKER_CLI_BUILD 1
+RUN rm /home/memtrace/.ssh/id_rsa && rm /home/memtrace/.ssh/known_hosts
