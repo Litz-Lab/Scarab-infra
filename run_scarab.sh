@@ -17,7 +17,7 @@ help()
   echo
   echo "Options:"
   echo "h     Print this Help."
-  echo "a     Application name (cassandra, kafka, tomcat, chirper, http, drupal7, mediawiki, wordpress, compression, hashing, mem, proto, cold_swissmap, hot_swissmap, empirical_driver, verilator) e.g) -a cassandra"
+  echo "a     Application name (cassandra, kafka, tomcat, chirper, http, drupal7, mediawiki, wordpress, compression, hashing, mem, proto, cold_swissmap, hot_swissmap, empirical_driver, verilator, dss, httpd) e.g) -a cassandra"
   echo "p     Scarab parameters. e.g) -p '--frontend memtrace --fetch_off_path_ops 1 --fdip_enable 1 --inst_limit 999900 --uop_cache_enable 0'"
   echo "o     Output directory. e.g) -o ."
   echo "t     Collect traces. Run without collecting traces if not given. e.g) -t"
@@ -129,6 +129,16 @@ if [ $BUILD ]; then
       APP_GROUPNAME="verilator"
       docker build . -f ./Verilator/Dockerfile --no-cache -t $APP_GROUPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
       ;;
+    dss)
+      echo "dss"
+      APP_GROUPNAME="dss"
+      docker build . -f ./$APP_GROUPNAME/Dockerfile --no-cache -t $APP_GROUPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+      ;;
+    httpd)
+      echo "httpd"
+      APP_GROUPNAME="httpd"
+      docker build . -f ./$APP_GROUPNAME/Dockerfile --no-cache -t $APP_GROUPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+      ;;
     example)
       echo "example"
       APP_GROUPNAME="example"
@@ -170,6 +180,12 @@ case $APPNAME in
     ;;
   verilator)
     BINCMD="/home/memtrace/rocket-chip/emulator/emulator-freechips.rocketchip.system-DefaultConfigN8 +cycle-count /home/memtrace/rocket-chip/emulator/dhrystone-head.riscv"
+    ;;
+  dss)
+    BINCMD="DarwinStreamingServer -d"
+    ;;
+  httpd)
+    BINCMD="/usr/local/apache2/bin/httpd -C 'ServerName 172.17.0.2:80' -X"
     ;;
 esac
 
@@ -236,6 +252,13 @@ docCommand+="cd /home/memtrace/traces && /home/memtrace/dynamorio/build/bin64/dr
       echo "trace verilator"
       docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINCMD "
       ;;
+    dss)
+      echo "trace dss"
+      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINCMD "
+      ;;
+    httpd)
+      echo "trace httpd"
+      docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINCMD "
     example)
       echo "trace example"
       docCommand+="-t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 101M -outdir ./ -- echo hello world"
