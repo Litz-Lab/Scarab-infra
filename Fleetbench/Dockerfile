@@ -33,6 +33,16 @@ RUN echo memtrace | sudo -S apt-get install clang-14
 RUN echo memtrace | sudo -S update-alternatives --install /usr/bin/clang clang /usr/bin/clang-14 100
 RUN echo memtrace | sudo -S update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-14 100
 
+# install python3.9 and needed libraries for compression benchmark
+RUN echo memtrace | sudo -S add-apt-repository universe
+RUN echo memtrace | sudo -S apt update
+RUN echo memtrace | sudo -S apt install python3.9 -y
+RUN echo memtrace | sudo -S update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 1
+RUN pip install zstandard
+RUN pip install python-snappy
+RUN echo memtrace | sudo -S apt install python3-tk -y
+RUN pip install numpy
+
 # final setup things, memtrace
 WORKDIR /home/memtrace/fleetbench
 RUN cd fleetbench
