@@ -144,6 +144,11 @@ if [ $BUILD ]; then
       APP_GROUPNAME="example"
       docker build . -f ./example/Dockerfile --no-cache -t $APP_GROUPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
       ;;
+    solr)
+      echo "solr"
+      APP_GROUPNAME="solr"
+      docker build . -f ./solr/Dockerfile --no-cache -t $APP_GROUPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+      ;;
     # TODO: add all SPEC names
     508.namd_r | 519.lbm_r | 520.omnetpp_r | 527.cam4_r | 548.exchange2_r | 549.fotonik3d_r)
       echo "spec2017"
@@ -187,13 +192,33 @@ case $APPNAME in
   httpd)
     BINCMD="/usr/local/apache2/bin/httpd -C 'ServerName 172.17.0.2:80' -X"
     ;;
+  solr)
+    BINCMD="java -server -Xms14g -Xmx14g -XX:+UseG1GC -XX:+PerfDisableSharedMem -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=250 -XX:+UseLargePages -XX:+AlwaysPreTouch -XX:+ExplicitGCInvokesConcurrent -Xlog:gc\*:file=/usr/src/solr-9.1.1/server/logs/solr_gc.log:time\,uptime:filecount=9\,filesize=20M -Dsolr.jetty.inetaccess.includes= -Dsolr.jetty.inetaccess.excludes= -DzkClientTimeout=30000 -DzkRun -Dsolr.log.dir=/usr/src/solr-9.1.1/server/logs -Djetty.port=8983 -DSTOP.PORT=7983 -DSTOP.KEY=solrrocks -Duser.timezone=UTC -XX:-OmitStackTraceInFastThrow -XX:OnOutOfMemoryError=/usr/src/solr-9.1.1/bin/oom_solr.sh\ 8983\ /usr/src/solr-9.1.1/server/logs -Djetty.home=/usr/src/solr-9.1.1/server -Dsolr.solr.home=/usr/src/solr_cores -Dsolr.data.home= -Dsolr.install.dir=/usr/src/solr-9.1.1 -Dsolr.default.confdir=/usr/src/solr-9.1.1/server/solr/configsets/_default/conf -Dsolr.jetty.host=0.0.0.0 -Xss256k -XX:CompileCommand=exclude\,com.github.benmanes.caffeine.cache.BoundedLocalCache::put -Djava.security.manager -Djava.security.policy=/usr/src/solr-9.1.1/server/etc/security.policy -Djava.security.properties=/usr/src/solr-9.1.1/server/etc/security.properties -Dsolr.internal.network.permission=\* -DdisableAdminUI=false -jar /usr/src/solr-9.1.1/server/start.jar --module=http --module=requestlog --module=gzip"
+    ;;
 esac
 
 # create volume for the app group
 docker volume create $APP_GROUPNAME
 
 # start container
-docker run -dit --privileged --name $APP_GROUPNAME -v $APP_GROUPNAME:/home/memtrace $APP_GROUPNAME:latest /bin/bash
+case $APPNAME in
+  solr)
+    # solr requires the host machine to download the data (14GB) from cloudsuite by first running "docker run --name web_search_dataset cloudsuite/web-search:dataset" once
+    if [ $( docker ps -a -f name=web_search_dataset | wc -l ) -eq 2 ]; then
+      echo "dataset exists"
+    else
+      echo "dataset does not exist, downloading"
+      docker run --name web_search_dataset cloudsuite/web-search:dataset
+    fi
+    # must mount dataset volume for server and docker to start querying
+    docker run -dit --privileged --name $APP_GROUPNAME -v $APP_GROUPNAME:/home/memtrace -v /var/run/docker.sock:/var/run/docker.sock --volumes-from web_search_dataset $APP_GROUPNAME:latest /bin/bash
+    docker exec -it --privileged $APP_GROUPNAME /bin/bash -c "/entrypoint.sh"
+    docker exec -it -d --privileged $APP_GROUPNAME /bin/bash -c '(docker run -it --name web_search_client --net host cloudsuite/web-search:client $(hostname -I) 10; pkill java)'
+    ;;
+  *)
+    docker run -dit --privileged --name $APP_GROUPNAME -v $APP_GROUPNAME:/home/memtrace $APP_GROUPNAME:latest /bin/bash
+    ;;
+esac
 # mount and install spec benchmark
 if [ $BUILD ] && [ "$APP_GROUPNAME" == "spec2017" ]; then
   # TODO: make it inside docker file?
@@ -218,6 +243,18 @@ docCommand+="cd /home/memtrace/traces && /home/memtrace/dynamorio/build/bin64/dr
       echo "trace Renaissance applications"
       # TODO: Java does not work under DynamoRIO
       docCommand+="-disable_traces -no_hw_cache_consistency -no_sandbox_writes -no_enable_reset -sandbox2ro_threshold 0 -ro2sandbox_threshold 0 -t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 101M -outdir ./ -- java -jar ../../renaissance-gpl-0.10.0.jar finagle-$APPNAME -r 10 "
+      ;;
+    solr)
+      echo "trace solr"
+      # TODO: Java does not work under DynamoRIO
+      # https://github.com/DynamoRIO/dynamorio/commits/i3733-jvm-bug-fixes does not work: "DynamoRIO Cache Simulator Tracer interval crash at PC 0x00007fe16d8e8fdb. Please report this at https://dynamorio.org/issues"
+      # Scarab does not work either: "setarch: failed to set personality to x86_64: Operation not permitted"
+      # Solr uses many threads and seems to run too long on simpoint's fingerprint collection
+      docCommand+="-disable_traces -no_hw_cache_consistency -no_sandbox_writes -no_enable_reset -sandbox2ro_threshold 0 -ro2sandbox_threshold 0 -t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 101M -outdir ./ -- $BINCMD "
+      # docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINCMD "
+      cleanup="rm -rf traces/README.md traces/solr-webapp traces/start.jar traces/contexts/ traces/etc traces/lib traces/logs/ traces/modules/ traces/resources/ traces/scripts/ traces/solr/"
+      cleanup+=" exp/README.md exp/solr-webapp exp/start.jar exp/contexts/ exp/etc exp/lib exp/logs/ exp/modules/ exp/resources/ exp/scripts/ exp/solr/"
+      cleanup+="; docker rm web_search_client"
       ;;
     drupal7 | mediawiki | wordpress)
       echo "trace HHVM OSS applications"
@@ -259,6 +296,7 @@ docCommand+="cd /home/memtrace/traces && /home/memtrace/dynamorio/build/bin64/dr
     httpd)
       echo "trace httpd"
       docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINCMD "
+      ;;
     example)
       echo "trace example"
       docCommand+="-t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 101M -outdir ./ -- echo hello world"
@@ -283,6 +321,15 @@ fi
 
 # the simpoint workflow
 if [ $SIMPOINT ]; then
+  # redo query setup
+  if [ $COLLECTTRACES ]; then
+    case $APPNAME in
+      solr)
+        docker rm web_search_client
+        docker exec -it -d --privileged $APP_GROUPNAME /bin/bash -c '(docker run -it --name web_search_client --net host cloudsuite/web-search:client $(hostname -I) 10; pkill java)'
+        ;;
+    esac
+  fi
   # run scripts for simpoint
   # docker exec -dit --privileged $APP_GROUPNAME /home/memtrace/run_simpoint.sh $APP_GROUPNAME &
   docker exec -it --privileged $APP_GROUPNAME /home/memtrace/run_simpoint.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SCARABPARAMS" "$TRACE_BASED"
@@ -295,6 +342,13 @@ if [ $COLLECTTRACES ]; then
 fi
 # copy Scarab results
 docker cp $APP_GROUPNAME:/home/memtrace/exp $OUTDIR
+# solr requires extra cleanup
+case $APPNAME in
+  solr)
+    # TODO: make it inside docker file?
+    $cleanup
+  ;;
+esac
 
 # remove docker container
 # TODO: may not want to remove immediately -- in case of running multiple apps using same image/container
