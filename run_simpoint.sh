@@ -143,7 +143,7 @@ if [ "$TRACE_BASED" == "true" ]; then
     cp raw/modules.log raw/modules.log.bak
     echo "memtrace" | sudo -S python2 /home/memtrace/scarab/utils/memtrace/portabilize_trace.py .
     cp bin/modules.log raw/modules.log
-    $DYNAMORIO_HOME/tools/bin64/drraw2trace -indir ./raw/ &
+    $DYNAMORIO_HOME/clients/bin64/drraw2trace -indir ./raw/ &
     taskPids+=($!)
     sleep 2
   done
