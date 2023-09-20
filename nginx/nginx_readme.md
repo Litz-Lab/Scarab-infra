@@ -1,4 +1,4 @@
-# nginx instructions
+# nginx documentation
 
 ## How the benchmark works
 
@@ -22,7 +22,7 @@ For memtrace: ./run_scarab.sh -a nginx -o . -p '--inst_limit 10000000' -t -b
 
 The -trace_for_instrs flag was not updated with the change in dynamorio version. I found that using -exit_after_tracing in the new version did not work with memtrace, but excluding the flag worked. 
 
-The trace option for run_scarab.sh was not updated with the change in dynamorio version. I replaced the original run_portabilize.sh trace based on what was in run_simpoint.sh. To change this in the future, modify the bottom section of nginx/Dockerfile (lines 41-50) where run_portabilize_trace.sh is overwritten line by line
+The trace option for run_scarab.sh was not updated with the change in dynamorio version. I replaced the original run_portabilize.sh trace based on what was in run_simpoint.sh. To change this in the future, modify the bottom section of nginx/Dockerfile (lines 41-50) where run_portabilize_trace.sh is overwritten line by line. This is not the cleanest implementation so I have not extended it to the other applications.
 Copying PARAMS.sunny_cove to PARAMS.in was also temporarily moved here since I was not sure where else to run it after this change.
 
 Scarab required some new instruction mappings which were added in a pull requests for scarab_hlitz: https://github.com/hlitz/scarab_hlitz/pull/19 (merged)
