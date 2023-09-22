@@ -144,6 +144,11 @@ if [ $BUILD ]; then
       APP_GROUPNAME="example"
       docker build . -f ./example/Dockerfile --no-cache -t $APP_GROUPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
       ;;
+    nginx)
+      echo "nginx"
+      APP_GROUPNAME="nginx"
+      docker build . -f ./nginx/Dockerfile --no-cache -t $APP_GROUPNAME:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+      ;;
     solr)
       echo "solr"
       APP_GROUPNAME="solr"
@@ -195,6 +200,12 @@ case $APPNAME in
   solr)
     BINCMD="java -server -Xms14g -Xmx14g -XX:+UseG1GC -XX:+PerfDisableSharedMem -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=250 -XX:+UseLargePages -XX:+AlwaysPreTouch -XX:+ExplicitGCInvokesConcurrent -Xlog:gc\*:file=/usr/src/solr-9.1.1/server/logs/solr_gc.log:time\,uptime:filecount=9\,filesize=20M -Dsolr.jetty.inetaccess.includes= -Dsolr.jetty.inetaccess.excludes= -DzkClientTimeout=30000 -DzkRun -Dsolr.log.dir=/usr/src/solr-9.1.1/server/logs -Djetty.port=8983 -DSTOP.PORT=7983 -DSTOP.KEY=solrrocks -Duser.timezone=UTC -XX:-OmitStackTraceInFastThrow -XX:OnOutOfMemoryError=/usr/src/solr-9.1.1/bin/oom_solr.sh\ 8983\ /usr/src/solr-9.1.1/server/logs -Djetty.home=/usr/src/solr-9.1.1/server -Dsolr.solr.home=/usr/src/solr_cores -Dsolr.data.home= -Dsolr.install.dir=/usr/src/solr-9.1.1 -Dsolr.default.confdir=/usr/src/solr-9.1.1/server/solr/configsets/_default/conf -Dsolr.jetty.host=0.0.0.0 -Xss256k -XX:CompileCommand=exclude\,com.github.benmanes.caffeine.cache.BoundedLocalCache::put -Djava.security.manager -Djava.security.policy=/usr/src/solr-9.1.1/server/etc/security.policy -Djava.security.properties=/usr/src/solr-9.1.1/server/etc/security.properties -Dsolr.internal.network.permission=\* -DdisableAdminUI=false -jar /usr/src/solr-9.1.1/server/start.jar --module=http --module=requestlog --module=gzip"
     ;;
+  nginx)
+    BINCMD='nginx -g "daemon off;"'
+    ;;
+  example)
+    BINCMD='echo hello world'
+    ;;
 esac
 
 # create volume for the app group
@@ -203,17 +214,33 @@ docker volume create $APP_GROUPNAME
 # start container
 case $APPNAME in
   solr)
-    # solr requires the host machine to download the data (14GB) from cloudsuite by first running "docker run --name web_search_dataset cloudsuite/web-search:dataset" once
-    if [ $( docker ps -a -f name=web_search_dataset | wc -l ) -eq 2 ]; then
+    # solr requires the host machine to download the data (14GB) from cloudsuite by first running "docker run --name solr_dataset cloudsuite/web-search:dataset" once
+    if [ $( docker ps -a -f name=solr_dataset | wc -l ) -eq 2 ]; then
       echo "dataset exists"
     else
       echo "dataset does not exist, downloading"
-      docker run --name web_search_dataset cloudsuite/web-search:dataset
+      docker run --name solr_dataset cloudsuite/web-search:dataset
     fi
     # must mount dataset volume for server and docker to start querying
-    docker run -dit --privileged --name $APP_GROUPNAME -v $APP_GROUPNAME:/home/memtrace -v /var/run/docker.sock:/var/run/docker.sock --volumes-from web_search_dataset $APP_GROUPNAME:latest /bin/bash
+    docker run -dit --privileged --name $APP_GROUPNAME -v $APP_GROUPNAME:/home/memtrace -v /var/run/docker.sock:/var/run/docker.sock --volumes-from solr_dataset $APP_GROUPNAME:latest /bin/bash
     docker exec -it --privileged $APP_GROUPNAME /bin/bash -c "/entrypoint.sh"
-    docker exec -it -d --privileged $APP_GROUPNAME /bin/bash -c '(docker run -it --name web_search_client --net host cloudsuite/web-search:client $(hostname -I) 10; pkill java)'
+    docker exec -dit --privileged $APP_GROUPNAME /bin/bash -c '(docker run -it --name solr_client --net host cloudsuite/web-search:client $(hostname -I) 10; pkill java)'
+    ;;
+  nginx)
+    # nginx requires the host machine to download the data (~4GB) from cloudsuite one time
+    if [ $( docker ps -a -f name=nginx_dataset | wc -l ) -eq 2 ]; then
+      echo "dataset exists"
+    else
+      echo "dataset does not exist, downloading"
+      mkdir nginx/logs; docker run --name nginx_dataset cloudsuite/media-streaming:dataset && docker cp nginx_dataset:/videos/logs nginx/
+      chmod +777 nginx/logs/bt*
+    fi
+    # start the nginx container
+    docker run -dit --privileged --name $APP_GROUPNAME -v $APP_GROUPNAME:/home/memtrace --volumes-from nginx_dataset --net host $APP_GROUPNAME:latest /bin/bash
+    docker exec -it --privileged $APP_GROUPNAME /bin/bash -c 'hostname a && echo 127.0.0.1       a >> /etc/hosts'
+    # start the client container
+    docker build . -f ./nginx/client/Dockerfile -t nginx_client:latest
+    docker run -dt --name=nginx_client -v /var/run/docker.sock:/var/run/docker.sock -v ./nginx/logs:/videos/logs -v ./nginx/logs:/output --net host nginx_client:latest $(docker exec -it --privileged nginx /bin/bash -c 'hostname -I | cut -d " " -f1 | tr -d "\n"') 4 200 100 TLS
     ;;
   *)
     docker run -dit --privileged --name $APP_GROUPNAME -v $APP_GROUPNAME:/home/memtrace $APP_GROUPNAME:latest /bin/bash
@@ -232,7 +259,7 @@ fi
 # collect traces
 if [ $COLLECTTRACES ]; then
 docCommand=""
-docCommand+="cd /home/memtrace/traces && /home/memtrace/dynamorio/build/bin64/drrun "
+docCommand+="cd /home/memtrace/traces && \$DYNAMORIO_HOME/bin64/drrun "
   case $APPNAME in
     cassandra | kafka | tomcat)
       echo "trace DaCapo applications"
@@ -252,9 +279,6 @@ docCommand+="cd /home/memtrace/traces && /home/memtrace/dynamorio/build/bin64/dr
       # Solr uses many threads and seems to run too long on simpoint's fingerprint collection
       docCommand+="-disable_traces -no_hw_cache_consistency -no_sandbox_writes -no_enable_reset -sandbox2ro_threshold 0 -ro2sandbox_threshold 0 -t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 101M -outdir ./ -- $BINCMD "
       # docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINCMD "
-      cleanup="rm -rf traces/README.md traces/solr-webapp traces/start.jar traces/contexts/ traces/etc traces/lib traces/logs/ traces/modules/ traces/resources/ traces/scripts/ traces/solr/"
-      cleanup+=" exp/README.md exp/solr-webapp exp/start.jar exp/contexts/ exp/etc exp/lib exp/logs/ exp/modules/ exp/resources/ exp/scripts/ exp/solr/"
-      cleanup+="; docker rm web_search_client"
       ;;
     drupal7 | mediawiki | wordpress)
       echo "trace HHVM OSS applications"
@@ -272,6 +296,10 @@ docCommand+="cd /home/memtrace/traces && /home/memtrace/dynamorio/build/bin64/dr
     mem)
       echo "trace fleetbench libc mem benchmark"
       docCommand+="-t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $BINCMD "
+      ;;
+    nginx)
+      echo "trace nginx"
+      docCommand+="-t drcachesim -offline -trace_after_instrs 21600000 -outdir ./ -- $BINCMD "
       ;;
     proto)
       echo "trace fleetbench proto benchmark"
@@ -311,7 +339,7 @@ docCommand+="cd /home/memtrace/traces && read TRACEDIR < <(bash ../scarab/utils/
 echo $docCommand
 
 # run Scarab
-docCommand+="cd /home/memtrace/exp && python3 /home/memtrace/scarab/bin/scarab_launch.py --program '$BINCMD' --param '/home/memtrace/scarab/src/PARAMS.sunny_cove' --scarab_args '$SCARABPARAMS'"
+docCommand+="cd /home/memtrace/exp && /home/memtrace/scarab/src/scarab --frontend memtrace --cbp_trace_r0=\$(find /home/memtrace/traces -name *trace.gz) --memtrace_modules_log=\$(find /home/memtrace/traces -name raw) $SCARABPARAMS"
 echo $docCommand
 
 # run a docker container
@@ -325,8 +353,12 @@ if [ $SIMPOINT ]; then
   if [ $COLLECTTRACES ]; then
     case $APPNAME in
       solr)
-        docker rm web_search_client
-        docker exec -it -d --privileged $APP_GROUPNAME /bin/bash -c '(docker run -it --name web_search_client --net host cloudsuite/web-search:client $(hostname -I) 10; pkill java)'
+        docker rm -f solr_client
+        docker exec -dit --privileged $APP_GROUPNAME /bin/bash -c '(docker run -it --name solr_client --net host cloudsuite/web-search:client $(hostname -I) 10; pkill java)'
+        ;;
+      nginx)
+        docker rm -f nginx_client
+        docker run -dt --name=nginx_client -v /var/run/docker.sock:/var/run/docker.sock -v ./nginx/logs:/videos/logs -v ./nginx/logs:/output --net host nginx_client:latest $(docker exec -it --privileged nginx /bin/bash -c 'hostname -I | cut -d " " -f1 | tr -d "\n"') 4 200 100 TLS
         ;;
     esac
   fi
@@ -335,6 +367,18 @@ if [ $SIMPOINT ]; then
   docker exec -it --privileged $APP_GROUPNAME /home/memtrace/run_simpoint.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SCARABPARAMS" "$TRACE_BASED"
 fi
 
+# some apps require extra cleanup
+case $APPNAME in
+  solr)
+    docker exec -it --privileged $APP_GROUPNAME /bin/bash -c 'rm -rf /home/memtrace/traces/README.md /home/memtrace/traces/solr-webapp /home/memtrace/traces/start.jar /home/memtrace/traces/contexts/ /home/memtrace/traces/etc /home/memtrace/traces/lib /home/memtrace/traces/logs/ /home/memtrace/traces/modules/ /home/memtrace/traces/resources/ /home/memtrace/traces/scripts/ /home/memtrace/traces/solr/'
+    docker exec -it --privileged $APP_GROUPNAME /bin/bash -c 'rm -rf /home/memtrace/exp/README.md    /home/memtrace/exp/solr-webapp    /home/memtrace/exp/start.jar    /home/memtrace/exp/contexts/    /home/memtrace/exp/etc    /home/memtrace/exp/lib    /home/memtrace/exp/logs/    /home/memtrace/exp/modules/    /home/memtrace/exp/resources/    /home/memtrace/exp/scripts/    /home/memtrace/exp/solr/'
+    docker rm -f solr_client
+    ;;
+  nginx)
+    docker rm -f nginx_client
+    ;;
+esac
+
 echo "copy results.."
 # copy traces
 if [ $COLLECTTRACES ]; then
@@ -342,13 +386,6 @@ if [ $COLLECTTRACES ]; then
 fi
 # copy Scarab results
 docker cp $APP_GROUPNAME:/home/memtrace/exp $OUTDIR
-# solr requires extra cleanup
-case $APPNAME in
-  solr)
-    # TODO: make it inside docker file?
-    $cleanup
-  ;;
-esac
 
 # remove docker container
 # TODO: may not want to remove immediately -- in case of running multiple apps using same image/container
