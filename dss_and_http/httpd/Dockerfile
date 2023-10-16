@@ -1,7 +1,7 @@
 # syntax = edrevo/dockerfile-plus
 
 #scarab & dynamorio
-INCLUDE+ ./common/Dockerfile.common
+INCLUDE+ ./Dockerfile.scarab
 
 ##install apache2
 #RUN apt-get install --no-install-recommends -y apache2

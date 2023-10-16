@@ -8,8 +8,8 @@ INCLUDE+ ./common/Dockerfile.common
 # TODO: Install required packages
 
 
-# Switch to the memtrace user
-USER memtrace
+# Switch to the dcuser user
+USER dcuser
 
 # Start your application
 CMD ["/bin/bash"]

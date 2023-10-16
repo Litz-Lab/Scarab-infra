@@ -6,8 +6,8 @@ INCLUDE+ ./common/Dockerfile.common
 USER root
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y clang lld
 
-# Switch to the memtrace user
-USER memtrace
+# Switch to the dcuser user
+USER dcuser
 
 # install bazel, fleetbench
 RUN wget https://github.com/bazelbuild/bazelisk/releases/download/v1.16.0/bazelisk-linux-amd64
@@ -44,7 +44,7 @@ RUN echo memtrace | sudo -S apt install python3-tk -y
 RUN pip install numpy
 
 # final setup things, memtrace
-WORKDIR /home/memtrace/fleetbench
+WORKDIR /home/dcuser/fleetbench
 RUN cd fleetbench
 RUN echo "build --config=clang" >> .bazelrc
 RUN GLIBC_TUNABLES=glibc.pthread.rseq=0 bazel build --config=opt fleetbench/compression:compression_benchmark
@@ -55,7 +55,7 @@ RUN GLIBC_TUNABLES=glibc.pthread.rseq=0 bazel build --config=opt fleetbench/swis
 RUN GLIBC_TUNABLES=glibc.pthread.rseq=0 bazel build --config=opt fleetbench/swissmap:hot_swissmap_benchmark
 RUN GLIBC_TUNABLES=glibc.pthread.rseq=0 bazel build --config=opt fleetbench/tcmalloc:empirical_driver
 
-WORKDIR /home/memtrace
+WORKDIR /home/dcuser
 
 # Start your application
 CMD ["/bin/bash"]

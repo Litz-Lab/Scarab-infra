@@ -4,20 +4,21 @@
 APPNAME="$1"
 APP_GROUPNAME="$2"
 BINCMD="$3"
-SCARABPARAMS="$4"
+SCENARIONUM="$4"
+SCARABPARAMS="$5"
 SEGSIZE=100000000
-TRACE_BASED="$5"
+TRACE_BASED="$6"
 
 # dir for all relevant data: fingerprint, traces, log, sim stats...
-mkdir -p /home/memtrace/simpoint_flow/$APPNAME
-cd /home/memtrace/simpoint_flow/$APPNAME
+mkdir -p /home/dcuser/simpoint_flow/$APPNAME
+cd /home/dcuser/simpoint_flow/$APPNAME
 mkdir -p fingerprint simpoints traces simulations evaluations
-APPHOME=/home/memtrace/simpoint_flow/$APPNAME
+APPHOME=/home/dcuser/simpoint_flow/$APPNAME
 
 # Get command to run for Spe17
 if [ "$APP_GROUPNAME" == "spec2017" ]; then
   # environment
-  cd /home/memtrace/cpu2017
+  cd /home/dcuser/cpu2017
   source ./shrc
   # compile and get command for application
   # TODO: this is just for one input
@@ -42,7 +43,7 @@ fi
 # collect fingerprint
 # TODO: add parameter: size and warm-up
 cd $APPHOME/fingerprint
-fpCmd="$DYNAMORIO_HOME/bin64/drrun -opt_cleancall 2 -c /home/memtrace/libfpg.so -segment_size $SEGSIZE -- $BINCMD"
+fpCmd="$DYNAMORIO_HOME/bin64/drrun -opt_cleancall 2 -c /home/dcuser/libfpg.so -segment_size $SEGSIZE -- $BINCMD"
 echo "generate fingerprint..."
 echo "command: ${fpCmd}"
 # if [ "$APP_GROUPNAME" == "spec2017" ]; then
@@ -71,7 +72,7 @@ lines=${wc_result[0]}
 # round to nearest int
 maxK=$(echo "(sqrt($lines)+0.5)/1" | bc)
 echo "fingerprint size: $lines, maxk: $maxK"
-spCmd="/home/memtrace/simpoint -maxK $maxK -fixedLength off -numInitSeeds 1000 -loadFVFile $APPHOME/fingerprint/bbfp -saveSimpoints $APPHOME/simpoints/opt.p -saveSimpointWeights $APPHOME/simpoints/opt.w -saveLabels $APPHOME/simpoints/opt.l &> $APPHOME/simpoints/simp.opt.log"
+spCmd="/home/dcuser/simpoint -maxK $maxK -fixedLength off -numInitSeeds 1000 -loadFVFile $APPHOME/fingerprint/bbfp -saveSimpoints $APPHOME/simpoints/opt.p -saveSimpointWeights $APPHOME/simpoints/opt.w -saveLabels $APPHOME/simpoints/opt.l &> $APPHOME/simpoints/simp.opt.log"
 echo "cluster fingerprint..."
 echo "command: ${spCmd}"
 
@@ -141,7 +142,7 @@ if [ "$TRACE_BASED" == "true" ]; then
     mkdir -p bin
     cp raw/modules.log bin/modules.log
     cp raw/modules.log raw/modules.log.bak
-    echo "memtrace" | sudo -S python2 /home/memtrace/scarab/utils/memtrace/portabilize_trace.py .
+    echo "memtrace" | sudo -S python2 /home/dcuser/scarab/utils/memtrace/portabilize_trace.py .
     cp bin/modules.log raw/modules.log
     $DYNAMORIO_HOME/clients/bin64/drraw2trace -indir ./raw/ &
     taskPids+=($!)
@@ -186,23 +187,23 @@ start=`date +%s`
 # simulation in parallel -> use map of trace file
 for clusterID in "${!clusterMap[@]}"
 do
-  mkdir -p $APPHOME/simulations/$clusterID
-  cp /home/memtrace/scarab/src/PARAMS.sunny_cove $APPHOME/simulations/$clusterID/PARAMS.in
-  cd $APPHOME/simulations/$clusterID
+  mkdir -p $APPHOME/simulations/$SCENARIONUM/$clusterID
+  cp /home/dcuser/scarab/src/PARAMS.sunny_cove $APPHOME/simulations/$SCENARIONUM/$clusterID/PARAMS.in
+  cd $APPHOME/simulations/$SCENARIONUM/$clusterID
   if [ "$TRACE_BASED" == "true" ]; then
-    scarabCmd="/home/memtrace/scarab/src/scarab --frontend memtrace --cbp_trace_r0=$APPHOME/traces/$clusterID/trace/window.0000/${traceMap[$clusterID]} --memtrace_modules_log=$APPHOME/traces/$clusterID/raw/ $SCARABPARAMS &> sim.log"
+    scarabCmd="/home/dcuser/scarab/src/scarab --frontend memtrace --cbp_trace_r0=$APPHOME/traces/$clusterID/trace/window.0000/${traceMap[$clusterID]} --memtrace_modules_log=$APPHOME/traces/$clusterID/raw/ $SCARABPARAMS &> sim.log"
   else
     segID=${clusterMap[$clusterID]}
     start_inst=$(( $segID * $SEGSIZE ))
     scarabCmd="
-    python3 /home/memtrace/scarab/bin/scarab_launch.py --program=\"$BINCMD\" \
-    --simdir=\"$APPHOME/simulations/$clusterID\" \
+    python3 /home/dcuser/scarab/bin/scarab_launch.py --program=\"$BINCMD\" \
+    --simdir=\"$APPHOME/simulations/$SCENARIONUM/$clusterID\" \
     --pintool_args=\"-hyper_fast_forward_count $start_inst\" \
     --scarab_args=\"--inst_limit $SEGSIZE $SCARABPARAMS\" \
-    --scarab_stdout=\"$APPHOME/simulations/$clusterID/scarab.out\" \
-    --scarab_stderr=\"$APPHOME/simulations/$clusterID/scarab.err\" \
-    --pin_stdout=\"$APPHOME/simulations/$clusterID/pin.out\" \
-    --pin_stderr=\"$APPHOME/simulations/$clusterID/pin.err\" \
+    --scarab_stdout=\"$APPHOME/simulations/$SCENARIONUM/$clusterID/scarab.out\" \
+    --scarab_stderr=\"$APPHOME/simulations/$SCENARIONUM/$clusterID/scarab.err\" \
+    --pin_stdout=\"$APPHOME/simulations/$SCENARIONUM/$clusterID/pin.out\" \
+    --pin_stderr=\"$APPHOME/simulations/$SCENARIONUM/$clusterID/pin.err\" \
     "
   fi
   echo "simulating cluster ${clusterID}..."

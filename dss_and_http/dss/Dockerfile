@@ -4,7 +4,7 @@
 FROM ubuntu:focal
 
 #scarab & dynamorio
-INCLUDE+ ./common/Dockerfile.common
+INCLUDE+ ./Dockerfile.scarab
 
 #reqs
 USER root

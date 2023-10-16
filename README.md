@@ -16,100 +16,49 @@ To run the SPEC2017 benchmarks, the host machine should have the image `cpu2017-
 #### Usage
 ```
 Usage: ./run_scarab.sh [ -h | --help ]
-                [ -a | --appname ]
-                [ -p | --parameters ]
                 [ -o | --outdir ]
-                [ -t | --tracing ]
-                [ -b | --build ]
-                [ -sp | --simpoint ]
+                [ -t | --collect_traces]
+                [ -b | --build]
+                [ -s | --simpoint ]
+                [ -m | --mode]
 
+!! Modify 'apps.list' and 'params.new' to specify the apps and Scarab parameters before run !!
 Options:
 h     Print this Help.
-a     Application name (cassandra, kafka, tomcat, chirper, http, drupal7, mediawiki, wordpress) e.g) -a cassandra
-p     Scarab parameters except for --cbp_trace_r0=<absolute/path/to/trace> --memtrace_modules_log=<absolute/path/to/modules.log>. e.g) -p '--frontend memtrace --fetch_off_path_ops 0 --fdip_enable 1 --inst_limit 999900'
-o     Output directory. e.g) -o .
-t     Collect traces. Run without collecting traces if not given. e.g) -t
-b     Build a docker image. Run a container of existing docker image without bulding an image if not given. e.g) -b
-sp    Run SimPoint workflow. Collect fingerprint, trace, simulate, and report. e.g) -sp
+o     Output directory (-o <DIR_NAME>) e.g) -o .
+t     Collect traces. 0: Run without collecting traces, 1: with collecting traces e.g) -t 0
+b     Build a docker image. 0: Run a container of existing docker image without bulding an image, 1: with building image. e.g) -b 1
+s     SimPoint workflow. 0: Not run simpoint workflow, 1: simpoint workflow - instrumentation first (Collect fingerprints, do simpoint clustering, trace/simulate) 2: simpoint workflow - post-processing (trace, collect fingerprints, do simpoint clustering, simulate). e.g) -s 1
+m     Simulation mode. 0: execution-driven simulation 1: trace-based simulation. e.g) -m 1
 ```
-#### Build an image and run a container to collect traces and to run Scarab in a single command
-```
-surim@ohm:~/src/dcworkloads-dockerfiles $ ./run_scarab.sh -a template -p '--frontend memtrace --inst_limit 999900' -o . -t -b
-example
-[+] Building 231.6s (25/32)
- => [internal] load .dockerignore                                                                                                                                                                                                                                            0.0s
- => => transferring context: 2B                                                                                                                                                                                                                                              0.0s
- => [internal] load build definition from Dockerfile                                                                                                                                                                                                                         0.0s
- => => transferring dockerfile: 289B                                                                                                                                                                                                                                         0.0s
- => resolve image config for docker.io/edrevo/dockerfile-plus:latest                                                                                                                                                                                                         0.7s
- => [auth] edrevo/dockerfile-plus:pull token for registry-1.docker.io                                                                                                                                                                                                        0.0s
- => CACHED docker-image://docker.io/edrevo/dockerfile-plus@sha256:d234bd015db8acef1e628e012ea8815f6bf5ece61c7bf87d741c466919dd4e66                                                                                                                                           0.0s
- => local://dockerfile                                                                                                                                                                                                                                                       0.0s
- => => transferring dockerfile: 1.03kB                                                                                                                                                                                                                                       0.0s
- => local://context                                                                                                                                                                                                                                                          0.0s
- => => transferring context: 11.61kB                                                                                                                                                                                                                                         0.0s
- => [internal] load .dockerignore                                                                                                                                                                                                                                            0.0s
- => [internal] load build definition from Dockerfile                                                                                                                                                                                                                         0.0s
- => [internal] load metadata for docker.io/library/ubuntu:focal                                                                                                                                                                                                              0.4s
- => [auth] library/ubuntu:pull token for registry-1.docker.io                                                                                                                                                                                                                0.0s
- => CACHED [ 1/20] FROM docker.io/library/ubuntu:focal@sha256:24a0df437301598d1a4b62ddf59fa0ed2969150d70d748c84225e6501e9c36b9                                                                                                                                               0.0s
- => [ 2/20] RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y     python3     python3-pip     python2     git     sudo     wget     cmake     binutils     libunwind-dev     zlib1g-dev     libsnappy-dev     liblz4-dev     g++-9     g++-9-multili  69.8s
- => [ 3/20] RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 1                                                                                                                                                                                              0.4s
- => [ 4/20] RUN pip3 install gdown                                                                                                                                                                                                                                           4.3s
- => [ 5/20] RUN useradd -m memtrace &&     echo "memtrace:memtrace" | chpasswd &&     usermod --shell /bin/bash memtrace &&     usermod -aG sudo memtrace                                                                                                                    0.5s
- => [ 6/20] WORKDIR /home/memtrace                                                                                                                                                                                                                                           0.0s
- => [ 7/20] RUN git clone --recursive https://github.com/DynamoRIO/dynamorio.git && cd dynamorio && git reset --hard release_9.0.1 && mkdir build && cd build && cmake .. && make -j 40                                                                                     63.8s
- => [ 8/20] RUN git clone https://github.com/hpsresearchgroup/scarab.git                                                                                                                                                                                                     1.7s
- => [ 9/20] RUN pip3 install -r /home/memtrace/scarab/bin/requirements.txt                                                                                                                                                                                                  30.1s
- => [10/20] RUN gdown https://drive.google.com/uc?id=1FPaVO8A6rFyiZtXymZlFiw0OjQYVWbIN && tar -xf pinplay-drdebug-3.5-pin-3.5-97503-gac534ca30-gcc-linux.tar.bz2                                                                                                            13.5s
- => [11/20] RUN cd /home/memtrace/scarab/src &&     make                                                                                                                                                                                                                   157.1s
- => [12/20] RUN mkdir /home/memtrace/exp                                                                                                                                                                                                                                     0.4s
- => [13/20] RUN cp /home/memtrace/scarab/src/PARAMS.kaby_lake /home/memtrace/exp/PARAMS.in                                                                                                                                                                                   0.4s
- => [internal] load build context                                                                                                                                                                                                                                            0.0s
- => => transferring context: 3.84kB
-```
-#### Build a Docker image of an application
-Use b option
-```
-./run_scarab.sh -a example -p '--frontend memtrace --inst_limit 999900' -o . -b
-```
-#### Collect memtraces of an application
-A built image should exist already.
-```
-./run_scarab.sh -a example -p '--frontend memtrace --inst_limit 999900' -o . -t
-```
+There are two ways to run Scarab: 1) execution-driven (-m 0) 2) trace-based (-m 1). The execution-driven simulation runs the application binary directly without using traces while the trace-based simulation needs collected traces to run the application. The trace-based run will collect the traces based on the given workflow (simpoint/nosimpoint) and simulate by using the traces.
+You need to provide the list of the applications you want to run in 'apps.list' file, and the list of the Scarab parameters to overwrite the sunny cove default PARAMS.in in 'params.new'. Each line in 'params.new' should represent SENARIONUM,SCARABPARAMS. Please refer to the 'apps.list' and 'params.new' files for the examples.
 
-### Run the SimPoint flow for an application
-A built image should exist already.
+#### Example command (Build the image from the beginning and run the application with trace-base mode by collecting the traces without simpoint methodology. Copy the collected traces and the simulation results to host after the run.)
 ```
-./run_scarab.sh -a 502.gcc_r -sp -p '--mtage_realistic_sc_40k 1' -o . -t
+$ ./run_scarab.sh -o . -t 1 -b 1 -s 0 -m 1
 ```
-
-#### Run a container of a built image
-A built image should exist already.
-```
-./run_scarab.sh -a example -p '--frontend memtrace --inst_limit 999900' -o .
-```
-
 ### Step-by-step on an interactive attachment
 #### Build an image
 ```
-docker build . -f ./example/Dockerfile --no-cache -t example:latest
+$ docker build . -f ./example/Dockerfile --no-cache -t example:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
 ```
 #### Check the built image
 ```
-surim@ohm:~/src/dcworkloads-dockerfiles $ docker images
-REPOSITORY                            TAG       IMAGE ID       CREATED          SIZE
-example                         latest    628e339dc752   43 seconds ago   2.8GB
+$ docker images
+REPOSITORY                   TAG       IMAGE ID       CREATED        SIZE
+example                      latest    1dd7a6097ef0   3 hours ago    6.66GB
 ```
 
 #### Run a container of the image
+'docker run' will stop the container after it runs the given command. Run with -v to create a volume and keep the updates inside the container remain. 'docker start' after the run will start the container again. You can run other commands inside the container by running 'docker exec'
 ```
-docker run -it --privileged --name example -v example:/home/memtrace example:latest /bin/bash
+docker run -dit --privileged --name example -v example:/home/dcuser example:latest /bin/bash
+docker start example
 ```
 
 ## Developers
-When you add an application support of a docker image, please expand ‘run_scarab.sh’ script so that the memtraces and Scarab results can be provided by running a single script. The rule of thumb is 1) to try to build a simple image where the basic essential packages are installed on a proper Ubuntu version (the first version of Dockerfile), 2) to run a container of the image, 3) to run the application, 4) to run the application with DynamoRIO (if 3) works), 5) to run Scarab with memtrace frontend feeding the collected traces from 4). 
+When you add an application support of a docker image, please expand ‘run_scarab.sh’ and 'setup_apps.sh' scripts so that the memtraces and Scarab results can be provided by running a single script. The rule of thumb is 1) to try to build a simple image where the basic essential packages are installed on a proper Ubuntu version (the first version of Dockerfile), 2) to run a container of the image, 3) to run the application, 4) to run the application with DynamoRIO (if 3) works), 5) to run Scarab with memtrace frontend feeding the collected traces from 4). 
 If all 1) to 5) steps are working, you can add the processes you added after 1) to the Dockerfile and expand the script. Make sure that running the script provides the same environment and results as 1~5 steps.
 
 ## Notes
