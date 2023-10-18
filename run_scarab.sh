@@ -1,230 +1,163 @@
 #!/bin/bash
 
-# code to ignore case restrictions
-shopt -s nocasematch
+# TODO: for other apps?
+APPNAME="$1"
+APP_GROUPNAME="$2"
+BINCMD="$3"
+SCENARIONUM="$4"
+SCARABPARAMS="$5"
+SEGSIZE=100000000
+SCARABMODE="$6"
 
-# help function
-help()
-{
-  echo "Usage: ./run_scarab.sh [ -h | --help ]
-                [ -o | --outdir ]
-                [ -t | --collect_traces]
-                [ -b | --build]
-                [ -s | --simpoint ]
-                [ -m | --mode]"
-  echo
-  echo "!! Modify 'apps.list' and 'params.new' to specify the apps and Scarab parameters before run !!"
-  echo "Options:"
-  echo "h     Print this Help."
-  echo "o     Output directory (-o <DIR_NAME>) e.g) -o ."
-  echo "t     Collect traces. 0: Do not copy collected traces to host, 1: Copy collected traces to host e.g) -t 0 "
-  echo "b     Build a docker image. 0: Run a container of existing docker image/cached image without bulding an image from the beginning, 1: with building image from the beginning and overwrite whatever image with the same name. e.g) -b 1"
-  echo "s     SimPoint workflow. 0: Not run simpoint workflow, 1: simpoint workflow - instrumentation first (Collect fingerprints, do simpoint clustering, trace/simulate) 2: simpoint workflow - post-processing (trace, collect fingerprints, do simpoint clustering, simulate). e.g) -s 1"
-  echo "m     Simulation mode. 0: execution-driven simulation 1: trace-based simulation. e.g) -m 1"
-}
-
-SHORT=h:,o:,t:,b:,s:,m:
-LONG=help:,outdir:,tracing:,build:,simpoint:,mode:
-OPTS=$(getopt -a -n run_scarab.sh --options $SHORT --longoptions $LONG -- "$@")
-
-VALID_ARGUMENTS=$# # Returns the count of arguments that are in short or long options
-
-if [ "$VALID_ARGUMENTS" -eq 0 ]; then
-  help
-  exit 0
-fi
-
-eval set -- "$OPTS"
-
-# Get the options
-while [[ $# -gt 0 ]];
-do
-  case "$1" in
-    -h | --help) # display help
-      help
-      exit 0
-      ;;
-    -o | --outdir) # output directory
-      OUTDIR="$2"
-      shift 2
-      ;;
-    -t | --tracing) # collect traces
-      COLLECTTRACES=$2
-      shift 2
-      ;;
-    -b | --build) # build a docker image
-      BUILD=$2
-      shift 2
-      ;;
-    -s | --simpoint) # simpoint method
-      SIMPOINT=$2
-      shift 2
-      ;;
-    -m | --mode) # simulation type for simpoint method
-      TRACE_BASED=$2
-      shift 2
-      ;;
-    --)
-      shift 2
-      break
-      ;;
-    *) # unexpected option
-      echo "Unexpected option: $1"
-      exit 1
-      ;;
-  esac
-done
-
-if [ $COLLECTTRACES ] && [ -z "$TRACE_BASED" ]; then
-  echo "t should be set only on trace-based simulation mode (-m 1)"
-  exit
-fi
-
-if [ -z "$OUTDIR" ]; then
-  echo "outdir is unset"
-  exit
-fi
-
-# build docker images and start containers
-echo "build docker images and start containers.."
-taskPids=()
-cat apps.list|while read APPNAME;
-do
-  eval source setup_apps.sh &
-  taskPids+=($!)
-  sleep 2
-done
-
-echo "wait for all the setups.."
-# ref: https://stackoverflow.com/a/29535256
-for taskPid in ${taskPids[@]}; do
-  if wait $taskPid; then
-    echo "tracing process $taskPid success"
-  else
-    echo "tracing process $taskPid fail"
-    # # ref: https://serverfault.com/questions/479460/find-command-from-pid
-    # cat /proc/${taskPid}/cmdline | xargs -0 echo
-    exit
-  fi
-done
-
-# start the workflow
-echo "start workflow.."
-taskPids=()
-cat apps.list|while read APPNAME;
-do
-  while IFS=, read -r SCENARIONUM SCARABPARAMS; do
-    if [ $SIMPOINT ]
-    then
-      # run scripts for simpoint
-      eval docker exec -it --privileged $APP_GROUPNAME /home/dcuser/run_simpoint.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SCENARIONUM" "$SCARABPARAMS" "$TRACE_BASED" &
-    else
-      # run scripts for non-simpoint
-      eval docker exec -it --privileged $APP_GROUPNAME /home/dcuser/run_no_simpoint.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SCENARIONUM" "$SCARABPARAMS" "$TRACE_BASED" &
+# Get command to run for Spe17
+if [ "$APP_GROUPNAME" == "spec2017" ]; then
+  # environment
+  cd /home/dcuser/cpu2017
+  source ./shrc
+  # compile and get command for application
+  # TODO: this is just for one input
+  ./bin/specperl ./bin/harness/runcpu --copies=1 --iterations=1 --threads=1 --config=memtrace --action=runsetup --size=train $APPNAME
+  ogo $APPNAME run
+  # TODO: the input size
+  cd run_base_train*
+  BINCMD=$(specinvoke -nn | tail -2 | head -1)
+  for sub in $BINCMD; do
+    if [[ -f $sub ]]; then
+      # ref
+      # https://stackoverflow.com/a/13210909
+      # https://stackoverflow.com/a/7126780
+      replace=$(readlink -f "$sub")
+      BINCMD="${BINCMD/"$sub"/"$replace"}"
     fi
+  done
+fi
+
+if [ "$SCARABMODE" == "3" ] || [ "$SCARABMODE" == "4"]; then
+  cd /home/dcuser/simpoint_flow/$APPNAME
+  mkdir -p simulations evaluations
+  APPHOME=/home/dcuser/simpoint_flow/$APPNAME
+  ################################################################
+  # read in simpoint
+  # ref: https://stackoverflow.com/q/56005842
+  # map of cluster - segment
+  declare -A clusterMap
+  while IFS=" " read -r segID clusterID; do
+    clusterMap[$clusterID]=$segID 
+  done < $APPHOME/simpoints/opt.p
+
+  ################################################################
+  # trace-based simulations
+
+  if [ "$SCARABMODE" == "4" ]; then
+    # map of trace file
+    declare -A traceMap
+    for clusterID in "${!clusterMap[@]}"
+    do
+      # traceMap[$clusterID]=(ls $APPHOME/traces/$clusterID/trace/)
+      traceMap[$clusterID]=$(ls $APPHOME/traces/$clusterID/trace/window.0000)
+      # TODO: make sure one trace file
+    done
+  fi
+
+  ################################################################
+  # trace-based or exec-driven simulations
+  taskPids=()
+  start=`date +%s`
+  # simulation in parallel -> use map of trace file
+  for clusterID in "${!clusterMap[@]}"
+  do
+    mkdir -p $APPHOME/simulations/$SCENARIONUM/$clusterID
+    cp /home/dcuser/scarab/src/PARAMS.sunny_cove $APPHOME/simulations/$SCENARIONUM/$clusterID/PARAMS.in
+    cd $APPHOME/simulations/$SCENARIONUM/$clusterID
+    if [ "$SCARABMODE" == "4" ]; then
+      scarabCmd="/home/dcuser/scarab/src/scarab --frontend memtrace --cbp_trace_r0=$APPHOME/traces/$clusterID/trace/window.0000/${traceMap[$clusterID]} --memtrace_modules_log=$APPHOME/traces/$clusterID/raw/ $SCARABPARAMS &> sim.log"
+    else
+      segID=${clusterMap[$clusterID]}
+      start_inst=$(( $segID * $SEGSIZE ))
+      scarabCmd="
+      python3 /home/dcuser/scarab/bin/scarab_launch.py --program=\"$BINCMD\" \
+      --simdir=\"$APPHOME/simulations/$SCENARIONUM/$clusterID\" \
+      --pintool_args=\"-hyper_fast_forward_count $start_inst\" \
+      --scarab_args=\"--inst_limit $SEGSIZE $SCARABPARAMS\" \
+      --scarab_stdout=\"$APPHOME/simulations/$SCENARIONUM/$clusterID/scarab.out\" \
+      --scarab_stderr=\"$APPHOME/simulations/$SCENARIONUM/$clusterID/scarab.err\" \
+      --pin_stdout=\"$APPHOME/simulations/$SCENARIONUM/$clusterID/pin.out\" \
+      --pin_stderr=\"$APPHOME/simulations/$SCENARIONUM/$clusterID/pin.err\" \
+      "
+    fi
+    echo "simulating cluster ${clusterID}..."
+    echo "command: ${scarabCmd}"
+    eval $scarabCmd &
     taskPids+=($!)
-    sleep 2
-  done < params.new
-done
+  done
 
-echo "wait for all the workflows..."
-# ref: https://stackoverflow.com/a/29535256
-for taskPid in ${taskPids[@]}; do
-  if wait $taskPid; then
-    echo "tracing process $taskPid success"
-  else
-    echo "tracing process $taskPid fail"
-    # # ref: https://serverfault.com/questions/479460/find-command-from-pid
-    # cat /proc/${taskPid}/cmdline | xargs -0 echo
-    exit
-  fi
-done
-
-echo "copy results.."
-# copy traces
-taskPids=()
-cat apps.list|while read APPNAME;
-do
-  if [ $COLLECTTRACES ]; then
-    if [ $SIMPOINT ]; then
-      eval docker cp $APP_GROUPNAME:/home/dcuser/simpoint_flow/traces $OUTDIR &
+  echo "wait for all simulations to finish..."
+  for taskPid in ${taskPids[@]}; do
+    if wait $taskPid; then
+      echo "simulation process $taskPid success"
     else
-      eval docker cp $APP_GROUPNAME:/home/dcuser/nosimpoint_flow/traces $OUTDIR &
+      echo "simulation process $taskPid fail"
+      exit
     fi
+  done
+  end=`date +%s`
+  runtime=$((end-start))
+  hours=$((runtime / 3600));
+  minutes=$(( (runtime % 3600) / 60 ));
+  seconds=$(( (runtime % 3600) % 60 ));
+  echo "simulation Runtime: $hours:$minutes:$seconds (hh:mm:ss)"
+
+  ################################################################
+else
+  cd /home/dcuser/nosimpoint_flow/$APPNAME
+  mkdir -p simulations evaluations
+  APPHOME=/home/dcuser/nosimpoint_flow/$APPNAME
+
+  if [ "$SCARABMODE" == "2" ]; then
+    traceMap=$(ls $APPHOME/traces/trace/window.0000)
   fi
+  ################################################################
+  # trace-based or exec-driven simulations
+  taskPids=()
+  start=`date +%s`
+  mkdir -p $APPHOME/simulations/$SCENARIONUM
+  cp /home/dcuser/scarab/src/PARAMS.sunny_cove $APPHOME/simulations/$SCENARIONUM/PARAMS.in
+  cd $APPHOME/simulations/$SCENARIONUM
+  if [ "$SCARABMODE" == "2" ]; then
+    scarabCmd="/home/dcuser/scarab/src/scarab --frontend memtrace --cbp_trace_r0=$APPHOME/traces/trace/window.0000/${traceMap} --memtrace_modules_log=$APPHOME/traces/raw/ $SCARABPARAMS &> sim.log"
+  else
+    start_inst=100000000
+    scarabCmd="
+    python3 /home/dcuser/scarab/bin/scarab_launch.py --program=\"$BINCMD\" \
+      --simdir=\"$APPHOME/simulations/$SCENARIONUM/\" \
+      --pintool_args=\"-hyper_fast_forward_count $start_inst\" \
+      --scarab_args=\"--inst_limit $SEGSIZE $SCARABPARAMS\" \
+      --scarab_stdout=\"$APPHOME/simulations/$SCENARIONUM/scarab.out\" \
+      --scarab_stderr=\"$APPHOME/simulations/$SCENARIONUM/scarab.err\" \
+      --pin_stdout=\"$APPHOME/simulations/$SCENARIONUM/pin.out\" \
+      --pin_stderr=\"$APPHOME/simulations/$SCENARIONUM/pin.err\" \
+      "
+  fi
+  echo "simulating ..."
+  echo "command: ${scarabCmd}"
+  eval $scarabCmd &
   taskPids+=($!)
-  # copy Scarab results
-  if [ $SIMPOINT ]; then
-    eval docker cp $APP_GROUPNAME:/home/dcuser/simpoint_flow/simulations $OUTDIR &
-  else
-    eval docker cp $APP_GROUPNAME:/home/dcuser/nosimpoint_flow/simulations $OUTDIR &
-  fi
-  taskPids+=($!)
-  sleep 2
-done
 
-echo "wait for all copying results..."
-# ref: https://stackoverflow.com/a/29535256
-for taskPid in ${taskPids[@]}; do
-  if wait $taskPid; then
-    echo "tracing process $taskPid success"
-  else
-    echo "tracing process $taskPid fail"
-    # # ref: https://serverfault.com/questions/479460/find-command-from-pid
-    # cat /proc/${taskPid}/cmdline | xargs -0 echo
-    exit
-  fi
-done
+  echo "wait for all simulations to finish..."
+  for taskPid in ${taskPids[@]}; do
+    if wait $taskPid; then
+      echo "simulation process $taskPid success"
+    else
+      echo "simulation process $taskPid fail"
+      exit
+    fi
+  done
+  end=`date +%s`
+  runtime=$((end-start))
+  hours=$((runtime / 3600));
+  minutes=$(( (runtime % 3600) / 60 ));
+  seconds=$(( (runtime % 3600) % 60 ));
+  echo "simulation Runtime: $hours:$minutes:$seconds (hh:mm:ss)"
 
-echo "clean up the containers.."
-# remove docker container TODO: an option not to remove the containers immediately (comment out for now)
-# solr requires extra cleanup
-taskPids=()
-cat apps.list|while read APPNAME;
-do
-case $APPNAME in
-  solr)
-  eval docker rm web_search_client &
-  taskPids+=($!)
-  ;;
-esac
-eval docker rm $APP_GROUPNAME &
-taskPids+=($!)
-sleep 2
-done
-
-echo "wait for all the containers cleaned up..."
-# ref: https://stackoverflow.com/a/29535256
-for taskPid in ${taskPids[@]}; do
-  if wait $taskPid; then
-    echo "tracing process $taskPid success"
-  else
-    echo "tracing process $taskPid fail"
-    # # ref: https://serverfault.com/questions/479460/find-command-from-pid
-    # cat /proc/${taskPid}/cmdline | xargs -0 echo
-    exit
-  fi
-done
-
-echo "clean up the volumes.."
-# remove docker volume
-taskPids=()
-cat apps.list|while read APPNAME;
-do
-eval docker volume rm $APP_GROUPNAME &
-taskPids+=($!)
-sleep 2
-done
-
-echo "wait for all the volumes cleaned up..."
-# ref: https://stackoverflow.com/a/29535256
-for taskPid in ${taskPids[@]}; do
-  if wait $taskPid; then
-    echo "tracing process $taskPid success"
-  else
-    echo "tracing process $taskPid fail"
-    # # ref: https://serverfault.com/questions/479460/find-command-from-pid
-    # cat /proc/${taskPid}/cmdline | xargs -0 echo
-    exit
-  fi
-done
+  ################################################################
+fi

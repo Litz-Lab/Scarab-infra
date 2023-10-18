@@ -73,8 +73,8 @@ RUN mkdir /home/dcuser/fingerprint_src/build && \
     cp ./libfpg.so /home/dcuser/libfpg.so
 
 # Copy workflow simpoint/no_simpoint script
-COPY --chown=dcuser run_simpoint.sh /home/dcuser/run_simpoint.sh
-COPY --chown=dcuser run_no_simpoint.sh /home/dcuser/run_no_simpoint.sh
+COPY --chown=dcuser run_simpoint_trace.sh /home/dcuser/run_simpoint_trace.sh
+COPY --chown=dcuser run_scarab.sh /home/dcuser/run_scarab.sh
 
 # Clone the Scarab repository
 # Comment out if you don't use scarab at all and don't have ssh key permitted to clone 'scarab_hlitz'

@@ -15,34 +15,53 @@ To run the SPEC2017 benchmarks, the host machine should have the image `cpu2017-
 ### By using a script
 #### Usage
 ```
-Usage: ./run_scarab.sh [ -h | --help ]
+Usage: ./run.sh [ -h | --help ]
                 [ -o | --outdir ]
-                [ -t | --collect_traces]
                 [ -b | --build]
                 [ -s | --simpoint ]
+                [ -t | --collect_traces]
                 [ -m | --mode]
+                [ -c | --cleanup]
 
 !! Modify 'apps.list' and 'params.new' to specify the apps and Scarab parameters before run !!
+The entire process of simulating a data center workload is the following.
+1) application setup by building a docker image (each directory represents an application group)
+2) simpoint workflow to extract the representative execution of each application
+3) collect traces for trace-based simulation
+4) run Scarab simulation in different modes
+To perform the later step, the previous steps must be performed first, meaning all the necessary options should be set at the same time. However, you can only run earlier step(s) by unsetting the later steps for debugging purposes.
 Options:
 h     Print this Help.
-o     Output directory (-o <DIR_NAME>) e.g) -o .
-t     Collect traces. 0: Run without collecting traces, 1: with collecting traces e.g) -t 0
-b     Build a docker image. 0: Run a container of existing docker image without bulding an image, 1: with building image. e.g) -b 1
-s     SimPoint workflow. 0: Not run simpoint workflow, 1: simpoint workflow - instrumentation first (Collect fingerprints, do simpoint clustering, trace/simulate) 2: simpoint workflow - post-processing (trace, collect fingerprints, do simpoint clustering, simulate). e.g) -s 1
-m     Simulation mode. 0: execution-driven simulation 1: trace-based simulation. e.g) -m 1
+o     Output existing directory where simpoints/traces/simulation results are copied to (-o <DIR_NAME>). If not given, the results are not copied and only remain in the container. e.g) -o .
+b     Build a docker image with application setup. 0: Run a container of existing docker image/cached image without bulding an image from the beginning, 1: Build a new image from the beginning and overwrite whatever image with the same name. e.g) -b 1
+s     SimPoint workflow. 0: No simpoint workflow, 1: simpoint workflow - instrumentation first (Collect fingerprints, do simpoint clustering) 2: simpoint workflow - post-processing (trace, collect fingerprints, do simpoint clustering). e.g) -s 1
+t     Collect traces. 0: Do not collect traces, 1: Collect traces based on the SimPoint workflow (-s). e.g) -t 0
+m     Scarab simulation mode. 0: No simulation 1: execution-driven simulation w/o SimPoint 2: trace-based simulation w/o SimPoint (-t should be 1 if no traces exist already in the container). 3: execution-driven simulation w/ SimPoint 4: trace-based simulation w/ SimPoint e.g) -m 4
+c     Clean up all the containers/volumes after run. 0: No clean up 2: Clean up e.g) -c 1
 ```
-There are two ways to run Scarab: 1) execution-driven (-m 0) 2) trace-based (-m 1). The execution-driven simulation runs the application binary directly without using traces while the trace-based simulation needs collected traces to run the application. The trace-based run will collect the traces based on the given workflow (simpoint/nosimpoint) and simulate by using the traces.
+There are four ways to run Scarab: 1) execution-driven w/o SimPoint (-m 1) 2) trace-based w/o SimPoint (-m 2) 3) execution-driven w/ SimPoint (-m 3) 4) trace-based w/ SimPoint (-m 4). The execution-driven simulation runs the application binary directly without using traces while the trace-based simulation needs collected traces to run the application. SimPoints are used for fast-forwarding on the execution-driven run and for collecting traces/simulating on the trace-based run.
 You need to provide the list of the applications you want to run in 'apps.list' file, and the list of the Scarab parameters to overwrite the sunny cove default PARAMS.in in 'params.new'. Each line in 'params.new' should represent SENARIONUM,SCARABPARAMS. Please refer to the 'apps.list' and 'params.new' files for the examples.
 
 #### Example command (Build the image from the beginning and run the application with trace-base mode by collecting the traces without simpoint methodology. Copy the collected traces and the simulation results to host after the run.)
 ```
-$ ./run_scarab.sh -o . -t 1 -b 1 -s 0 -m 1
+$ ./run.sh -o . -b 1 -s 0 -t 1 -m 2
 ```
 ### Step-by-step on an interactive attachment
 #### Build an image
 ```
 $ docker build . -f ./example/Dockerfile --no-cache -t example:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
 ```
+or
+```
+$ ./run.sh -b 1
+```
+or
+```
+$ export APPNAME="example"
+$ export BUILD=1
+$ ./setup_apps.sh
+```
+
 #### Check the built image
 ```
 $ docker images
@@ -57,8 +76,18 @@ docker run -dit --privileged --name example -v example:/home/dcuser example:late
 docker start example
 ```
 
+#### Run simpoint workflow and collect traces on an existing container
+```
+$ ./run.sh -o . -b 0 -s 1 -t 1 -m 0
+```
+
+#### Run simulation with already collected simpoint traces on an existing container
+```
+$ ./run.sh -o . -b 0 -s 0 -t 0 -m 4
+```
+
 ## Developers
-When you add an application support of a docker image, please expand ‘run_scarab.sh’ and 'setup_apps.sh' scripts so that the memtraces and Scarab results can be provided by running a single script. The rule of thumb is 1) to try to build a simple image where the basic essential packages are installed on a proper Ubuntu version (the first version of Dockerfile), 2) to run a container of the image, 3) to run the application, 4) to run the application with DynamoRIO (if 3) works), 5) to run Scarab with memtrace frontend feeding the collected traces from 4). 
+When you add an application support of a docker image, please expand 'setup_apps.sh' script and 'run.sh' if needed so that the memtraces and Scarab results can be provided by running a single script. The rule of thumb is 1) to try to build a simple image where the basic essential packages are installed on a proper Ubuntu version (the first version of Dockerfile), 2) to run a container of the image, 3) to run the application, 4) to run the application with DynamoRIO (if 3) works), 5) to run Scarab with memtrace frontend feeding the collected traces from 4). 
 If all 1) to 5) steps are working, you can add the processes you added after 1) to the Dockerfile and expand the script. Make sure that running the script provides the same environment and results as 1~5 steps.
 
 ## Notes

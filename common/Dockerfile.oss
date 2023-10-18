@@ -51,7 +51,26 @@ USER dcuser
 # DynamoRIO build from source
 RUN git clone --recursive https://github.com/DynamoRIO/dynamorio.git && cd dynamorio && git reset --hard release_7.1.0 && mkdir build && cd build && cmake .. && make -j 40
 
+# Build DynamoRIO package for fingerprint client
+RUN mkdir /home/dcuser/dynamorio/package && \
+    cd /home/dcuser/dynamorio/package && \
+    ctest -V -S ../make/package.cmake,build=1\;no32
+ENV DYNAMORIO_HOME=/home/dcuser/dynamorio/package/build_release-64/
+
+# Build fingerprint client
+COPY --chown=dcuser fingerprint_src /home/dcuser/fingerprint_src/
+RUN mkdir /home/dcuser/fingerprint_src/build && \
+    cd /home/dcuser/fingerprint_src/build && \
+    cmake -DDynamoRIO_DIR=$DYNAMORIO_HOME/cmake .. && \
+    make && \
+    cp ./libfpg.so /home/dcuser/libfpg.so
+
+# Copy workflow simpoint/no_simpoint script
+COPY --chown=dcuser run_simpoint_trace.sh /home/dcuser/run_simpoint_trace.sh
+COPY --chown=dcuser run_scarab.sh /home/dcuser/run_scarab.sh
+
 # Clone the Scarab repository
+# Comment out if you don't use scarab at all and don't have ssh key permitted to clone 'scarab_hlitz'
 RUN cd /home/dcuser && git clone -b decoupled_fe git@github.com:hlitz/scarab_hlitz.git scarab
 
 # Install Scarab dependencies
