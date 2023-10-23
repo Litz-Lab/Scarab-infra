@@ -43,6 +43,10 @@ case $APPNAME in
     echo "xgboost"
     APP_GROUPNAME="xgboost"
     ;;
+  compound_wildcard_index_query | dv_insert | dv_update | long_multi_update | simple_commands | simple_in_queries | simple_insert | simple_multi_update | simple_sort_queries | wildcard_index_insert | wildcard_index_query)
+    echo "mongo-perf"
+    APP_GROUPNAME="mongo-perf"
+    ;;
   example)
     echo "example"
     APP_GROUPNAME="example"
@@ -97,6 +101,9 @@ case $APPNAME in
     ;;
   xgboost)
     BINCMD="python3 /home/dcuser/train.py"
+    ;;
+  compound_wildcard_index_query | dv_insert | dv_update | long_multi_update | simple_commands | simple_in_queries | simple_insert | simple_multi_update | simple_sort_queries | wildcard_index_insert | wildcard_index_query)
+    BINCMD="python3 /home/dcuser/mongo-perf/benchrun.py -f /home/dcuser/mongo-perf/testcases/$APPNAME.js -t 1"
     ;;
   example)
     BINCMD="for i in {1..100000000}\; do echo -n \"-\"; done"
