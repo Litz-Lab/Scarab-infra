@@ -181,6 +181,7 @@ if [ $CLEANUP ]; then
         taskPids+=($!)
         ;;
     esac
+    docker stop $APP_GROUPNAME
     eval docker rm $APP_GROUPNAME &
     taskPids+=($!)
     sleep 2
