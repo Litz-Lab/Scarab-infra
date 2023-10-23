@@ -32,7 +32,7 @@ if [ "$APP_GROUPNAME" == "spec2017" ]; then
   done
 fi
 
-if [ "$SCARABMODE" == "3" ] || [ "$SCARABMODE" == "4"]; then
+if [ "$SCARABMODE" == "3" ] || [ "$SCARABMODE" == "4" ]; then
   cd /home/dcuser/simpoint_flow/$APPNAME
   mkdir -p simulations evaluations
   APPHOME=/home/dcuser/simpoint_flow/$APPNAME
@@ -108,13 +108,13 @@ if [ "$SCARABMODE" == "3" ] || [ "$SCARABMODE" == "4"]; then
   echo "simulation Runtime: $hours:$minutes:$seconds (hh:mm:ss)"
 
   ################################################################
-else
-  cd /home/dcuser/nosimpoint_flow/$APPNAME
+elif [ "$SCARABMODE" == "1" ] || [ "$SCARABMODE" == "2" ]; then
+  cd /home/dcuser/nonsimpoint_flow/$APPNAME
   mkdir -p simulations evaluations
-  APPHOME=/home/dcuser/nosimpoint_flow/$APPNAME
+  APPHOME=/home/dcuser/nonsimpoint_flow/$APPNAME
 
   if [ "$SCARABMODE" == "2" ]; then
-    traceMap=$(ls $APPHOME/traces/trace/window.0000)
+    traceMap=$(ls $APPHOME/traces/trace/)
   fi
   ################################################################
   # trace-based or exec-driven simulations
@@ -124,7 +124,7 @@ else
   cp /home/dcuser/scarab/src/PARAMS.sunny_cove $APPHOME/simulations/$SCENARIONUM/PARAMS.in
   cd $APPHOME/simulations/$SCENARIONUM
   if [ "$SCARABMODE" == "2" ]; then
-    scarabCmd="/home/dcuser/scarab/src/scarab --frontend memtrace --cbp_trace_r0=$APPHOME/traces/trace/window.0000/${traceMap} --memtrace_modules_log=$APPHOME/traces/raw/ $SCARABPARAMS &> sim.log"
+    scarabCmd="/home/dcuser/scarab/src/scarab --frontend memtrace --cbp_trace_r0=$APPHOME/traces/trace/${traceMap} --memtrace_modules_log=$APPHOME/traces/raw/ $SCARABPARAMS &> sim.log"
   else
     start_inst=100000000
     scarabCmd="

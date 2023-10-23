@@ -25,7 +25,7 @@ help()
   echo "Options:"
   echo "h     Print this Help."
   echo "o     Output existing directory where simpoints/traces/simulation results are copied to (-o <DIR_NAME>). If not given, the results are not copied and only remain in the container. e.g) -o ."
-  echo "b     Build a docker image with application setup. 0: Run a container of existing docker image/cached image without bulding an image from the beginning, 1: Build a new image from the beginning and overwrite whatever image with the same name. e.g) -b 1"
+  echo "b     Build a docker image with application setup. 0: Run a container of existing docker image 1: Build cached image and run a container of the cached image, 2: Build a new image from the beginning and overwrite whatever image with the same name. e.g) -b 2"
   echo "s     SimPoint workflow. 0: No simpoint workflow, 1: simpoint workflow - instrumentation first (Collect fingerprints, do simpoint clustering) 2: simpoint workflow - post-processing (trace, collect fingerprints, do simpoint clustering). e.g) -s 1"
   echo "t     Collect traces. 0: Do not collect traces, 1: Collect traces based on the SimPoint workflow (-s). e.g) -t 0 "
   echo "m     Scarab simulation mode. 0: No simulation 1: execution-driven simulation w/o SimPoint 2: trace-based simulation w/o SimPoint (-t should be 1 if no traces exist already in the container). 3: execution-driven simulation w/ SimPoint 4: trace-based simulation w/ SimPoint e.g) -m 4"
@@ -93,46 +93,28 @@ echo "build docker images and start containers.."
 taskPids=()
 cat apps.list|while read APPNAME;
 do
-  eval source setup_apps.sh &
-  taskPids+=($!)
-  sleep 2
-done
+  source setup_apps.sh
+  source build_apps.sh
 
-echo "wait for all the setups.."
-# ref: https://stackoverflow.com/a/29535256
-for taskPid in ${taskPids[@]}; do
-  if wait $taskPid; then
-    echo "setup process $taskPid success"
-  else
-    echo "setup process $taskPid fail"
-    # # ref: https://serverfault.com/questions/479460/find-command-from-pid
-    # cat /proc/${taskPid}/cmdline | xargs -0 echo
-    exit
+  if [ $SIMPOINT ] || [ $COLLECTTRACES ]; then
+    # run simpoint/trace
+    echo "run simpoint/trace.."
+
+    eval docker exec -i --privileged $APP_GROUPNAME /home/dcuser/run_simpoint_trace.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SIMPOINT" "$COLLECTTRACES" &
+    taskPids+=($!)
+    sleep 2
   fi
 done
 
-if [ $SIMPOINT ] || [ $COLLECTTRACES ]; then
-  # run simpoint/trace
-  echo "run simpoint/trace.."
-  taskPids=()
-
-  cat apps.list|while read APPNAME;
-  do
-    eval docker exec -it --privileged $APP_GROUPNAME /home/dcuser/run_simpoint_trace.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SIMPOINT" "$COLLECTTRACES" &
-    taskPids+=($!)
-    sleep 2
-  done
-
-  echo "wait for all the simpoint/tracing..."
-  for taskPid in ${taskPids[@]}; do
-    if wait $taskPid; then
-      echo "simpoint/trace process $taskPid success"
-    else
-      echo "simpoint/trace process $taskPid fail"
-      exit
-    fi
-  done
-fi
+echo "wait for all the simpoint/tracing..."
+for taskPid in ${taskPids[@]}; do
+  if wait $taskPid; then
+    echo "simpoint/trace process $taskPid success"
+  else
+    echo "simpoint/trace process $taskPid fail"
+    exit
+  fi
+done
 
 if [ $SCARABMODE ]; then
   # run Scarab simulation
@@ -141,8 +123,9 @@ if [ $SCARABMODE ]; then
 
   cat apps.list|while read APPNAME;
   do
+    source setup_apps.sh
     while IFS=, read -r SCENARIONUM SCARABPARAMS; do
-      eval docker exec -it --privileged $APP_GROUPNAME /home/dcuser/run_scarab.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SCENARIONUM" "$SCARABPARAMS" "$SCARABMODE" &
+      eval docker exec -i --privileged $APP_GROUPNAME /home/dcuser/run_scarab.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SCENARIONUM" "$SCARABPARAMS" "$SCARABMODE" &
       taskPids+=($!)
       sleep 2
     done < params.new
@@ -164,10 +147,11 @@ if [ $OUTDIR ]; then
   taskPids=()
   cat apps.list|while read APPNAME;
   do
+    source setup_apps.sh
     if [ $SIMPOINT ]; then
       eval docker cp $APP_GROUPNAME:/home/dcuser/simpoint_flow $OUTDIR &
     else
-      eval docker cp $APP_GROUPNAME:/home/dcuser/nosimpoint_flow $OUTDIR &
+      eval docker cp $APP_GROUPNAME:/home/dcuser/nonsimpoint_flow $OUTDIR &
     fi
     taskPids+=($!)
     sleep 2
@@ -190,6 +174,7 @@ if [ $CLEANUP ]; then
   taskPids=()
   cat apps.list|while read APPNAME;
   do
+    source setup_apps.sh
     case $APPNAME in
       solr)
         eval docker rm web_search_client &
@@ -216,6 +201,7 @@ if [ $CLEANUP ]; then
   taskPids=()
   cat apps.list|while read APPNAME;
   do
+    source setup_apps.sh
     eval docker volume rm $APP_GROUPNAME &
     taskPids+=($!)
     sleep 2

@@ -31,7 +31,7 @@ if [ "$APP_GROUPNAME" == "spec2017" ]; then
   done
 fi
 
-if [ "$SIMPOINT" == "true" ]; then
+if [ "$SIMPOINT" == "1" ]; then
   # dir for all relevant data: fingerprint, traces, log, sim stats...
   mkdir -p /home/dcuser/simpoint_flow/$APPNAME
   cd /home/dcuser/simpoint_flow/$APPNAME
@@ -98,7 +98,7 @@ if [ "$SIMPOINT" == "true" ]; then
   ################################################################
   # collect traces
 
-  if [ "$COLLECTTRACES" == "true" ]; then
+  if [ "$COLLECTTRACES" == "1" ]; then
     # tracing, raw2trace
     taskPids=()
     start=`date +%s`
@@ -143,7 +143,7 @@ if [ "$SIMPOINT" == "true" ]; then
       mkdir -p bin
       cp raw/modules.log bin/modules.log
       cp raw/modules.log raw/modules.log.bak
-      echo "memtrace" | sudo -S python2 /home/dcuser/scarab/utils/memtrace/portabilize_trace.py .
+      echo "dcuser" | sudo -S python2 /home/dcuser/scarab/utils/memtrace/portabilize_trace.py .
       cp bin/modules.log raw/modules.log
       $DYNAMORIO_HOME/clients/bin64/drraw2trace -indir ./raw/ &
       taskPids+=($!)
@@ -180,32 +180,33 @@ else # non-simpoint
   ################################################################
   # collect traces
 
-  if [ "$COLLECTTRACES" == "true" ]; then
+  if [ "$COLLECTTRACES" == "1" ]; then
     # tracing, raw2trace
     taskPids=()
     start=`date +%s`
     mkdir -p $APPHOME/traces
     cd $APPHOME/traces
-    start_inst=100000000
+    start_inst=$(( 20 * $SEGSIZE ))
+    SEGSIZE=$(( 50 * $SEGSIZE ))
 
     case $APPNAME in
       cassandra | kafka | tomcat)
         # TODO: Java does not work under DynamoRIO : tried -disable_traces -no_hw_cache_consistency -no_sandbox_writes -no_enable_reset -sandbox2ro_threshold 0 -ro2sandbox_threshold 0
-        traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces -offline -trace_after_instrs $start_inst -trace_for_instrs $SEGSIZE -- ${BINCMD}"
+        traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces -offline -trace_after_instrs $start_inst -exit_after_tracing $SEGSIZE -- ${BINCMD}"
         ;;
       chirper | http)
         # TODO: Java does not work under DynamoRIO : tried -disable_traces -no_hw_cache_consistency -no_sandbox_writes -no_enable_reset -sandbox2ro_threshold 0 -ro2sandbox_threshold 0
-        traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces -offline -trace_after_instrs $start_inst -trace_for_instrs $SEGSIZE -- ${BINCMD}"
+        traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces -offline -trace_after_instrs $start_inst -exit_after_tracing $SEGSIZE -- ${BINCMD}"
         ;;
       solr)
         # TODO: Java does not work under DynamoRIO : tried -disable_traces -no_hw_cache_consistency -no_sandbox_writes -no_enable_reset -sandbox2ro_threshold 0 -ro2sandbox_threshold 0
         # https://github.com/DynamoRIO/dynamorio/commits/i3733-jvm-bug-fixes does not work: "DynamoRIO Cache Simulator Tracer interval crash at PC 0x00007fe16d8e8fdb. Please report this at https://dynamorio.org/issues"
         # Scarab does not work either: "setarch: failed to set personality to x86_64: Operation not permitted"
         # Solr uses many threads and seems to run too long on simpoint's fingerprint collection
-        traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces -offline -trace_after_instrs $start_inst -trace_for_instrs $SEGSIZE -- ${BINCMD}"
+        traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces -offline -trace_after_instrs $start_inst -exit_after_tracing $SEGSIZE -- ${BINCMD}"
         ;;
       *)
-        traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces -offline -trace_after_instrs $start_inst -trace_for_instrs $SEGSIZE -- ${BINCMD}"
+        traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces -offline -trace_after_instrs $start_inst -exit_after_tracing $SEGSIZE -- ${BINCMD}"
         ;;
     esac
     echo "tracing ..."
@@ -234,7 +235,7 @@ else # non-simpoint
     mkdir -p bin
     cp raw/modules.log bin/modules.log
     cp raw/modules.log raw/modules.log.bak
-    echo "memtrace" | sudo -S python2 /home/dcuser/scarab/utils/memtrace/portabilize_trace.py .
+    echo "dcuser" | sudo -S python2 /home/dcuser/scarab/utils/memtrace/portabilize_trace.py .
     cp bin/modules.log raw/modules.log
     $DYNAMORIO_HOME/clients/bin64/drraw2trace -indir ./raw/ &
     taskPids+=($!)

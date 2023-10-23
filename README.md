@@ -33,7 +33,7 @@ To perform the later step, the previous steps must be performed first, meaning a
 Options:
 h     Print this Help.
 o     Output existing directory where simpoints/traces/simulation results are copied to (-o <DIR_NAME>). If not given, the results are not copied and only remain in the container. e.g) -o .
-b     Build a docker image with application setup. 0: Run a container of existing docker image/cached image without bulding an image from the beginning, 1: Build a new image from the beginning and overwrite whatever image with the same name. e.g) -b 1
+b     Build a docker image with application setup. 0: Run a container of existing docker image 1: Build cached image and run a container of the cached image, 2: Build a new image from the beginning and overwrite whatever image with the same name. e.g) -b 2
 s     SimPoint workflow. 0: No simpoint workflow, 1: simpoint workflow - instrumentation first (Collect fingerprints, do simpoint clustering) 2: simpoint workflow - post-processing (trace, collect fingerprints, do simpoint clustering). e.g) -s 1
 t     Collect traces. 0: Do not collect traces, 1: Collect traces based on the SimPoint workflow (-s). e.g) -t 0
 m     Scarab simulation mode. 0: No simulation 1: execution-driven simulation w/o SimPoint 2: trace-based simulation w/o SimPoint (-t should be 1 if no traces exist already in the container). 3: execution-driven simulation w/ SimPoint 4: trace-based simulation w/ SimPoint e.g) -m 4
@@ -44,7 +44,7 @@ You need to provide the list of the applications you want to run in 'apps.list' 
 
 #### Example command (Build the image from the beginning and run the application with trace-base mode by collecting the traces without simpoint methodology. Copy the collected traces and the simulation results to host after the run.)
 ```
-$ ./run.sh -o . -b 1 -s 0 -t 1 -m 2
+$ ./run.sh -o . -b 2 -s 0 -t 1 -m 2
 ```
 ### Step-by-step on an interactive attachment
 #### Build an image
@@ -53,12 +53,12 @@ $ docker build . -f ./example/Dockerfile --no-cache -t example:latest --build-ar
 ```
 or
 ```
-$ ./run.sh -b 1
+$ ./run.sh -b 2
 ```
 or
 ```
 $ export APPNAME="example"
-$ export BUILD=1
+$ export BUILD=2
 $ ./setup_apps.sh
 ```
 
