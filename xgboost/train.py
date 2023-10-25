@@ -31,12 +31,6 @@ params = {'max_depth':8, 'eta':1, 'objective':'reg:squarederror', 'eval_metric':
 bst = xgboost.train(params, dtrain, 1600, [(dtrain, 'train')])
 model = treelite.Model.from_xgboost(bst)
 toolchain = 'gcc'
-# model.export_lib(toolchain=toolchain, libpath='./mymodel.so', params={'parallel_comp': 4}, verbose=True)
 print("Saving Model")
-model.export_srcpkg(platform='unix', toolchain=toolchain, pkgpath='./mymodel.zip', libname='libmymodel.so', verbose=True, params={'parallel_comp':30})
-#print("Testing Model")
-#dtest = treelite_runtime.DMatrix(df_test.iloc[:, 1:29])
-#predictor = treelite_runtime.Predictor(model,nthread=1,verbose=True)
-#for i in range(20):
-#    out_pred = predictor.predict(dtest)
-#print(out_pred)
+model.export_lib(toolchain=toolchain, libpath='/home/dcuser/libmymodel.so', params={'parallel_comp': 4}, verbose=True)
+#model.export_srcpkg(platform='unix', toolchain=toolchain, pkgpath='./mymodel.zip', libname='libmymodel.so', verbose=True, params={'parallel_comp':30})

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x #echo on
 
 # code to ignore case restrictions
 shopt -s nocasematch
