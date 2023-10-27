@@ -8,6 +8,56 @@ SEGSIZE=100000000
 SIMPOINT="$4"
 COLLECTTRACES="$5"
 
+# functions
+wait_for () {
+  # ref: https://askubuntu.com/questions/674333/how-to-pass-an-array-as-function-argument
+  # 1: procedure name
+  # 2: task list
+  local procedure="$1"
+  shift
+  local taskPids=("$@")
+  echo "wait for all $1 to finish..."
+  # ref: https://stackoverflow.com/a/29535256
+  for taskPid in ${taskPids[@]}; do
+    if wait $taskPid; then
+      echo "$procedure process $taskPid success"
+    else
+      echo "$procedure process $taskPid fail"
+      # # ref: https://serverfault.com/questions/479460/find-command-from-pid
+      # cat /proc/${taskPid}/cmdline | xargs -0 echo
+      exit
+    fi
+  done
+}
+
+report_time () {
+  # 1: procedure name
+  # 2: start
+  # 3: end
+  local procedure="$1"
+  local start="$2"
+  local end="$3"
+  local runtime=$((end-start))
+  local hours=$((runtime / 3600));
+  local minutes=$(( (runtime % 3600) / 60 ));
+  local seconds=$(( (runtime % 3600) % 60 ));
+  echo "$procedure Runtime: $hours:$minutes:$seconds (hh:mm:ss)"
+}
+
+run_simpoint () {
+  local lines=($(wc -l $APPHOME/fingerprint/bbfp))
+  # round to nearest int
+  local maxK=$(echo "(sqrt($lines)+0.5)/1" | bc)
+  echo "fingerprint size: $lines, maxk: $maxK"
+  local spCmd="/home/dcuser/simpoint -maxK $maxK -fixedLength off -numInitSeeds 1000 -loadFVFile $APPHOME/fingerprint/bbfp -saveSimpoints $APPHOME/simpoints/opt.p -saveSimpointWeights $APPHOME/simpoints/opt.w -saveLabels $APPHOME/simpoints/opt.l &> $APPHOME/simpoints/simp.opt.log"
+  echo "cluster fingerprint..."
+  echo "command: ${spCmd}"
+  start=`date +%s`
+  eval $spCmd
+  end=`date +%s`
+  report_time "clustering" "$start" "$end"
+}
+
 # Get command to run for Spe17
 if [ "$APP_GROUPNAME" == "spec2017" ]; then
   # environment
@@ -31,7 +81,103 @@ if [ "$APP_GROUPNAME" == "spec2017" ]; then
   done
 fi
 
-if [ "$SIMPOINT" == "1" ]; then
+if [ "$SIMPOINT" == "2" ]; then
+  # dir for all relevant data: fingerprint, traces, log, sim stats...
+  mkdir -p /home/dcuser/simpoint_flow/$APPNAME
+  cd /home/dcuser/simpoint_flow/$APPNAME
+  mkdir -p fingerprint simpoints traces
+  APPHOME=/home/dcuser/simpoint_flow/$APPNAME
+
+
+  ################################################################
+
+  # 1. trace the whole application
+  # 2. drraw2trace
+  # 3. post-process the trace in parallel
+  # 4. aggregate the fingerprint
+  # 5. clustering
+
+  taskPids=()
+  start=`date +%s`
+
+  mkdir -p $APPHOME/traces/whole
+  cd $APPHOME/traces/whole
+  traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces/whole -offline -- ${BINCMD}"
+  echo "tracing whole app..."
+  echo "command: ${traceCmd}"
+  # if [ "$APP_GROUPNAME" == "spec2017" ]; then
+  #   # have to go to that dir for the spec app cmd to work
+  #   ogo $APPNAME run
+  #   cd run_base_train*
+  # fi
+  eval $traceCmd &
+  taskPids+=($!)
+
+  wait_for "whole app tracing" "${taskPids[@]}"
+  end=`date +%s`
+  report_time "whole app tracing" "$start" "$end"
+
+  taskPids=()
+  start=`date +%s`
+
+  cd $APPHOME/traces/whole
+  mv dr*/raw/ ./raw
+  mkdir -p bin
+  cp raw/modules.log bin/modules.log
+  cp raw/modules.log raw/modules.log.bak
+  echo "dcuser" | sudo -S python2 /home/dcuser/scarab/utils/memtrace/portabilize_trace.py .
+  cp bin/modules.log raw/modules.log
+  $DYNAMORIO_HOME/clients/bin64/drraw2trace -jobs 40 -indir ./raw/ -chunk_instr_count $SEGSIZE &
+  taskPids+=($!)
+
+  wait_for "whole app raw2trace" "${taskPids[@]}"
+  end=`date +%s`
+  report_time "whole app raw2trace" "$start" "$end"
+
+  numChunk=$(less ./trace/dr*.zip | grep "chunk." | wc -l)
+  echo "total number of segments/chunks: $numChunk"
+
+  # post-processing
+  taskPids=()
+  start=`date +%s`
+
+  cd $APPHOME/fingerprint
+  mkdir -p pieces
+
+  wholeTrace=$(ls $APPHOME/traces/whole/trace/dr*.zip)
+  for chunkID in $(seq 0 $(( $numChunk-1 )))
+  do
+    mkdir -p $chunkID
+    # do not care about the params file
+    cd $chunkID
+    scarabCmd="/home/dcuser/scarab/src/scarab --frontend memtrace \
+              --cbp_trace_r0=$APPHOME/traces/whole/trace/$wholeTrace \
+              --memtrace_modules_log=$APPHOME/traces/whole/raw/ \
+              --mode=trace_bbv_distributed \
+              --chunk_instr_count=$SEGSIZE \
+              --memtrace_roi_begin=$(( $chunkID * $SEGSIZE + 1 )) \
+              --memtrace_roi_end=$(( $chunkID * $SEGSIZE + $SEGSIZE )) \
+              --trace_bbv_output=$APPHOME/fingerprint/pieces/chunk.$chunkID \
+              &> sim.log"
+    echo "processing chunkID ${chunkID}..."
+    echo "command: ${scarabCmd}"
+    eval $scarabCmd &
+    taskPids+=($!)
+    cd -
+  done
+
+  wait_for "post-processing" "${taskPids[@]}"
+  end=`date +%s`
+  report_time "post-processing" "$start" "$end"
+
+  # aggregate the fingerprint pieces
+  python3 ./gather_fp_pieces.py $APPHOME/fingerprint/pieces
+  cp $APPHOME/fingerprint/pieces/bbfp .
+
+  # clustering
+  run_simpoint
+
+elif [ "$SIMPOINT" == "1" ]; then
   # dir for all relevant data: fingerprint, traces, log, sim stats...
   mkdir -p /home/dcuser/simpoint_flow/$APPNAME
   cd /home/dcuser/simpoint_flow/$APPNAME
@@ -68,23 +214,7 @@ if [ "$SIMPOINT" == "1" ]; then
   ################################################################
 
   # run SimPoint clustering
-  wc_result=($(wc $APPHOME/fingerprint/bbfp))
-  lines=${wc_result[0]}
-  # round to nearest int
-  maxK=$(echo "(sqrt($lines)+0.5)/1" | bc)
-  echo "fingerprint size: $lines, maxk: $maxK"
-  spCmd="/home/dcuser/simpoint -maxK $maxK -fixedLength off -numInitSeeds 1000 -loadFVFile $APPHOME/fingerprint/bbfp -saveSimpoints $APPHOME/simpoints/opt.p -saveSimpointWeights $APPHOME/simpoints/opt.w -saveLabels $APPHOME/simpoints/opt.l &> $APPHOME/simpoints/simp.opt.log"
-  echo "cluster fingerprint..."
-  echo "command: ${spCmd}"
-
-  start=`date +%s`
-  eval $spCmd
-  end=`date +%s`
-  runtime=$((end-start))
-  hours=$((runtime / 3600));
-  minutes=$(( (runtime % 3600) / 60 ));
-  seconds=$(( (runtime % 3600) % 60 ));
-  echo "clustering Runtime: $hours:$minutes:$seconds (hh:mm:ss)"
+  run_simpoint
 
   ################################################################
   # read in simpoint

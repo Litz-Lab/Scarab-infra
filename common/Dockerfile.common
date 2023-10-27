@@ -55,8 +55,7 @@ WORKDIR /home/dcuser
 USER dcuser
 
 # DynamoRIO build from source
-# release version does not support -trace_for_instrs
-RUN git clone --recursive https://github.com/DynamoRIO/dynamorio.git && cd dynamorio && git reset --hard 74182d8 && mkdir build && cd build && cmake .. && make -j 40
+RUN git clone --recursive https://github.com/DynamoRIO/dynamorio.git && cd dynamorio && git reset --hard release_10.0.0 && mkdir build && cd build && cmake .. && make -j 40
 
 # Build DynamoRIO package for fingerprint client
 RUN mkdir /home/dcuser/dynamorio/package && \
@@ -75,6 +74,7 @@ RUN mkdir /home/dcuser/fingerprint_src/build && \
 # Copy workflow simpoint/no_simpoint script
 COPY --chown=dcuser run_simpoint_trace.sh /home/dcuser/run_simpoint_trace.sh
 COPY --chown=dcuser run_scarab.sh /home/dcuser/run_scarab.sh
+COPY --chown=dcuser gather_fp_pieces.py /home/dcuser/gather_fp_pieces.py
 
 # Clone the Scarab repository
 # Comment out if you don't use scarab at all and don't have ssh key permitted to clone 'scarab_hlitz'
