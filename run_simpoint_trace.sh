@@ -16,7 +16,7 @@ wait_for () {
   local procedure="$1"
   shift
   local taskPids=("$@")
-  echo "wait for all $1 to finish..."
+  echo "wait for all $procedure to finish..."
   # ref: https://stackoverflow.com/a/29535256
   for taskPid in ${taskPids[@]}; do
     if wait $taskPid; then
@@ -134,7 +134,7 @@ if [ "$SIMPOINT" == "2" ]; then
   end=`date +%s`
   report_time "whole app raw2trace" "$start" "$end"
 
-  numChunk=$(less ./trace/dr*.zip | grep "chunk." | wc -l)
+  numChunk=$(unzip -l ./trace/dr*.zip | grep "chunk." | wc -l)
   echo "total number of segments/chunks: $numChunk"
 
   # post-processing
@@ -151,7 +151,7 @@ if [ "$SIMPOINT" == "2" ]; then
     # do not care about the params file
     cd $chunkID
     scarabCmd="/home/dcuser/scarab/src/scarab --frontend memtrace \
-              --cbp_trace_r0=$APPHOME/traces/whole/trace/$wholeTrace \
+              --cbp_trace_r0=$wholeTrace \
               --memtrace_modules_log=$APPHOME/traces/whole/raw/ \
               --mode=trace_bbv_distributed \
               --chunk_instr_count=$SEGSIZE \
@@ -171,8 +171,9 @@ if [ "$SIMPOINT" == "2" ]; then
   report_time "post-processing" "$start" "$end"
 
   # aggregate the fingerprint pieces
+  cd /home/dcuser
   python3 ./gather_fp_pieces.py $APPHOME/fingerprint/pieces
-  cp $APPHOME/fingerprint/pieces/bbfp .
+  cp $APPHOME/fingerprint/pieces/bbfp $APPHOME/fingerprint/bbfp
 
   # clustering
   run_simpoint

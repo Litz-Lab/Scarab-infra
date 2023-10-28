@@ -22,7 +22,8 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libconfig++-dev \
     libboost-dev \
     vim \
-    bc
+    bc \
+    unzip
 
 RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 1
 

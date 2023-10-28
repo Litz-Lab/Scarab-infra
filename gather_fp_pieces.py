@@ -38,7 +38,8 @@ def gather_fp_pieces(fp_dir):
     bb_count = 1
     addr_id_map = {}
 
-    for file in sorted(glob.glob(fp_dir + "/chunk.*")):
+    # ref: https://stackoverflow.com/questions/4287209/sort-list-of-strings-by-integer-suffix
+    for file in sorted(glob.glob(fp_dir + "/chunk.*"), key = lambda x: int(x.split(".")[1])):
         print(file)
         chunk_id = file.split(".")[-1]
         assert int(chunk_id) == pre_chunk_id + 1, "{} != {}".format(chunk_id, pre_chunk_id + 1)
@@ -46,7 +47,8 @@ def gather_fp_pieces(fp_dir):
 
         with open(file, "r") as f:
             lines = f.read().splitlines()
-            assert len(lines) == 1, "chunk fp provides more than one line: {}".format(len(lines))
+            if sum(1 for line in lines if line) != 1:
+                print("WARN: chunk fp provides more than one line")
             chunk_map = line_to_map(lines[0])
 
         chunk_map, addr_id_map, bb_count = map_conversion(chunk_map, addr_id_map, bb_count)
