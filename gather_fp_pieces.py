@@ -31,7 +31,7 @@ def map_conversion(chunk_map, addr_id_map, bb_count):
     return new_chunk_map, addr_id_map, bb_count
     
     
-def gather_fp_pieces(fp_dir):
+def gather_fp_pieces(fp_dir, num_of_chunks):
     import glob
     
     pre_chunk_id = -1
@@ -54,6 +54,9 @@ def gather_fp_pieces(fp_dir):
         chunk_map, addr_id_map, bb_count = map_conversion(chunk_map, addr_id_map, bb_count)
         append_bbfp(fp_dir + "/bbfp", chunk_map)
 
+    if pre_chunk_id + 1 != num_of_chunks:
+        print("saw {} chunks expected {}".format(pre_chunk_id + 1, num_of_chunks))
+
 import sys
 import os
 
@@ -61,4 +64,4 @@ if __name__ == "__main__":
     if not os.path.isdir(sys.argv[1]):
         print("chunk directory {} does not exist!")
         exit
-    gather_fp_pieces(sys.argv[1])
+    gather_fp_pieces(sys.argv[1], int(sys.argv[2]))

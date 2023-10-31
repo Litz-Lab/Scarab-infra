@@ -25,7 +25,7 @@ wait_for () {
       echo "$procedure process $taskPid fail"
       # # ref: https://serverfault.com/questions/479460/find-command-from-pid
       # cat /proc/${taskPid}/cmdline | xargs -0 echo
-      exit
+      # exit
     fi
   done
 }
@@ -121,14 +121,17 @@ if [ "$SIMPOINT" == "2" ]; then
   start=`date +%s`
 
   cd $APPHOME/traces/whole
-  mv dr*/raw/ ./raw
-  mkdir -p bin
-  cp raw/modules.log bin/modules.log
-  cp raw/modules.log raw/modules.log.bak
-  echo "dcuser" | sudo -S python2 /home/dcuser/scarab/utils/memtrace/portabilize_trace.py .
-  cp bin/modules.log raw/modules.log
-  $DYNAMORIO_HOME/clients/bin64/drraw2trace -jobs 40 -indir ./raw/ -chunk_instr_count $SEGSIZE &
-  taskPids+=($!)
+  for dr in dr*;
+  do
+    cd $dr
+    mkdir -p bin
+    cp raw/modules.log bin/modules.log
+    cp raw/modules.log raw/modules.log.bak
+    echo "dcuser" | sudo -S python2 /home/dcuser/scarab/utils/memtrace/portabilize_trace.py .
+    cp bin/modules.log raw/modules.log
+    $DYNAMORIO_HOME/clients/bin64/drraw2trace -jobs 40 -indir ./raw/ -chunk_instr_count $SEGSIZE &
+    taskPids+=($!)
+  done
 
   wait_for "whole app raw2trace" "${taskPids[@]}"
   end=`date +%s`
@@ -172,7 +175,7 @@ if [ "$SIMPOINT" == "2" ]; then
 
   # aggregate the fingerprint pieces
   cd /home/dcuser
-  python3 ./gather_fp_pieces.py $APPHOME/fingerprint/pieces
+  python3 ./gather_fp_pieces.py $APPHOME/fingerprint/pieces $numChunk
   cp $APPHOME/fingerprint/pieces/bbfp $APPHOME/fingerprint/bbfp
 
   # clustering
