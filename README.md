@@ -44,27 +44,27 @@ You need to provide the list of the applications you want to run in 'apps.list' 
 
 #### Example command (Build the image from the beginning and run the application with trace-base mode by collecting the traces without simpoint methodology. Copy the collected traces and the simulation results to host after the run.)
 ```
-$ ./run.sh -o . -b 2 -s 0 -t 1 -m 2
+./run.sh -o . -b 2 -s 0 -t 1 -m 2
 ```
 ### Step-by-step on an interactive attachment
 #### Build an image
 ```
-$ docker build . -f ./example/Dockerfile --no-cache -t example:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+docker build . -f ./example/Dockerfile --no-cache -t example:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
 ```
 or
 ```
-$ ./run.sh -b 2
+./run.sh -b 2
 ```
 or
 ```
-$ export APPNAME="example"
-$ export BUILD=2
-$ ./setup_apps.sh
+export APPNAME="example"
+export BUILD=2
+./setup_apps.sh
 ```
 
 #### Check the built image
 ```
-$ docker images
+docker images
 REPOSITORY                   TAG       IMAGE ID       CREATED        SIZE
 example                      latest    1dd7a6097ef0   3 hours ago    6.66GB
 ```
@@ -78,12 +78,12 @@ docker start example
 
 #### Run simpoint workflow and collect traces on an existing container
 ```
-$ ./run.sh -o . -b 0 -s 1 -t 1 -m 0
+./run.sh -o . -b 0 -s 1 -t 1 -m 0
 ```
 
 #### Run simulation with already collected simpoint traces on an existing container
 ```
-$ ./run.sh -o . -b 0 -s 0 -t 0 -m 4
+./run.sh -o . -b 0 -s 0 -t 0 -m 4
 ```
 
 ## Developers
