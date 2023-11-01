@@ -89,11 +89,65 @@ do
   esac
 done
 
+# functions
+wait_for () {
+  # ref: https://askubuntu.com/questions/674333/how-to-pass-an-array-as-function-argument
+  # 1: procedure name
+  # 2: task list
+  local procedure="$1"
+  shift
+  local taskPids=("$@")
+  echo "${taskPids[@]}"
+  echo "wait for all $procedure to finish..."
+  # ref: https://stackoverflow.com/a/29535256
+  for taskPid in ${taskPids[@]}; do
+    echo "wait for $taskPid $procedure process"
+    if wait $taskPid; then
+      echo "$procedure process $taskPid success"
+    else
+      echo "$procedure process $taskPid fail"
+      exit
+    fi
+  done
+}
+
+wait_for_non_child () {
+  # ref: https://askubuntu.com/questions/674333/how-to-pass-an-array-as-function-argument
+  # 1: procedure name
+  # 2: task list
+  local procedure="$1"
+  shift
+  local taskPids=("$@")
+  echo "${taskPids[@]}"
+  echo "wait for all $procedure to finish..."
+  # ref: https://stackoverflow.com/a/29535256
+  for taskPid in ${taskPids[@]}; do
+    echo "wait for $taskPid $procedure process"
+    while [ -d "/proc/$taskPid" ]; do
+      sleep 10 & wait $!
+    done
+  done
+}
+
+report_time () {
+  # 1: procedure name
+  # 2: start
+  # 3: end
+  local procedure="$1"
+  local start="$2"
+  local end="$3"
+  local runtime=$((end-start))
+  local hours=$((runtime / 3600));
+  local minutes=$(( (runtime % 3600) / 60 ));
+  local seconds=$(( (runtime % 3600) % 60 ));
+  echo "$procedure Runtime: $hours:$minutes:$seconds (hh:mm:ss)"
+}
+
 # build docker images and start containers
 echo "build docker images and start containers.."
 taskPids=()
-cat apps.list|while read APPNAME;
-do
+start=`date +%s`
+while read APPNAME ;do
   source setup_apps.sh
   source build_apps.sh
 
@@ -101,121 +155,107 @@ do
     # run simpoint/trace
     echo "run simpoint/trace.."
 
-    eval docker exec -i --privileged $APP_GROUPNAME /home/dcuser/run_simpoint_trace.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SIMPOINT" "$COLLECTTRACES" &
-    taskPids+=($!)
+    docker exec --privileged $APP_GROUPNAME /home/dcuser/run_simpoint_trace.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SIMPOINT" "$COLLECTTRACES" &
     sleep 2
+    while read -r line ;do
+      IFS=" " read PID CMD <<< $line
+      if [ "$CMD" == "/bin/bash /home/dcuser/run_simpoint_trace.sh $APPNAME $APP_GROUPNAME $BINCMD $SIMPOINT $COLLECTTRACES" ]; then
+        taskPids+=($PID)
+      fi
+    done < <(docker top $APP_GROUPNAME -eo pid,cmd)
   fi
-done
+done < apps.list
 
-echo "wait for all the simpoint/tracing..."
-for taskPid in ${taskPids[@]}; do
-  if wait $taskPid; then
-    echo "simpoint/trace process $taskPid success"
-  else
-    echo "simpoint/trace process $taskPid fail"
-    exit
-  fi
-done
+wait_for_non_child "simpoint/tracing" "${taskPids[@]}"
+end=`date +%s`
+report_time "post-processing" "$start" "$end"
 
 if [ $SCARABMODE ]; then
   # run Scarab simulation
   echo "run Scarab simulation.."
   taskPids=()
+  start=`date +%s`
 
-  cat apps.list|while read APPNAME;
-  do
+  while read APPNAME; do
     source setup_apps.sh
     while IFS=, read -r SCENARIONUM SCARABPARAMS; do
-      eval docker exec -i --privileged $APP_GROUPNAME /home/dcuser/run_scarab.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SCENARIONUM" "$SCARABPARAMS" "$SCARABMODE" &
-      taskPids+=($!)
+      docker exec --privileged $APP_GROUPNAME /home/dcuser/run_scarab.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SCENARIONUM" "$SCARABPARAMS" "$SCARABMODE" &
       sleep 2
+      while read -r line; do
+        IFS=" " read PID CMD <<< $line
+        if [ "$CMD" == "/bin/bash /home/dcuser/run_scarab.sh $APPNAME $APP_GROUPNAME $BINCMD $SCENARIONUM $SCARABPARAMS $SCARABMODE" ]; then
+          taskPids+=($PID)
+        fi
+      done < <(docker top $APP_GROUPNAME -eo pid,cmd)
     done < params.new
-  done
+  done < apps.list
 
-  echo "wait for all the Scarab simulations..."
-  for taskPid in ${taskPids[@]}; do
-    if wait $taskPid; then
-      echo "simulation process $taskPid success"
-    else
-      echo "simulation process $taskPid fail"
-      exit
-    fi
-  done
+  wait_for_non_child "Scarab-simulation" "${taskPids[@]}"
+  end=`date +%s`
+  report_time "Scarab-simulation" "$start" "$end"
 fi
 
 if [ $OUTDIR ]; then
   echo "copy results.."
   taskPids=()
-  cat apps.list|while read APPNAME;
-  do
+  start=`date +%s`
+  while read APPNAME ; do
     source setup_apps.sh
     if [ $SIMPOINT ]; then
-      eval docker cp $APP_GROUPNAME:/home/dcuser/simpoint_flow $OUTDIR &
+      copyCmd="docker cp $APP_GROUPNAME:/home/dcuser/simpoint_flow $OUTDIR"
+      eval $copyCmd &
     else
-      eval docker cp $APP_GROUPNAME:/home/dcuser/nonsimpoint_flow $OUTDIR &
+      copyCmd="docker cp $APP_GROUPNAME:/home/dcuser/nonsimpoint_flow $OUTDIR"
+      eval $copyCmd &
     fi
     taskPids+=($!)
     sleep 2
-  done
+  done < apps.list
 
-  echo "wait for all copying results..."
-  for taskPid in ${taskPids[@]}; do
-    if wait $taskPid; then
-      echo "copying process $taskPid success"
-    else
-      echo "copying process $taskPid fail"
-      exit
-    fi
-  done
+  wait_for "copying-results" "${taskPids[@]}"
+  end=`date +%s`
+  report_time "copying-results" "$start" "$end"
 fi
 
 if [ $CLEANUP ]; then
   echo "clean up the containers.."
   # solr requires extra cleanup
   taskPids=()
-  cat apps.list|while read APPNAME;
-  do
+  start=`date +%s`
+  while read APPNAME ;do
     source setup_apps.sh
     case $APPNAME in
       solr)
-        eval docker rm web_search_client &
+        rmCmd="docker rm web_search_client"
+        eval $rmCmd &
         taskPids+=($!)
+        sleep 2
         ;;
     esac
     docker stop $APP_GROUPNAME
-    eval docker rm $APP_GROUPNAME &
+    rmCmd="docker rm $APP_GROUPNAME"
+    eval $rmCmd &
     taskPids+=($!)
     sleep 2
-  done
+  done < apps.list
 
-  echo "wait for all the containers cleaned up..."
-  for taskPid in ${taskPids[@]}; do
-    if wait $taskPid; then
-      echo "container cleaning up process $taskPid success"
-    else
-      echo "container cleaning up process $taskPid fail"
-      exit
-    fi
-  done
+  wait_for "container-cleanup" "${taskPids[@]}"
+  end=`date +%s`
+  report_time "container-cleanup" "$start" "$end"
 
   echo "clean up the volumes.."
   # remove docker volume
   taskPids=()
-  cat apps.list|while read APPNAME;
-  do
+  start=`date +%s`
+  while read APPNAME ; do
     source setup_apps.sh
-    eval docker volume rm $APP_GROUPNAME &
+    rmCmd="docker volume rm $APP_GROUPNAME"
+    eval $rmCmd &
     taskPids+=($!)
     sleep 2
-  done
+  done < apps.list
 
-  echo "wait for all the volumes cleaned up..."
-  for taskPid in ${taskPids[@]}; do
-    if wait $taskPid; then
-      echo "volume cleaning up process $taskPid success"
-    else
-      echo "volume cleaning up process $taskPid fail"
-      exit
-    fi
-  done
+  wait_for "volume-cleanup" "${taskPids[@]}"
+  end=`date +%s`
+  report_time "volume-cleanup" "$start" "$end"
 fi

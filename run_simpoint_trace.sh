@@ -59,7 +59,7 @@ run_simpoint () {
 }
 
 # Get command to run for Spe17
-if [ "$APP_GROUPNAME" == "spec2017" ]; then
+if [ "$APP_GROUPNAME" == "spec2017" ] && [ "$APPNAME" != "clang" ]; then
   # environment
   cd /home/dcuser/cpu2017
   source ./shrc

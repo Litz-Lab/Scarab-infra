@@ -32,5 +32,5 @@ bst = xgboost.train(params, dtrain, 1600, [(dtrain, 'train')])
 model = treelite.Model.from_xgboost(bst)
 toolchain = 'gcc'
 print("Saving Model")
-model.export_lib(toolchain=toolchain, libpath='/home/dcuser/libmymodel.so', params={'parallel_comp': 4}, verbose=True)
-#model.export_srcpkg(platform='unix', toolchain=toolchain, pkgpath='./mymodel.zip', libname='libmymodel.so', verbose=True, params={'parallel_comp':30})
+#model.export_lib(toolchain=toolchain, libpath='/home/dcuser/libmymodel.so', params={'parallel_comp': 4}, verbose=True)
+model.export_srcpkg(platform='unix', toolchain=toolchain, pkgpath='./mymodel.zip', libname='libmymodel.so', verbose=True, params={'parallel_comp':30})

@@ -9,16 +9,23 @@ INCLUDE+ ./common/Dockerfile.common
 COPY ./spec2017/cpu2017-1_0_5.iso /home/dcuser/
 
 USER root
-RUN apt-get install -y gfortran
-# RUN mount -t iso9660 -o ro,exec,loop cpu2017-1_0_5.iso ./cpu2017
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    gfortran \
+    lsb-release \
+    software-properties-common
+
 
 # Switch to the dcuser user
+WORKDIR /home/dcuser
 USER dcuser
 
-RUN cd /home/dcuser && mkdir cpu2017_install && echo "dcuser" | sudo -S mount -t iso9660 -o ro,exec,loop cpu2017-1_0_5.iso ./cpu2017_install
-RUN cd /home/dcuser && mkdir cpu2017 && cd cpu2017_install && echo "yes" | ./install.sh -d /home/dcuser/cpu2017
+RUN echo "dcuser" | wget https://apt.llvm.org/llvm.sh
+RUN chmod u+x llvm.sh
+RUN echo "dcuser" | sudo -S ./llvm.sh 16
 
-COPY ./spec2017/memtrace.cfg /home/dcuser/cpu2017/config/
+COPY ./spec2017/compile-538-clang.sh /home/dcuser
+COPY ./spec2017/memtrace.cfg /home/dcuser
+COPY ./spec2017/entrypoint.sh /home/dcuser
 
 # Start your application
 CMD ["/bin/bash"]

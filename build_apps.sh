@@ -9,7 +9,7 @@ fi
 #docker volume create $APP_GROUPNAME
 
 # start container
-case $APPNAME in
+case $APP_GROUPNAME in
   solr)
     # solr requires the host machine to download the data (14GB) from cloudsuite by first running "docker run --name web_search_dataset cloudsuite/web-search:dataset" once
     if [ $( docker ps -a -f name=web_search_dataset | wc -l ) -eq 2 ]; then
@@ -21,9 +21,16 @@ case $APPNAME in
     # must mount dataset volume for server and docker to start querying
     docker exec -it --privileged $APP_GROUPNAME /bin/bash -c "/entrypoint.sh"
     docker exec -it -d --privileged $APP_GROUPNAME /bin/bash -c '(docker run -it --name web_search_client --net host cloudsuite/web-search:client $(hostname -I) 10; pkill java)'
+    docker run -dit --privileged --name $APP_GROUPNAME -v $APP_GROUPNAME:/home/dcuser $APP_GROUPNAME:latest /bin/bash
+    docker start $APP_GROUPNAME
+    ;;
+  spec2017)
+    docker run -dit --privileged --name $APP_GROUPNAME -v $APP_GROUPNAME:/home/dcuser $APP_GROUPNAME:latest /bin/bash
+    docker start $APP_GROUPNAME
+    docker exec --privileged $APP_GROUPNAME /bin/bash -c "/home/dcuser/entrypoint.sh"
     ;;
   *)
+    docker run -dit --privileged --name $APP_GROUPNAME -v $APP_GROUPNAME:/home/dcuser $APP_GROUPNAME:latest /bin/bash
+    docker start $APP_GROUPNAME
     ;;
 esac
-docker run -dit --privileged --name $APP_GROUPNAME -v $APP_GROUPNAME:/home/dcuser $APP_GROUPNAME:latest /bin/bash
-docker start $APP_GROUPNAME &

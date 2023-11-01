@@ -11,7 +11,7 @@ import treelite_runtime
 dtest = treelite_runtime.DMatrix(df.iloc[:, 1:29])
 predictor = treelite_runtime.Predictor(model, nthread=1, verbose=True)
 print("Predict")
-for i in range(20):
+for i in range(10):
     print(i)
     out_pred = predictor.predict(dtest)
 #print(out_pred)
