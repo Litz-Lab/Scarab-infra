@@ -49,7 +49,7 @@ You need to provide the list of the applications you want to run in 'apps.list' 
 ### Step-by-step on an interactive attachment
 #### Build an image
 ```
-docker build . -f ./example/Dockerfile --no-cache -t example:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build . -f ./example/Dockerfile --no-cache -t example:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
 ```
 or
 ```
