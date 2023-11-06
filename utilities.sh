@@ -8,16 +8,16 @@ wait_for () {
   local procedure="$1"
   shift
   local taskPids=("$@")
+  echo "${taskPids[@]}"
   echo "wait for all $procedure to finish..."
   # ref: https://stackoverflow.com/a/29535256
   for taskPid in ${taskPids[@]}; do
+    echo "wait for $taskPid $procedure process"
     if wait $taskPid; then
       echo "$procedure process $taskPid success"
     else
       echo "$procedure process $taskPid fail"
-      # # ref: https://serverfault.com/questions/479460/find-command-from-pid
-      # cat /proc/${taskPid}/cmdline | xargs -0 echo
-      # exit
+      exit
     fi
   done
 }
@@ -34,4 +34,22 @@ report_time () {
   local minutes=$(( (runtime % 3600) / 60 ));
   local seconds=$(( (runtime % 3600) % 60 ));
   echo "$procedure Runtime: $hours:$minutes:$seconds (hh:mm:ss)"
+}
+
+wait_for_non_child () {
+  # ref: https://askubuntu.com/questions/674333/how-to-pass-an-array-as-function-argument
+  # 1: procedure name
+  # 2: task list
+  local procedure="$1"
+  shift
+  local taskPids=("$@")
+  echo "${taskPids[@]}"
+  echo "wait for all $procedure to finish..."
+  # ref: https://stackoverflow.com/a/29535256
+  for taskPid in ${taskPids[@]}; do
+    echo "wait for $taskPid $procedure process"
+    while [ -d "/proc/$taskPid" ]; do
+      sleep 10 & wait $!
+    done
+  done
 }
