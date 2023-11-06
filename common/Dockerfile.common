@@ -73,6 +73,10 @@ RUN mkdir /home/dcuser/fingerprint_src/build && \
     cp ./libfpg.so /home/dcuser/libfpg.so
 
 # Copy workflow simpoint/no_simpoint script
+COPY --chown=dcuser utilities.sh /home/dcuser/utilities.sh
+COPY --chown=dcuser run_clustering.sh /home/dcuser/run_clustering.sh
+COPY --chown=dcuser run_trace_post_processing.sh /home/dcuser/run_trace_post_processing.sh
+
 COPY --chown=dcuser run_simpoint_trace.sh /home/dcuser/run_simpoint_trace.sh
 COPY --chown=dcuser run_scarab.sh /home/dcuser/run_scarab.sh
 COPY --chown=dcuser gather_fp_pieces.py /home/dcuser/gather_fp_pieces.py

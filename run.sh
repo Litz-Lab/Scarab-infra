@@ -149,7 +149,10 @@ taskPids=()
 start=`date +%s`
 while read APPNAME ;do
   source setup_apps.sh
-  source build_apps.sh
+
+  if [ $BUILD ]; then
+    source build_apps.sh
+  fi
 
   if [ $SIMPOINT ] || [ $COLLECTTRACES ]; then
     # run simpoint/trace

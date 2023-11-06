@@ -109,7 +109,7 @@ case $APPNAME in
     BINCMD="taskset -c 3 /home/dcuser/cpu2017/benchspec/CPU/compile-538-clang.sh 538.imagick_r_train"
     ;;
   example)
-    BINCMD="for i in {1..100000000}\; do echo -n \"-\"; done"
+    BINCMD="/home/dcuser/scarab/utils/qsort/test_qsort"
     ;;
   *)
     echo "unknown application"

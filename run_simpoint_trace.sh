@@ -8,55 +8,7 @@ SEGSIZE=100000000
 SIMPOINT="$4"
 COLLECTTRACES="$5"
 
-# functions
-wait_for () {
-  # ref: https://askubuntu.com/questions/674333/how-to-pass-an-array-as-function-argument
-  # 1: procedure name
-  # 2: task list
-  local procedure="$1"
-  shift
-  local taskPids=("$@")
-  echo "wait for all $procedure to finish..."
-  # ref: https://stackoverflow.com/a/29535256
-  for taskPid in ${taskPids[@]}; do
-    if wait $taskPid; then
-      echo "$procedure process $taskPid success"
-    else
-      echo "$procedure process $taskPid fail"
-      # # ref: https://serverfault.com/questions/479460/find-command-from-pid
-      # cat /proc/${taskPid}/cmdline | xargs -0 echo
-      # exit
-    fi
-  done
-}
-
-report_time () {
-  # 1: procedure name
-  # 2: start
-  # 3: end
-  local procedure="$1"
-  local start="$2"
-  local end="$3"
-  local runtime=$((end-start))
-  local hours=$((runtime / 3600));
-  local minutes=$(( (runtime % 3600) / 60 ));
-  local seconds=$(( (runtime % 3600) % 60 ));
-  echo "$procedure Runtime: $hours:$minutes:$seconds (hh:mm:ss)"
-}
-
-run_simpoint () {
-  local lines=($(wc -l $APPHOME/fingerprint/bbfp))
-  # round to nearest int
-  local maxK=$(echo "(sqrt($lines)+0.5)/1" | bc)
-  echo "fingerprint size: $lines, maxk: $maxK"
-  local spCmd="/home/dcuser/simpoint -maxK $maxK -fixedLength off -numInitSeeds 1000 -loadFVFile $APPHOME/fingerprint/bbfp -saveSimpoints $APPHOME/simpoints/opt.p -saveSimpointWeights $APPHOME/simpoints/opt.w -saveLabels $APPHOME/simpoints/opt.l &> $APPHOME/simpoints/simp.opt.log"
-  echo "cluster fingerprint..."
-  echo "command: ${spCmd}"
-  start=`date +%s`
-  eval $spCmd
-  end=`date +%s`
-  report_time "clustering" "$start" "$end"
-}
+source /home/dcuser/utilities.sh
 
 # Get command to run for Spe17
 if [ "$APP_GROUPNAME" == "spec2017" ] && [ "$APPNAME" != "clang" ]; then
@@ -85,7 +37,7 @@ if [ "$SIMPOINT" == "2" ]; then
   # dir for all relevant data: fingerprint, traces, log, sim stats...
   mkdir -p /home/dcuser/simpoint_flow/$APPNAME
   cd /home/dcuser/simpoint_flow/$APPNAME
-  mkdir -p fingerprint simpoints traces
+  mkdir -p traces
   APPHOME=/home/dcuser/simpoint_flow/$APPNAME
 
 
@@ -131,61 +83,39 @@ if [ "$SIMPOINT" == "2" ]; then
     cp bin/modules.log raw/modules.log
     $DYNAMORIO_HOME/clients/bin64/drraw2trace -jobs 40 -indir ./raw/ -chunk_instr_count $SEGSIZE &
     taskPids+=($!)
+    cd -
   done
 
   wait_for "whole app raw2trace" "${taskPids[@]}"
   end=`date +%s`
   report_time "whole app raw2trace" "$start" "$end"
 
-  numChunk=$(unzip -l ./trace/dr*.zip | grep "chunk." | wc -l)
-  echo "total number of segments/chunks: $numChunk"
-
-  # post-processing
-  taskPids=()
-  start=`date +%s`
-
-  cd $APPHOME/fingerprint
-  mkdir -p pieces
-
-  wholeTrace=$(ls $APPHOME/traces/whole/trace/dr*.zip)
-  for chunkID in $(seq 0 $(( $numChunk-1 )))
-  do
-    mkdir -p $chunkID
-    # do not care about the params file
-    cd $chunkID
-    scarabCmd="/home/dcuser/scarab/src/scarab --frontend memtrace \
-              --cbp_trace_r0=$wholeTrace \
-              --memtrace_modules_log=$APPHOME/traces/whole/raw/ \
-              --mode=trace_bbv_distributed \
-              --chunk_instr_count=$SEGSIZE \
-              --memtrace_roi_begin=$(( $chunkID * $SEGSIZE + 1 )) \
-              --memtrace_roi_end=$(( $chunkID * $SEGSIZE + $SEGSIZE )) \
-              --trace_bbv_output=$APPHOME/fingerprint/pieces/chunk.$chunkID \
-              &> sim.log"
-    echo "processing chunkID ${chunkID}..."
-    echo "command: ${scarabCmd}"
-    eval $scarabCmd &
-    taskPids+=($!)
-    cd -
-  done
-
-  wait_for "post-processing" "${taskPids[@]}"
-  end=`date +%s`
-  report_time "post-processing" "$start" "$end"
-
-  # aggregate the fingerprint pieces
-  cd /home/dcuser
-  python3 ./gather_fp_pieces.py $APPHOME/fingerprint/pieces $numChunk
-  cp $APPHOME/fingerprint/pieces/bbfp $APPHOME/fingerprint/bbfp
+  # continue if only one trace file
+  numTrace=$(find -name "dr*.trace.zip" | grep "drmemtrace.*.trace.zip" | wc -l)
+  numDrFolder=$(find -type d -name "drmemtrace.*.dir" | grep "drmemtrace.*.dir" | wc -l)
+  if [ "$numTrace" == "1" ] && [ "$numDrFolder" == "1" ]; then
+    ###HEERREEE prepare raw dir, trace dir
+    modulesDir=$(dirname $(ls $APPHOME/traces/whole/drmemtrace.*.dir/raw/modules.log))
+    wholeTrace=$(ls $APPHOME/traces/whole/drmemtrace.*.dir/trace/dr*.zip)
+    echo "modulesDIR: $modulesDir"
+    echo "wholeTrace: $wholeTrace"
+    bash /home/dcuser/run_trace_post_processing.sh $APPHOME $modulesDir $wholeTrace $SEGSIZE
+  else
+  # otherwise ask the user to run manually
+    echo -e "There are multiple trace files.\n\
+    Decide and run \"/home/dcuser/run_trace_post_processing.sh <OUTDIR> <MODULESDIR> <TRACEFILE> <SEGSIZE>\"\n\
+    Then run /home/dcuser/run_clustering.sh <FPFILE> <OUTDIR>"
+    exit
+  fi
 
   # clustering
-  run_simpoint
+  bash /home/dcuser/run_clustering.sh $APPHOME/fingerprint/bbfp $APPHOME
 
 elif [ "$SIMPOINT" == "1" ]; then
   # dir for all relevant data: fingerprint, traces, log, sim stats...
   mkdir -p /home/dcuser/simpoint_flow/$APPNAME
   cd /home/dcuser/simpoint_flow/$APPNAME
-  mkdir -p fingerprint simpoints traces
+  mkdir -p fingerprint traces
   APPHOME=/home/dcuser/simpoint_flow/$APPNAME
 
 
@@ -218,7 +148,7 @@ elif [ "$SIMPOINT" == "1" ]; then
   ################################################################
 
   # run SimPoint clustering
-  run_simpoint
+  bash /home/dcuser/run_clustering.sh $APPHOME/fingerprint/bbfp $APPHOME
 
   ################################################################
   # read in simpoint
