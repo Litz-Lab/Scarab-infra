@@ -81,7 +81,9 @@ if [ "$SIMPOINT" == "2" ]; then
     cp raw/modules.log raw/modules.log.bak
     echo "dcuser" | sudo -S python2 /home/dcuser/scarab/utils/memtrace/portabilize_trace.py .
     cp bin/modules.log raw/modules.log
-    $DYNAMORIO_HOME/clients/bin64/drraw2trace -jobs 40 -indir ./raw/ -chunk_instr_count $SEGSIZE &
+    # $DYNAMORIO_HOME/clients/bin64/drraw2trace -jobs 40 -indir ./raw/ -chunk_instr_count $SEGSIZE &
+    # use the default chunk size (10M) due to conversion issue
+    $DYNAMORIO_HOME/clients/bin64/drraw2trace -jobs 40 -indir ./raw/ &
     taskPids+=($!)
     cd -
   done
