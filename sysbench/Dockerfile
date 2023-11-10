@@ -19,7 +19,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
 # Switch to the dcuser user
 USER dcuser
 RUN git clone https://github.com/akopytov/sysbench.git
-RUN cd sysbench && ./autogen.sh && ./configure && make -j && echo "dcuer" | sudo -S make install
+RUN cd sysbench && ./autogen.sh && ./configure && make -j && echo "dcuser" | sudo -S make install
 
 # Start your application
 CMD ["/bin/bash"]
