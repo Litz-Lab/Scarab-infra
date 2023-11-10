@@ -26,8 +26,6 @@ RUN echo "dcuser" | sudo -S apt-get update
 RUN echo "dcuser" | sudo -S apt-get install -y mongodb-org=5.0.20 mongodb-org-database=5.0.20 mongodb-org-server=5.0.20 mongodb-org-shell=5.0.20 mongodb-org-mongos=5.0.20 mongodb-org-tools=5.0.20
 RUN echo "dcuser" | sudo -S chmod 777 /var/lib/mongodb
 
-RUN echo "dcuser" | sudo -S taskset -c 0 systemctl start mongod
-
 RUN git clone https://github.com/mongodb/mongo-perf.git
 RUN pip install -r ./mongo-perf/requirements.txt
 RUN cd mongo-perf && git reset --hard 11aaf7c
