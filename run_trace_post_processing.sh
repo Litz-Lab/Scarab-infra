@@ -6,21 +6,41 @@ OUTDIR=$1
 MODULESDIR=$2
 TRACEFILE=$3
 SEGSIZE=$4
+CHUNKSIZE=$5
 
 cd $OUTDIR
 mkdir -p fingerprint
+cd fingerprint
+mkdir -p pieces
 
 numChunk=$(unzip -l $TRACEFILE | grep "chunk." | wc -l)
-# chunk size is 10M while SimPoint segment size is 100M
-numSegment=$(echo "1 + (($numChunk - 1) / 10)" | bc)
-echo "total number of trace chunks and Simpoint segments: $numChunk $numSegment"
+
+# rounded-up instr count
+numInsts=$(echo "$numChunk * $CHUNKSIZE" | bc)
+numSegment=$(echo "1 + (($numInsts - 1) / $SEGSIZE)" | bc)
+echo "total number of trace chunks $numChunk"
+echo "total number of instructions ~$numInsts"
+echo "initial number of segments (of size $SEGSIZE) $numSegment"
+while [ "$numSegment" -lt 1000 ]; do
+  echo "$numSegment is smaller than 1000, reduce SEGSIZE by 10x"
+
+  SEGSIZE=$(echo "$SEGSIZE / 10" | bc)
+  # if segsize is smaller than the chunksize, the total number of segments
+  # becomes incorrect. the following steps will fail. so quit.
+  if [ "$SEGSIZE" -lt "$CHUNKSIZE" ]; then
+    echo "new SEGSIZE is $SEGSIZE, less than CHUNKSIZE $CHUNKSIZE, too small?? quit!"
+    exit
+  fi
+  numSegment=$(echo "1 + (($numInsts - 1) / $SEGSIZE)" | bc)
+  echo "new SEGSIZE is $SEGSIZE, new number of segments is $numSegment"
+done
+
+echo "final SEGSIZE is $SEGSIZE, written to $OUTDIR/fingerprint/segment_size"
+echo "$SEGSIZE" > $OUTDIR/fingerprint/segment_size
 
 # post-processing
 taskPids=()
 start=`date +%s`
-
-cd fingerprint
-mkdir -p pieces
 
 for segmentID in $(seq 0 $(( $numSegment-1 )))
 do

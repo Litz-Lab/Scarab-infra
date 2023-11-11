@@ -4,7 +4,12 @@
 APPNAME="$1"
 APP_GROUPNAME="$2"
 BINCMD="$3"
+# this is fixed/settled for NON trace post-processing flow.
+# for trace post-processing flow, SEGSIZE can be reduced
+# if the segment number is not sufficient for clustering
 SEGSIZE=100000000
+# chunk size within trace file. Use 10M due to conversion issue.
+CHUNKSIZE=10000000
 SIMPOINT="$4"
 COLLECTTRACES="$5"
 
@@ -81,9 +86,7 @@ if [ "$SIMPOINT" == "2" ]; then
     cp raw/modules.log raw/modules.log.bak
     echo "dcuser" | sudo -S python2 /home/dcuser/scarab/utils/memtrace/portabilize_trace.py .
     cp bin/modules.log raw/modules.log
-    # $DYNAMORIO_HOME/clients/bin64/drraw2trace -jobs 40 -indir ./raw/ -chunk_instr_count $SEGSIZE &
-    # use the default chunk size (10M) due to conversion issue
-    $DYNAMORIO_HOME/clients/bin64/drraw2trace -jobs 40 -indir ./raw/ &
+    $DYNAMORIO_HOME/clients/bin64/drraw2trace -jobs 40 -indir ./raw/ -chunk_instr_count $CHUNKSIZE &
     taskPids+=($!)
     cd -
   done
@@ -101,11 +104,11 @@ if [ "$SIMPOINT" == "2" ]; then
     wholeTrace=$(ls $APPHOME/traces/whole/drmemtrace.*.dir/trace/dr*.zip)
     echo "modulesDIR: $modulesDir"
     echo "wholeTrace: $wholeTrace"
-    bash /home/dcuser/run_trace_post_processing.sh $APPHOME $modulesDir $wholeTrace $SEGSIZE
+    bash /home/dcuser/run_trace_post_processing.sh $APPHOME $modulesDir $wholeTrace $SEGSIZE $CHUNKSIZE
   else
   # otherwise ask the user to run manually
     echo -e "There are multiple trace files.\n\
-    Decide and run \"/home/dcuser/run_trace_post_processing.sh <OUTDIR> <MODULESDIR> <TRACEFILE> <SEGSIZE>\"\n\
+    Decide and run \"/home/dcuser/run_trace_post_processing.sh <OUTDIR> <MODULESDIR> <TRACEFILE> <SEGSIZE> <CHUNKSIZE>\"\n\
     Then run /home/dcuser/run_clustering.sh <FPFILE> <OUTDIR>"
     exit
   fi
