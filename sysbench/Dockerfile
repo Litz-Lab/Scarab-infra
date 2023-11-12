@@ -14,12 +14,16 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libaio-dev \
     libmysqlclient-dev \
     libssl-dev \
-    libpq-dev
+    libpq-dev \
+    mysql-server \
+    postgresql
+
+RUN chmod -R 755 /var/run/mysqld
 
 # Switch to the dcuser user
 USER dcuser
 RUN git clone https://github.com/akopytov/sysbench.git
-RUN cd sysbench && ./autogen.sh && ./configure && make -j && echo "dcuser" | sudo -S make install
+COPY ./sysbench/entrypoint.sh /home/dcuser
 
 # Start your application
 CMD ["/bin/bash"]

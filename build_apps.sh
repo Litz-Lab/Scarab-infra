@@ -29,6 +29,11 @@ case $APP_GROUPNAME in
     docker start $APP_GROUPNAME
     docker exec --privileged $APP_GROUPNAME /bin/bash -c "/home/dcuser/entrypoint.sh"
     ;;
+  sysbench)
+    docker run -dit --privileged --name $APP_GROUPNAME -v $APP_GROUPNAME:/home/dcuser $APP_GROUPNAME:latest /bin/bash
+    docker start $APP_GROUPNAME
+    docker exec --privileged $APP_GROUPNAME /bin/bash -c "/home/dcuser/entrypoint.sh \"$APPNAME\""
+    ;;
   *)
     docker run -dit --privileged --name $APP_GROUPNAME -v $APP_GROUPNAME:/home/dcuser $APP_GROUPNAME:latest /bin/bash
     docker start $APP_GROUPNAME

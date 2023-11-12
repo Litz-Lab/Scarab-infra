@@ -47,7 +47,7 @@ case $APPNAME in
     echo "mongo-perf"
     APP_GROUPNAME="mongo-perf"
     ;;
-  sysbench)
+  mysql | postgres)
     echo "sysbench"
     APP_GROUPNAME="sysbench"
     ;;
@@ -114,13 +114,23 @@ case $APPNAME in
     # command to run the server
     BINCMD="/usr/bin/mongod --config /etc/mongod.conf"
     # command for the workload generator (benchmark) - TODO: automate the server-client run
-    #BINCMD="taskset -c 3 python3 /home/dcuser/mongo-perf/benchrun.py -f /home/dcuser/mongo-perf/testcases/$APPNAME.js -t 1"
+    CLIENT_BINCMD="python3 /home/dcuser/mongo-perf/benchrun.py -f /home/dcuser/mongo-perf/testcases/$APPNAME.js -t 1"
     ;;
   clang)
     BINCMD="/home/dcuser/cpu2017/benchspec/CPU/compile-538-clang.sh 538.imagick_r_train"
     ;;
   gcc)
     BINCMD="/bin/bash /home/dcuser/cpu2017/bin/runcpu --config=memtrace --action=build 538.imagick_r"
+    ;;
+  mysql)
+    #sudo -u mysql $DYNAMORIO_HOME/bin64/drrun -t drcachesime -jobs 40 -outdir /home/dcuser/simpoint_flow/mysql/traces/whole -offline -- /usr/sbin/mysqld --basedir=/usr --datadir=/var/lib/mysql --plugin-dir=/usr/lib/mysql/plugin --log-error=/var/log/mysql/error.log --pid-file=53302ceef040.pid
+    BINCMD="/usr/sbin/mysqld --basedir=/usr --datadir=/var/lib/mysql --plugin-dir=/usr/lib/mysql/plugin --log-error=/var/log/mysql/error.log --pid-file=53302ceef040.pid"
+    CLIENT_BINCMD="sysbench /home/dcuser/sysbench/src/lua/oltp_read_write.lua --mysql-host=127.0.0.1 --mysql-port=3306 --mysql-user=sbtest --db-driver=mysql --tables=10 --table-size=10000 --time=600 run"
+    ;;
+  postgres)
+    #sudo -u postgres $DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir /home/dcuser/simpoint_flow/postgres/traces/whole -offline -- /usr/lib/postgresql/12/bin/postgres -D /var/lib/postgresql/12/main -c config_file=/etc/postgresql/12/main/postgresql.conf
+    BINCMD="/usr/lib/postgresql/12/bin/postgres -D /var/lib/postgresql/12/main -c config_file=/etc/postgresql/12/main/postgresql.conf"
+    CLIENT_BINCMD="sysbench /home/dcuser/sysbench/src/lua/oltp_point_select.lua --pgsql-host=127.0.0.1 --pgsql-port=5432 --pgsql-user=sbtest --pgsql-password=password --db-driver=pgsql --tables=10 --table-size=10000 --time=600 run"
     ;;
   example)
     BINCMD="/home/dcuser/scarab/utils/qsort/test_qsort"

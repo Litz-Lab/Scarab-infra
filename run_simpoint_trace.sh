@@ -16,7 +16,7 @@ COLLECTTRACES="$5"
 source /home/dcuser/utilities.sh
 
 # Get command to run for Spe17
-if [ "$APP_GROUPNAME" == "spec2017" ] && [ "$APPNAME" != "clang" ]; then
+if [ "$APP_GROUPNAME" == "spec2017" ] && [ "$APPNAME" != "clang" ] && [ "$APPNAME" != "gcc" ]; then
   # environment
   cd /home/dcuser/cpu2017
   source ./shrc
@@ -59,7 +59,15 @@ if [ "$SIMPOINT" == "2" ]; then
 
   mkdir -p $APPHOME/traces/whole
   cd $APPHOME/traces/whole
-  traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces/whole -offline -- ${BINCMD}"
+  traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces/whole -offline"
+  if [ "$APPNAME" == "mysql" ] || [ "$APPNAME" == "postgres" ]; then
+    sudo chown -R $APPNAME:$APPNAME $APPHOME/traces/whole
+    traceCmd="sudo -u $APPNAME "+$traceCmd+" -exit_after_tracing 15200000000 -- ${BINCMD}"
+  elif [ "$APPNAME" == "long_multi_update" ]; then
+    traceCmd="sudo -u $APPNAME "+$traceCmd+" -exit_after_tracing 68000000000 -- ${BINCMD}"
+  else
+    traceCmd=$traceCmd+" -- ${BINCMD}"
+  fi
   echo "tracing whole app..."
   echo "command: ${traceCmd}"
   # if [ "$APP_GROUPNAME" == "spec2017" ]; then
@@ -72,6 +80,9 @@ if [ "$SIMPOINT" == "2" ]; then
 
   wait_for "whole app tracing" "${taskPids[@]}"
   end=`date +%s`
+  if [ "$APPNAME" == "mysql" ] || [ "$APPNAME" == "postgres" ]; then
+    sudo chown -R dcuser:dcuser $APPHOME/traces/whole
+  fi
   report_time "whole app tracing" "$start" "$end"
 
   taskPids=()
