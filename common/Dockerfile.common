@@ -81,6 +81,9 @@ COPY --chown=dcuser run_simpoint_trace.sh /home/dcuser/run_simpoint_trace.sh
 COPY --chown=dcuser run_scarab.sh /home/dcuser/run_scarab.sh
 COPY --chown=dcuser gather_fp_pieces.py /home/dcuser/gather_fp_pieces.py
 
+COPY --chown=dcuser run_scarab_mode_4.py /home/dcuser/run_scarab_mode_4.py
+COPY --chown=dcuser gather_cluster_results.py /home/dcuser/gather_cluster_results.py
+
 # Clone the Scarab repository
 # Comment out if you don't use scarab at all and don't have ssh key permitted to clone 'scarab_hlitz'
 RUN cd /home/dcuser && git clone -b decoupled_fe git@github.com:hlitz/scarab_hlitz.git scarab

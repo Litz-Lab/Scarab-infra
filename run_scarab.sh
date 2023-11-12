@@ -6,9 +6,12 @@ APP_GROUPNAME="$2"
 BINCMD="$3"
 SCENARIONUM="$4"
 SCARABPARAMS="$5"
+# this is fixed/settled for NON trace post-processing flow.
+# for trace post-processing flow, SEGSIZE is read from file
 SEGSIZE=100000000
 SCARABMODE="$6"
 
+# TODO: get all cmd for spec in advance instead of in place
 # Get command to run for Spe17
 if [ "$APP_GROUPNAME" == "spec2017" ]; then
   # environment
@@ -32,7 +35,44 @@ if [ "$APP_GROUPNAME" == "spec2017" ]; then
   done
 fi
 
-if [ "$SCARABMODE" == "3" ] || [ "$SCARABMODE" == "4" ]; then
+if [ "$SCARABMODE" == "4" ]; then
+  cd /home/dcuser/simpoint_flow/$APPNAME
+  mkdir -p simulations
+  APPHOME=/home/dcuser/simpoint_flow/$APPNAME
+
+  cd simulations
+  mkdir $SCENARIONUM
+
+  cd $APPHOME/traces/whole
+  # continue if only one trace file
+  numTrace=$(find -name "dr*.trace.zip" | grep "drmemtrace.*.trace.zip" | wc -l)
+  numDrFolder=$(find -type d -name "drmemtrace.*.dir" | grep "drmemtrace.*.dir" | wc -l)
+  if [ "$numTrace" == "1" ] && [ "$numDrFolder" == "1" ]; then
+    ###HEERREEE prepare raw dir, trace dir
+    SCARABHOME=/home/dcuser/scarab/
+    SPDIR=$APPHOME/simpoints/
+    OUTDIR=$APPHOME/simulations/$SCENARIONUM/
+    modulesDir=$(dirname $(ls $APPHOME/traces/whole/drmemtrace.*.dir/raw/modules.log))
+    wholeTrace=$(ls $APPHOME/traces/whole/drmemtrace.*.dir/trace/dr*.zip)
+    echo "modulesDIR: $modulesDir"
+    echo "wholeTrace: $wholeTrace"
+
+    segmentSizeFile="$APPHOME/fingerprint/segment_size"
+    if [ ! -f $segmentSizeFile ]
+    then
+            echo "$segmentSizeFile does not exist"
+            exit
+    fi
+    SEGSIZE=$(cat "$segmentSizeFile")
+    echo "SEGSIZE read from $segmentSizeFile is $SEGSIZE"
+    bash /home/dcuser/run_scarab_mode_4.sh "$SCARABHOME" "$MODULESDIR" "$TRACEFILE" "$SCARABPARAMS" "$SPDIR" "$SEGSIZE" "$OUTDIR"
+  else
+  # otherwise ask the user to run manually
+    echo -e "There are multiple trace files.\n\
+    Decide and run \"/home/dcuser/run_scarab_mode_4.sh <SCARABHOME> <MODULESDIR> <TRACEFILE> "<SCARABPARAMS>" <SPDIR> <SEGSIZE> <OUTDIR>\""
+    exit
+  fi
+elif [ "$SCARABMODE" == "3" ]; then
   cd /home/dcuser/simpoint_flow/$APPNAME
   mkdir -p simulations evaluations
   APPHOME=/home/dcuser/simpoint_flow/$APPNAME
@@ -46,20 +86,6 @@ if [ "$SCARABMODE" == "3" ] || [ "$SCARABMODE" == "4" ]; then
   done < $APPHOME/simpoints/opt.p
 
   ################################################################
-  # trace-based simulations
-
-  if [ "$SCARABMODE" == "4" ]; then
-    # map of trace file
-    declare -A traceMap
-    for clusterID in "${!clusterMap[@]}"
-    do
-      # traceMap[$clusterID]=(ls $APPHOME/traces/$clusterID/trace/)
-      traceMap[$clusterID]=$(ls $APPHOME/traces/$clusterID/trace/window.0000)
-      # TODO: make sure one trace file
-    done
-  fi
-
-  ################################################################
   # trace-based or exec-driven simulations
   taskPids=()
   start=`date +%s`
@@ -69,22 +95,20 @@ if [ "$SCARABMODE" == "3" ] || [ "$SCARABMODE" == "4" ]; then
     mkdir -p $APPHOME/simulations/$SCENARIONUM/$clusterID
     cp /home/dcuser/scarab/src/PARAMS.sunny_cove $APPHOME/simulations/$SCENARIONUM/$clusterID/PARAMS.in
     cd $APPHOME/simulations/$SCENARIONUM/$clusterID
-    if [ "$SCARABMODE" == "4" ]; then
-      scarabCmd="/home/dcuser/scarab/src/scarab --frontend memtrace --cbp_trace_r0=$APPHOME/traces/$clusterID/trace/window.0000/${traceMap[$clusterID]} --memtrace_modules_log=$APPHOME/traces/$clusterID/raw/ $SCARABPARAMS &> sim.log"
-    else
-      segID=${clusterMap[$clusterID]}
-      start_inst=$(( $segID * $SEGSIZE ))
-      scarabCmd="
-      python3 /home/dcuser/scarab/bin/scarab_launch.py --program=\"$BINCMD\" \
-      --simdir=\"$APPHOME/simulations/$SCENARIONUM/$clusterID\" \
-      --pintool_args=\"-hyper_fast_forward_count $start_inst\" \
-      --scarab_args=\"--inst_limit $SEGSIZE $SCARABPARAMS\" \
-      --scarab_stdout=\"$APPHOME/simulations/$SCENARIONUM/$clusterID/scarab.out\" \
-      --scarab_stderr=\"$APPHOME/simulations/$SCENARIONUM/$clusterID/scarab.err\" \
-      --pin_stdout=\"$APPHOME/simulations/$SCENARIONUM/$clusterID/pin.out\" \
-      --pin_stderr=\"$APPHOME/simulations/$SCENARIONUM/$clusterID/pin.err\" \
-      "
-    fi
+
+    segID=${clusterMap[$clusterID]}
+    start_inst=$(( $segID * $SEGSIZE ))
+    scarabCmd="
+    python3 /home/dcuser/scarab/bin/scarab_launch.py --program=\"$BINCMD\" \
+    --simdir=\"$APPHOME/simulations/$SCENARIONUM/$clusterID\" \
+    --pintool_args=\"-hyper_fast_forward_count $start_inst\" \
+    --scarab_args=\"--inst_limit $SEGSIZE $SCARABPARAMS\" \
+    --scarab_stdout=\"$APPHOME/simulations/$SCENARIONUM/$clusterID/scarab.out\" \
+    --scarab_stderr=\"$APPHOME/simulations/$SCENARIONUM/$clusterID/scarab.err\" \
+    --pin_stdout=\"$APPHOME/simulations/$SCENARIONUM/$clusterID/pin.out\" \
+    --pin_stderr=\"$APPHOME/simulations/$SCENARIONUM/$clusterID/pin.err\" \
+    "
+
     echo "simulating cluster ${clusterID}..."
     echo "command: ${scarabCmd}"
     eval $scarabCmd &
