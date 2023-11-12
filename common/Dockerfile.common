@@ -81,7 +81,7 @@ COPY --chown=dcuser run_simpoint_trace.sh /home/dcuser/run_simpoint_trace.sh
 COPY --chown=dcuser run_scarab.sh /home/dcuser/run_scarab.sh
 COPY --chown=dcuser gather_fp_pieces.py /home/dcuser/gather_fp_pieces.py
 
-COPY --chown=dcuser run_scarab_mode_4.py /home/dcuser/run_scarab_mode_4.py
+COPY --chown=dcuser run_scarab_mode_4.sh /home/dcuser/run_scarab_mode_4.sh
 COPY --chown=dcuser gather_cluster_results.py /home/dcuser/gather_cluster_results.py
 
 # Clone the Scarab repository
