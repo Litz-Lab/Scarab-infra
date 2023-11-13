@@ -1,4 +1,5 @@
 import csv
+import os, sys
 
 # get the stats of interest
 def get_acc_stat_from_file(file_name, stat_name, stat_pos):
@@ -70,7 +71,7 @@ def calculate_weighted_average(stat_groups, simpoints):
             for simp in simpoints:
                 s.weighted_average += simp.w_stat_vals[g_id][s_id]
 
-    for g in stat_groups
+    for g in stat_groups:
         for s in g.s_list:
             g.weighted_total += s.weighted_average
 
@@ -125,13 +126,13 @@ if __name__ == "__main__":
     stat_groups = [
         StatGroup("dcache access",
                 [
-                Stat("memory.stat.0.out.0", "DCACHE_MISS", 3),
-                Stat("memory.stat.0.out.0", "DCACHE_ST_BUFFER_HIT", 3),
-                Stat("memory.stat.0.out.0", "DCACHE_HIT", 3)
+                Stat("memory.stat.0.out", "DCACHE_MISS", 3),
+                Stat("memory.stat.0.out", "DCACHE_ST_BUFFER_HIT", 3),
+                Stat("memory.stat.0.out", "DCACHE_HIT", 3)
                 ]),
         StatGroup("cycles",
                 [
-                Stat("core.stat.0.out.0", "NODE_CYCLE", 2)
+                Stat("core.stat.0.out", "NODE_CYCLE", 2)
                 ])
     ]
 
