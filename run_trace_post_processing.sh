@@ -5,8 +5,8 @@ source /home/dcuser/utilities.sh
 OUTDIR=$1
 MODULESDIR=$2
 TRACEFILE=$3
-SEGSIZE=$4
-CHUNKSIZE=$5
+CHUNKSIZE=$4
+SEGSIZE=0
 
 cd $OUTDIR
 mkdir -p fingerprint
@@ -17,23 +17,29 @@ numChunk=$(unzip -l $TRACEFILE | grep "chunk." | wc -l)
 
 # rounded-up instr count
 numInsts=$(echo "$numChunk * $CHUNKSIZE" | bc)
-numSegment=$(echo "1 + (($numInsts - 1) / $SEGSIZE)" | bc)
+
 echo "total number of trace chunks $numChunk"
 echo "total number of instructions ~$numInsts"
-echo "initial number of segments (of size $SEGSIZE) $numSegment"
-while [ "$numSegment" -lt 1000 ]; do
-  echo "$numSegment is smaller than 1000, reduce SEGSIZE by 10x"
 
-  SEGSIZE=$(echo "$SEGSIZE / 10" | bc)
-  # if segsize is smaller than the chunksize, the total number of segments
-  # becomes incorrect. the following steps will fail. so quit.
-  if [ "$SEGSIZE" -lt "$CHUNKSIZE" ]; then
-    echo "new SEGSIZE is $SEGSIZE, less than CHUNKSIZE $CHUNKSIZE, too small?? quit!"
+sizeList=("100000000" "50000000" "20000000" "10000000")
+for SEGSIZE in "${sizeList[@]}"
+do
+  numSegment=$(echo "1 + (($numInsts - 1) / $SEGSIZE)" | bc)
+  echo "with SEGSIZE $SEGSIZE, number of segments is $numSegment"
+  if [ "$numSegment" -ge 1000 ]; then
+    break
+  elif [ "$SEGSIZE" -eq "${sizeList[-1]}" ]; then
+    echo "with the smallest SEGSIZE $SEGSIZE, number of segments is still not enough for clustering. quit."
     exit
   fi
-  numSegment=$(echo "1 + (($numInsts - 1) / $SEGSIZE)" | bc)
-  echo "new SEGSIZE is $SEGSIZE, new number of segments is $numSegment"
 done
+
+# if segsize is smaller than the chunksize, the total number of segments
+# becomes incorrect. the following steps will fail. so quit.
+if [ "$SEGSIZE" -lt "$CHUNKSIZE" ]; then
+  echo "SEGSIZE is $SEGSIZE, less than CHUNKSIZE $CHUNKSIZE, which is too small?? quit!"
+  exit
+fi
 
 echo "final SEGSIZE is $SEGSIZE, written to $OUTDIR/fingerprint/segment_size"
 echo "$SEGSIZE" > $OUTDIR/fingerprint/segment_size
