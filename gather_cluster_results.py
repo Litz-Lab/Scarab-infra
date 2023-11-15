@@ -34,7 +34,7 @@ class Simpoint:
         # paralell with stat groups
         # 2-d
         self.stat_vals = []
-        self.w_stat_vals = None
+        self.w_stat_vals = []
 
 def read_simpoints(sp_dir, sim_root_dir):
     total_weight = 0
@@ -64,7 +64,10 @@ def read_simpoint_stats(stat_groups, simpoints):
 
 def calculate_weighted_average(stat_groups, simpoints):
     for simp in simpoints:
-        simp.w_stat_vals = simp.weight * simp.stat_vals
+        for g_id, g in enumerate(stat_groups):
+            simp.w_stat_vals.append([])
+            for s_id, s in enumerate(g.s_list):
+                simp.w_stat_vals[-1].append(simp.weight * float(simp.stat_vals[g_id][s_id]))
 
     for g_id, g in enumerate(stat_groups):
         for s_id, s in enumerate(g.s_list):
