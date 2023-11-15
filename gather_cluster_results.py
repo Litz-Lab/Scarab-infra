@@ -96,7 +96,7 @@ def report(stat_groups, simpoints, sim_root_dir):
             # title
             # ref: https://stackoverflow.com/questions/11868964/list-comprehension-returning-two-or-more-items-for-each-item
             f1 = lambda x: "{} val".format(x.s_name)
-            f2 = lambda x: "{} ratio".format(x.s_name)
+            f2 = lambda x: "{} w_val".format(x.s_name)
             writer.writerow(["Simpoints", "Weight"] + [f(stat) for stat in g.s_list for f in (f1,f2)])
 
             # middle rows
