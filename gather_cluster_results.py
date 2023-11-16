@@ -120,13 +120,13 @@ def report(stat_groups, simpoints, sim_root_dir):
 
 def customized_report(stat_groups, simpoints, sim_root_dir):
     i = 0
-    for g in enumerate(stat_groups):
+    for g in stat_groups:
         if g.g_name == "instructions":
             # weighted_total is the weighted avg of the stat though
             i = g.weighted_total
             break
     c = 0
-    for g in enumerate(stat_groups):
+    for g in stat_groups:
         if g.g_name == "cycles":
             c = g.weighted_total
             break
