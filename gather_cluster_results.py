@@ -12,15 +12,15 @@ def get_acc_stat_from_file(file_name, stat_name, stat_pos):
                 return int(val_string)
 
 class StatGroup:
-    def __init__(self, g_name, s_list):
+    def __init__(self, g_name, f_name, s_list):
         self.g_name = g_name
+        self.f_name = f_name
         self.s_list = s_list
         self.weighted_total = 0
 
 class Stat:
     # file name, stat name, stat column number
-    def __init__(self, f_name, s_name, pos):
-        self.f_name = f_name
+    def __init__(self, s_name, pos):
         self.s_name = s_name
         self.pos = pos
         self.weighted_average = 0
@@ -58,7 +58,7 @@ def read_simpoint_stats(stat_groups, simpoints):
         for g in stat_groups:
             simp.stat_vals.append([])
             for s in g.s_list:
-                stat_val = get_acc_stat_from_file(simp.sim_dir + "/" + s.f_name,
+                stat_val = get_acc_stat_from_file(simp.sim_dir + "/" + g.f_name,
                                                 s.s_name, s.pos)
                 simp.stat_vals[-1].append(stat_val)
 
@@ -80,7 +80,10 @@ def calculate_weighted_average(stat_groups, simpoints):
 
     for g in stat_groups:
         for s in g.s_list:
-            s.weighted_ratio = s.weighted_average / g.weighted_total
+            if g.weighted_total != 0:
+                s.weighted_ratio = s.weighted_average / g.weighted_total
+            else:
+                s.weighted_ratio = "NA"
 
 def report(stat_groups, simpoints, sim_root_dir):
 # simps,  weight, stat0 val, stat0 weighted, stat1 val, stat1 weighted,
@@ -95,8 +98,8 @@ def report(stat_groups, simpoints, sim_root_dir):
 
             # title
             # ref: https://stackoverflow.com/questions/11868964/list-comprehension-returning-two-or-more-items-for-each-item
-            f1 = lambda x: "{} val".format(x.s_name)
-            f2 = lambda x: "{} w_val".format(x.s_name)
+            f1 = lambda x: "{}_val".format(x.s_name)
+            f2 = lambda x: "{}_w_val".format(x.s_name)
             writer.writerow(["Simpoints", "Weight"] + [f(stat) for stat in g.s_list for f in (f1,f2)])
 
             # middle rows
@@ -111,12 +114,15 @@ def report(stat_groups, simpoints, sim_root_dir):
             # weighted average
             f1 = lambda x: "NA"
             f2 = lambda x: x.weighted_average
-            writer.writerow(["weighted avg", "NA"] + [f(stat) for stat in g.s_list for f in (f1,f2)])
+            writer.writerow(["weighted_avg", "NA"] + [f(stat) for stat in g.s_list for f in (f1,f2)])
 
             # weighted ratio
             f1 = lambda x: "NA"
             f2 = lambda x: x.weighted_ratio
-            writer.writerow(["weighted %", "NA"] + [f(stat) for stat in g.s_list for f in (f1,f2)])
+            writer.writerow(["weighted_%", "NA"] + [f(stat) for stat in g.s_list for f in (f1,f2)])
+
+            # weighted total
+            writer.writerow(["weighted_total", g.weighted_total])
 
 def customized_report(stat_groups, simpoints, sim_root_dir):
     i = 0
@@ -145,19 +151,89 @@ if __name__ == "__main__":
         exit
 
     stat_groups = [
-        StatGroup("dcache access",
+        StatGroup("dcache_access", "memory.stat.0.out",
                 [
-                Stat("memory.stat.0.out", "DCACHE_MISS", 1),
-                Stat("memory.stat.0.out", "DCACHE_ST_BUFFER_HIT", 1),
-                Stat("memory.stat.0.out", "DCACHE_HIT", 1)
+                Stat("DCACHE_MISS", 1),
+                Stat("DCACHE_ST_BUFFER_HIT", 1),
+                Stat("DCACHE_HIT", 1)
                 ]),
-        StatGroup("cycles",
+        StatGroup("cycles", "core.stat.0.out",
                 [
-                Stat("core.stat.0.out", "NODE_CYCLE", 1)
+                Stat("NODE_CYCLE", 1)
                 ]),
-        StatGroup("instructions",
+        StatGroup("instructions", "core.stat.0.out",
                 [
-                Stat("core.stat.0.out", "NODE_INST_COUNT", 1)
+                Stat("NODE_INST_COUNT", 1)
+                ]),
+
+        StatGroup("icache_access", "memory.stat.0.out",
+                [
+                Stat("ICACHE_HIT", 1),
+                Stat("ICACHE_MISS", 1)
+                ]),
+        StatGroup("icache_miss_reason", "memory.stat.0.out",
+                [
+                Stat("ICACHE_MISS_NOT_PREFETCHED", 1),
+                Stat("ICACHE_MISS_PREFETCHED_AND_EVICTED_BY_IFETCH", 1),
+                Stat("ICACHE_MISS_PREFETCHED_AND_EVICTED_BY_FDIP", 1),
+                Stat("ICACHE_MISS_MSHR_HIT", 1)
+                ]),
+        StatGroup("icache_hit_by_fdip_on_off", "memory.stat.0.out",
+                [
+                Stat("ICACHE_HIT_BY_FDIP_ONPATH", 1),
+                Stat("ICACHE_HIT_BY_FDIP_OFFPATH", 1)
+                ]),
+        StatGroup("icache_miss_mshr_hit_by_fdip_on_off", "memory.stat.0.out",
+                [
+                Stat("ICACHE_MISS_MSHR_HIT_BY_FDIP_ONPATH", 1),
+                Stat("ICACHE_MISS_MSHR_HIT_BY_FDIP_OFFPATH", 1)
+                ]),
+        StatGroup("icache_hit_on_off_by_fdip", "memory.stat.0.out",
+                [
+                Stat("ICACHE_HIT_ONPATH_BY_FDIP", 1),
+                Stat("ICACHE_HIT_OFFPATH_BY_FDIP", 1)
+                ]),
+        StatGroup("icache_miss_mshr_hit_on_off_by_fdip", "memory.stat.0.out",
+                [
+                Stat("ICACHE_MISS_MSHR_HIT_ONPATH_BY_FDIP", 1),
+                Stat("ICACHE_MISS_MSHR_HIT_OFFPATH_BY_FDIP", 1)
+                ]),
+
+        StatGroup("fdip_new_prefetches_on_off", "pref.stat.0.out",
+                [
+                Stat("FDIP_NEW_PREFETCHES_ONPATH", 1),
+                Stat("FDIP_NEW_PREFETCHES_OFFPATH", 1)
+                ]),
+        StatGroup("fdip_pref_icache_probe_hit_on_off", "pref.stat.0.out",
+                [
+                Stat("FDIP_PREF_ICACHE_PROBE_HIT_ONPATH", 1),
+                Stat("FDIP_PREF_ICACHE_PROBE_HIT_OFFPATH", 1)
+                ]),
+        StatGroup("fdip_pref_mshr_probe_hit_on_off", "pref.stat.0.out",
+                [
+                Stat("FDIP_PREF_MSHR_PROBE_HIT_ONPATH", 1),
+                Stat("FDIP_PREF_MSHR_PROBE_HIT_OFFPATH", 1)
+                ]),
+        StatGroup("fdip_attempted_pref_on_off", "pref.stat.0.out",
+                [
+                Stat("FDIP_ATTEMPTED_PREF_ONPATH", 1),
+                Stat("FDIP_ATTEMPTED_PREF_OFFPATH", 1)
+                ]),
+        StatGroup("fdip_avg_ftq_occupancy", "pref.stat.0.out",
+                [
+                Stat("FDIP_AVG_FTQ_OCCUPANCY", 1)
+                ]),
+
+        StatGroup("inst_lost_wait_for_icache_miss", "fetch.stat.0.out",
+                [
+                Stat("INST_LOST_WAIT_FOR_ICACHE_MISS", 1)
+                ]),
+        StatGroup("inst_lost_wait_for_icache_miss_reason", "fetch.stat.0.out",
+                [
+                Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_NOT_PREFETCHED", 1),
+                Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_PREFETCHED_AND_EVICTED_BY_IFETCH", 1),
+                Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_PREFETCHED_AND_EVICTED_BY_FDIP", 1),
+                Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_MSHR_HIT", 1)
                 ])
     ]
 
