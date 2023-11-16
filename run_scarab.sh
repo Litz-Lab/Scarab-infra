@@ -10,6 +10,8 @@ SCARABPARAMS="$5"
 # for trace post-processing flow, SEGSIZE is read from file
 SEGSIZE=100000000
 SCARABMODE="$6"
+# 50M warmup by default
+WARMUP=50000000
 
 # TODO: get all cmd for spec in advance instead of in place
 # Get command to run for Spe17
@@ -65,11 +67,11 @@ if [ "$SCARABMODE" == "4" ]; then
     fi
     SEGSIZE=$(cat "$segmentSizeFile")
     echo "SEGSIZE read from $segmentSizeFile is $SEGSIZE"
-    bash /home/dcuser/run_scarab_mode_4.sh "$SCARABHOME" "$MODULESDIR" "$TRACEFILE" "$SCARABPARAMS" "$SPDIR" "$SEGSIZE" "$OUTDIR"
+    bash /home/dcuser/run_scarab_mode_4.sh "$SCARABHOME" "$MODULESDIR" "$TRACEFILE" "$SCARABPARAMS" "$SPDIR" "$SEGSIZE" "$OUTDIR" "$WARMUP"
   else
   # otherwise ask the user to run manually
     echo -e "There are multiple trace files.\n\
-    Decide and run \"/home/dcuser/run_scarab_mode_4.sh <SCARABHOME> <MODULESDIR> <TRACEFILE> "<SCARABPARAMS>" <SPDIR> <SEGSIZE> <OUTDIR>\""
+    Decide and run \"/home/dcuser/run_scarab_mode_4.sh <SCARABHOME> <MODULESDIR> <TRACEFILE> "<SCARABPARAMS>" <SPDIR> <SEGSIZE> <OUTDIR> <WARMUP>\""
     exit
   fi
 elif [ "$SCARABMODE" == "3" ]; then

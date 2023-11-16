@@ -9,6 +9,7 @@ SCARABPARAMS=$4
 SPDIR=$5
 SEGSIZE=$6
 OUTDIR=$7
+WARMUP=$8
 
 cd $OUTDIR
 
@@ -34,13 +35,32 @@ do
     cp $SCARABHOME/src/PARAMS.sunny_cove $OUTDIR/$segID/PARAMS.in
     cd $OUTDIR/$segID
 
+    # roi is initialized by original segment boundary without warmup
+    roiStart=$(( $segID * $SEGSIZE + 1 ))
+    roiEnd=$(( $segID * $SEGSIZE + $SEGSIZE ))
+
+    # now reset roi start based on warmup:
+    # roiStart + WARMUP = original segment start
+    if [ "$roiStart" -gt "$WARMUP" ]; then
+        # enough room for warmup, extend roi start to the left
+        roiStart=$(( $roiStart - $WARMUP ))
+    else
+        # no enough preceding instructions, can only warmup till segment start
+        WARMUP=$(( $roiStart - 1 ))
+        # new roi start is the very first instruction of the trace
+        roiStart=1
+    fi
+
+    instLimit=$(( $roiEnd - $roiStart + 1 ))
+
     scarabCmd="$SCARABHOME/src/scarab \
     --frontend memtrace \
     --cbp_trace_r0=$TRACEFILE \
     --memtrace_modules_log=$MODULESDIR \
-    --memtrace_roi_begin=$(( $segID * $SEGSIZE + 1 )) \
-    --memtrace_roi_end=$(( $segID * $SEGSIZE + $SEGSIZE )) \
-    --inst_limit=$SEGSIZE \
+    --memtrace_roi_begin=$roiStart \
+    --memtrace_roi_end=$roiEnd \
+    --inst_limit=$instLimit \
+    --full_warmup=$WARMUP \
     $SCARABPARAMS \
     &> sim.log"
 
