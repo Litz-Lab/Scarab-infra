@@ -90,7 +90,7 @@ def report(stat_groups, simpoints, sim_root_dir):
 # w avg,    NA  ,  NA      , stat0 w avg   ,  NA  
 # w %  ,    NA  ,  NA      , stat1 w rat   ,  NA
     for g_id, g in enumerate(stat_groups):
-        with open(sim_root_dir + "/{}.csv".format(g.g_name), "w") as outfile: 
+        with open(sim_root_dir + "/{}.csv".format(g.g_name), "w") as outfile:
             writer = csv.writer(outfile)
 
             # title
@@ -118,6 +118,24 @@ def report(stat_groups, simpoints, sim_root_dir):
             f2 = lambda x: x.weighted_ratio
             writer.writerow(["weighted %", "NA"] + [f(stat) for stat in g.s_list for f in (f1,f2)])
 
+def customized_report(stat_groups, simpoints, sim_root_dir):
+    i = 0
+    for g in enumerate(stat_groups):
+        if g.g_name == "instructions":
+            # weighted_total is the weighted avg of the stat though
+            i = g.weighted_total
+            break
+    c = 0
+    for g in enumerate(stat_groups):
+        if g.g_name == "cycles":
+            c = g.weighted_total
+            break
+
+    with open(sim_root_dir + "/ipc.csv", "w") as outfile:
+        writer = csv.writer(outfile)
+        writer.writerow(["instructions", "cycles", "IPC"])
+        writer.writerow([i, c, float(i)/float(c)])
+
 if __name__ == "__main__":
     if not os.path.isdir(sys.argv[1]):
         print("simpoint directory {} does not exist!")
@@ -129,13 +147,17 @@ if __name__ == "__main__":
     stat_groups = [
         StatGroup("dcache access",
                 [
-                Stat("memory.stat.0.out", "DCACHE_MISS", 3),
-                Stat("memory.stat.0.out", "DCACHE_ST_BUFFER_HIT", 3),
-                Stat("memory.stat.0.out", "DCACHE_HIT", 3)
+                Stat("memory.stat.0.out", "DCACHE_MISS", 1),
+                Stat("memory.stat.0.out", "DCACHE_ST_BUFFER_HIT", 1),
+                Stat("memory.stat.0.out", "DCACHE_HIT", 1)
                 ]),
         StatGroup("cycles",
                 [
-                Stat("core.stat.0.out", "NODE_CYCLE", 2)
+                Stat("core.stat.0.out", "NODE_CYCLE", 1)
+                ]),
+        StatGroup("instructions",
+                [
+                Stat("core.stat.0.out", "NODE_INST_COUNT", 1)
                 ])
     ]
 
@@ -145,3 +167,4 @@ if __name__ == "__main__":
     calculate_weighted_average(stat_groups, simpoints)
     # simpoints.result
     report(stat_groups, simpoints, sys.argv[2])
+    customized_report(stat_groups, simpoints, sys.argv[2])
