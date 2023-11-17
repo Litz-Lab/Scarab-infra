@@ -9,9 +9,10 @@ CHUNKSIZE=$4
 SEGSIZE=0
 
 cd $OUTDIR
-mkdir -p fingerprint
+rm -rf fingerprint
+mkdir fingerprint
 cd fingerprint
-mkdir -p pieces
+mkdir pieces
 
 numChunk=$(unzip -l $TRACEFILE | grep "chunk." | wc -l)
 
@@ -50,7 +51,7 @@ start=`date +%s`
 
 for segmentID in $(seq 0 $(( $numSegment-1 )))
 do
-  mkdir -p $segmentID
+  mkdir $segmentID
   # do not care about the params file
   cd $segmentID
   scarabCmd="/home/dcuser/scarab/src/scarab --frontend memtrace \
