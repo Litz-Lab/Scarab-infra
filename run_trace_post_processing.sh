@@ -6,7 +6,7 @@ OUTDIR=$1
 MODULESDIR=$2
 TRACEFILE=$3
 CHUNKSIZE=$4
-SEGSIZE=0
+SEGSIZE=$5
 
 cd $OUTDIR
 rm -rf fingerprint
@@ -23,18 +23,24 @@ echo "total number of trace chunks $numChunk"
 echo "total number of instructions ~$numInsts"
 
 # sizeList=("100000000" "50000000" "20000000" "10000000")
-sizeList=("100000000" "10000000")
-for SEGSIZE in "${sizeList[@]}"
-do
-  numSegment=$(echo "1 + (($numInsts - 1) / $SEGSIZE)" | bc)
-  echo "with SEGSIZE $SEGSIZE, number of segments is $numSegment"
-  if [ "$numSegment" -ge 1000 ]; then
-    break
-  elif [ "$SEGSIZE" -eq "${sizeList[-1]}" ]; then
-    echo "with the smallest SEGSIZE $SEGSIZE, number of segments is still not enough for clustering. quit."
-    exit
-  fi
-done
+# sizeList=("100000000" "10000000")
+# for SEGSIZE in "${sizeList[@]}"
+# do
+#   numSegment=$(echo "1 + (($numInsts - 1) / $SEGSIZE)" | bc)
+#   echo "with SEGSIZE $SEGSIZE, number of segments is $numSegment"
+#   if [ "$numSegment" -ge 1000 ]; then
+#     break
+#   elif [ "$SEGSIZE" -eq "${sizeList[-1]}" ]; then
+#     echo "with the smallest SEGSIZE $SEGSIZE, number of segments is still not enough for clustering. quit."
+#     exit
+#   fi
+# done
+
+numSegment=$(echo "1 + (($numInsts - 1) / $SEGSIZE)" | bc)
+echo "with SEGSIZE $SEGSIZE, number of segments is $numSegment"
+if [ "$numSegment" -lt 1000 ]; then
+  echo "WARNING: with SEGSIZE $SEGSIZE, number of segments is less than 1000. Might be to few for clustering."
+fi
 
 # if segsize is smaller than the chunksize, the total number of segments
 # becomes incorrect. the following steps will fail. so quit.

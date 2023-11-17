@@ -4,10 +4,7 @@
 APPNAME="$1"
 APP_GROUPNAME="$2"
 BINCMD="$3"
-# this is fixed/settled for NON trace post-processing flow.
-# for trace post-processing flow, SEGSIZE is set according to
-# chunk size and chunk number within trace
-SEGSIZE=100000000
+SEGSIZE=10000000
 # chunk size within trace file. Use 10M due to conversion issue.
 CHUNKSIZE=10000000
 SIMPOINT="$4"
@@ -115,11 +112,11 @@ if [ "$SIMPOINT" == "2" ]; then
     wholeTrace=$(ls $APPHOME/traces/whole/drmemtrace.*.dir/trace/dr*.zip)
     echo "modulesDIR: $modulesDir"
     echo "wholeTrace: $wholeTrace"
-    bash /home/dcuser/run_trace_post_processing.sh $APPHOME $modulesDir $wholeTrace $CHUNKSIZE
+    bash /home/dcuser/run_trace_post_processing.sh $APPHOME $modulesDir $wholeTrace $CHUNKSIZE $SEGSIZE
   else
   # otherwise ask the user to run manually
     echo -e "There are multiple trace files.\n\
-    Decide and run \"/home/dcuser/run_trace_post_processing.sh <OUTDIR> <MODULESDIR> <TRACEFILE> <CHUNKSIZE>\"\n\
+    Decide and run \"/home/dcuser/run_trace_post_processing.sh <OUTDIR> <MODULESDIR> <TRACEFILE> <CHUNKSIZE> <SEGSIZE>\"\n\
     Then run /home/dcuser/run_clustering.sh <FPFILE> <OUTDIR>"
     exit
   fi
