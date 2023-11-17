@@ -130,13 +130,13 @@ def customized_report(stat_groups, simpoints, sim_root_dir):
         if g.g_name == "instructions":
             # weighted_total is the weighted avg of the stat though
             i = g.weighted_total
-            assert(g.weighted_total = g.s_list[0].weighted_average)
+            assert(g.weighted_total == g.s_list[0].weighted_average)
             break
     c = 0
     for g in stat_groups:
         if g.g_name == "cycles":
             c = g.weighted_total
-            assert(g.weighted_total = g.s_list[0].weighted_average)
+            assert(g.weighted_total == g.s_list[0].weighted_average)
             break
 
     with open(sim_root_dir + "/ipc.csv", "w") as outfile:
@@ -148,7 +148,7 @@ def customized_report(stat_groups, simpoints, sim_root_dir):
     for g in stat_groups:
         if g.g_name == "fdip_ftq_occupancy_blocks_accumulated":
             blocks = g.weighted_total
-            assert(g.weighted_total = g.s_list[0].weighted_average)
+            assert(g.weighted_total == g.s_list[0].weighted_average)
             break
 
     with open(sim_root_dir + "/bpc.csv", "w") as outfile:
