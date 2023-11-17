@@ -9,7 +9,7 @@ SCARABPARAMS=$4
 SPDIR=$5
 SEGSIZE=$6
 OUTDIR=$7
-WARMUP=$8
+WARMUPORG=$8
 
 cd $OUTDIR
 
@@ -30,6 +30,7 @@ start=`date +%s`
 # actually array would suffice
 for clusterID in "${!clusterMap[@]}"
 do
+    WARMUP=$WARMUPORG
     segID=${clusterMap[$clusterID]}
     mkdir -p $OUTDIR/$segID
     cp $SCARABHOME/src/PARAMS.sunny_cove $OUTDIR/$segID/PARAMS.in
