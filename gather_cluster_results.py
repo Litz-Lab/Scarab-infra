@@ -130,17 +130,31 @@ def customized_report(stat_groups, simpoints, sim_root_dir):
         if g.g_name == "instructions":
             # weighted_total is the weighted avg of the stat though
             i = g.weighted_total
+            assert(g.weighted_total = g.s_list[0].weighted_average)
             break
     c = 0
     for g in stat_groups:
         if g.g_name == "cycles":
             c = g.weighted_total
+            assert(g.weighted_total = g.s_list[0].weighted_average)
             break
 
     with open(sim_root_dir + "/ipc.csv", "w") as outfile:
         writer = csv.writer(outfile)
         writer.writerow(["instructions", "cycles", "IPC"])
         writer.writerow([i, c, float(i)/float(c)])
+
+    blocks = 0
+    for g in stat_groups:
+        if g.g_name == "fdip_ftq_occupancy_blocks_accumulated":
+            blocks = g.weighted_total
+            assert(g.weighted_total = g.s_list[0].weighted_average)
+            break
+
+    with open(sim_root_dir + "/bpc.csv", "w") as outfile:
+        writer = csv.writer(outfile)
+        writer.writerow(["fdip_ftq_occupancy_blocks_accumulated", "cycles", "BPC"])
+        writer.writerow([blocks, c, float(blocks)/float(c)])
 
 if __name__ == "__main__":
     if not os.path.isdir(sys.argv[1]):
@@ -234,6 +248,15 @@ if __name__ == "__main__":
                 Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_PREFETCHED_AND_EVICTED_BY_IFETCH", 1),
                 Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_PREFETCHED_AND_EVICTED_BY_FDIP", 1),
                 Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_MSHR_HIT", 1)
+                ]),
+
+        StatGroup("fdip_ftq_occupancy_ops_accumulated", "pref.stat.0.out",
+                [
+                Stat("FDIP_FTQ_OCCUPANCY_OPS_ACCUMULATED", 1)
+                ]),
+        StatGroup("fdip_ftq_occupancy_blocks_accumulated", "pref.stat.0.out",
+                [
+                Stat("FDIP_FTQ_OCCUPANCY_BLOCKS_ACCUMULATED", 1)
                 ])
     ]
 
