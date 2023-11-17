@@ -22,7 +22,8 @@ numInsts=$(echo "$numChunk * $CHUNKSIZE" | bc)
 echo "total number of trace chunks $numChunk"
 echo "total number of instructions ~$numInsts"
 
-sizeList=("100000000" "50000000" "20000000" "10000000")
+# sizeList=("100000000" "50000000" "20000000" "10000000")
+sizeList=("100000000" "10000000")
 for SEGSIZE in "${sizeList[@]}"
 do
   numSegment=$(echo "1 + (($numInsts - 1) / $SEGSIZE)" | bc)
