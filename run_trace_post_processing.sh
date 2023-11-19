@@ -45,8 +45,18 @@ fi
 # if segsize is smaller than the chunksize, the total number of segments
 # becomes incorrect. the following steps will fail. so quit.
 if [ "$SEGSIZE" -lt "$CHUNKSIZE" ]; then
-  echo "SEGSIZE is $SEGSIZE, less than CHUNKSIZE $CHUNKSIZE, which is too small?? quit!"
-  exit
+  echo "SEGSIZE is $SEGSIZE, less than CHUNKSIZE $CHUNKSIZE, which is too small??"
+
+  if [ "$OUTDIR" == "/home/dcuser/simpoint_flow/verilator" ]; then
+    echo "This is a hard-coded scenario for verilator, which has chunk size > segment size"
+    # verilator last chunk chunk.3945 has 35181523 instructions
+    # so the total number of instruction is
+    # 3945 * 100M + 35181523 (round up to 4*10M)
+    # then the number of segments of 10M is
+    numSegment=39454
+  else
+    exit
+  fi
 fi
 
 echo "final SEGSIZE is $SEGSIZE, written to $OUTDIR/fingerprint/segment_size"
