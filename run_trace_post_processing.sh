@@ -47,7 +47,7 @@ fi
 if [ "$SEGSIZE" -lt "$CHUNKSIZE" ]; then
   echo "SEGSIZE is $SEGSIZE, less than CHUNKSIZE $CHUNKSIZE, which is too small??"
 
-  if [ "$OUTDIR" == "/home/dcuser/simpoint_flow/verilator" ]; then
+  if [ "$OUTDIR" == "/home/dcuser/simpoint_flow/verilator/simpoint_10M" ]; then
     echo "This is a hard-coded scenario for verilator, which has chunk size > segment size"
     # verilator last chunk chunk.3945 has 35181523 instructions
     # so the total number of instruction is
