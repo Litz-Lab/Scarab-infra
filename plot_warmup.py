@@ -116,18 +116,36 @@ def plot(OUTDIR, segID, ub):
         fig.update_layout(
             title = g.g_name
         )
-        with open("{}/warmup.html".format(OUTDIR), 'a') as f:
+        with open("{}/warmup.html".format(seg_root), 'a') as f:
             f.write(fig.to_html(full_html=False, include_plotlyjs="cdn"))
 
 if __name__ == "__main__":
-    if not os.path.isdir(sys.argv[1]):
-        print("simpoint directory {} does not exist!")
+    SIMPOINTDIR=sys.argv[1]
+    if not os.path.isdir(SIMPOINTDIR):
+        print("simpoint directory {} does not exist!".format(SIMPOINTDIR))
         exit
-    if not os.path.isdir(sys.argv[2]):
-        print("simulation directory {} does not exist!")
+    SCARABHOME=sys.argv[2]
+    if not os.path.isdir(SCARABHOME):
+        print("scarab directory {} does not exist!".format(SCARABHOME))
         exit
+    MODULESDIR=sys.argv[3]
+    if not os.path.isdir(MODULESDIR):
+        print("modules directory {} does not exist!".format(MODULESDIR))
+        exit
+    TRACEFILE=sys.argv[4]
+    if not os.path.isfile(TRACEFILE):
+        print("trace file {} does not exist!".format(TRACEFILE))
+        exit
+    OUTDIR=sys.argv[5]
+    if not os.path.isdir(OUTDIR):
+        print("output directory {} does not exist!".format(OUTDIR))
+        exit
+    SEGSIZE=int(sys.argv[6])
+    print("SEGSIZE is {}".format(SEGSIZE))
 
-    simpoints = read_simpoints(sys.argv[1], "not applicable")
+    simpoints = read_simpoints(SIMPOINTDIR, "not applicable")
     top_simpoint = get_top_simpoint(simpoints)
-    run_vary_warmup_legth(sys.argv[2], top_simpoint.seg_id, 300)
-    plot(sys.argv[2] + "/" + str(top_simpoint.seg_id))
+    # def run_vary_warmup_legth(SCARABHOME, MODULESDIR, TRACEFILE, OUTDIR, segID, SEGSIZE, ub):
+    run_vary_warmup_legth(SCARABHOME, MODULESDIR, TRACEFILE, OUTDIR, top_simpoint.seg_id, SEGSIZE, 300)
+    # def plot(OUTDIR, segID, ub):
+    plot(OUTDIR, top_simpoint.seg_id, 300)
