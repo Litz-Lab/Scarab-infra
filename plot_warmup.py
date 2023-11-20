@@ -57,16 +57,16 @@ def run_vary_warmup_legth(SCARABHOME, MODULESDIR, TRACEFILE, OUTDIR, segID, SEGS
 
             instLimit = roiEnd - roiStart + 1
 
-            scarabCmd="$SCARABHOME/src/scarab \
-            --frontend memtrace \
-            --cbp_trace_r0=$TRACEFILE \
-            --memtrace_modules_log=$MODULESDIR \
-            --memtrace_roi_begin=$roiStart \
-            --memtrace_roi_end=$roiEnd \
-            --inst_limit=$instLimit \
-            --full_warmup=$WARMUP \
-            $SCARABPARAMS \
-            &> sim.log"
+            # scarabCmd="$SCARABHOME/src/scarab \
+            # --frontend memtrace \
+            # --cbp_trace_r0=$TRACEFILE \
+            # --memtrace_modules_log=$MODULESDIR \
+            # --memtrace_roi_begin=$roiStart \
+            # --memtrace_roi_end=$roiEnd \
+            # --inst_limit=$instLimit \
+            # --full_warmup=$WARMUP \
+            # $SCARABPARAMS \
+            # &> sim.log"
 
             executable = SCARABHOME + "/src/scarab"
             scarab_cmd = [executable,
@@ -91,7 +91,7 @@ def run_vary_warmup_legth(SCARABHOME, MODULESDIR, TRACEFILE, OUTDIR, segID, SEGS
                 if live < 40:
                     break
                 else:
-                    sleep(300)
+                    sleep(120)
 
     print("wait for all warm-up runs to finish...")
     for p in run_warmup_tests_for_bench_p_list:
@@ -107,7 +107,7 @@ def plot(OUTDIR, segID, ub):
             y_vals=[get_acc_stat_from_file(warmup_dir + "/" + g.f_name, s.s_name, s.pos) for warmup_dir in warmup_dir_list]
             fig.add_trace(
                 go.Scatter(
-                    x=[ins.warm_length for ins in case_list],
+                    x=list(range(len(y_vals))),
                     y=y_vals,
                     name=s.s_name,
                     visible='legendonly'
@@ -145,6 +145,7 @@ if __name__ == "__main__":
 
     simpoints = read_simpoints(SIMPOINTDIR, "not applicable")
     top_simpoint = get_top_simpoint(simpoints)
+    print("top simp: {} {}", top_simpoint.seg_id, top_simpoint.weight)
     # def run_vary_warmup_legth(SCARABHOME, MODULESDIR, TRACEFILE, OUTDIR, segID, SEGSIZE, ub):
     run_vary_warmup_legth(SCARABHOME, MODULESDIR, TRACEFILE, OUTDIR, top_simpoint.seg_id, SEGSIZE, 300)
     # def plot(OUTDIR, segID, ub):
