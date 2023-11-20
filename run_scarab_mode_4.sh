@@ -40,7 +40,7 @@ do
     roiStart=$(( $segID * $SEGSIZE + 1 ))
     roiEnd=$(( $segID * $SEGSIZE + $SEGSIZE ))
 
-    if [ "$SPDIR" == "/home/dcuser/simpoint_flow/verilator/simpoints" ]; then
+    if [ "$SPDIR" == "/home/dcuser/simpoint_flow/verilator/simpoints/" ]; then
         # hard-coded scenario for verilator
         # warm-up within the segment, and only simulate 10M
         # chances are that the trace end before warmup finish

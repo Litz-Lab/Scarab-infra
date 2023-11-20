@@ -8,8 +8,12 @@ def get_acc_stat_from_file(file_name, stat_name, stat_pos):
         for line in infile:
             splitLine = line.split()
             if stat_name in splitLine:
-                val_string = splitLine[stat_pos]
-                return int(val_string)
+                if stat_pos == 2 or stat_pos == 4:
+                    val_string = splitLine[stat_pos][:-1]
+                    return float(val_string)
+                else:
+                    val_string = splitLine[stat_pos]
+                    return int(val_string)
 
 class StatGroup:
     def __init__(self, g_name, f_name, s_list):
@@ -241,6 +245,11 @@ stat_groups = [
             Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_PREFETCHED_AND_EVICTED_BY_FDIP", 1),
             Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_MSHR_HIT", 1)
             ]),
+    StatGroup("cf_ratio", "inst.stat.0.out",
+            [
+            Stat("ST_OP_CF", 2)
+            ]),
+
 
     StatGroup("fdip_ftq_occupancy_ops_accumulated", "pref.stat.0.out",
             [
