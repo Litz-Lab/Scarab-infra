@@ -1,4 +1,5 @@
-import gather_cluster_results
+from gather_cluster_results import *
+import os, sys
 import subprocess
 from time import sleep
 import shutil
@@ -73,10 +74,10 @@ def run_vary_warmup_legth(SCARABHOME, MODULESDIR, TRACEFILE, OUTDIR, segID, SEGS
                         "--frontend", "memtrace",
                         "--cbp_trace_r0", TRACEFILE,
                         "--memtrace_modules_log", MODULESDIR,
-                        "--memtrace_roi_begin", roiStart,
-                        "--memtrace_roi_end", roiEnd,
+                        "--memtrace_roi_begin", str(roiStart),
+                        "--memtrace_roi_end", str(roiEnd),
                         "--inst_limit", str(instLimit),
-                        "--full_warmup", WARMUP
+                        "--full_warmup", str(WARMUP)
                         ]
             # log file at cur dir
             log_file = "./sim.log"
@@ -145,7 +146,7 @@ if __name__ == "__main__":
 
     simpoints = read_simpoints(SIMPOINTDIR, "not applicable")
     top_simpoint = get_top_simpoint(simpoints)
-    print("top simp: {} {}", top_simpoint.seg_id, top_simpoint.weight)
+    print("top simp: {} {}".format(top_simpoint.seg_id, top_simpoint.weight))
     # def run_vary_warmup_legth(SCARABHOME, MODULESDIR, TRACEFILE, OUTDIR, segID, SEGSIZE, ub):
     run_vary_warmup_legth(SCARABHOME, MODULESDIR, TRACEFILE, OUTDIR, top_simpoint.seg_id, SEGSIZE, 300)
     # def plot(OUTDIR, segID, ub):
