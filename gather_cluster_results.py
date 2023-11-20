@@ -156,6 +156,102 @@ def customized_report(stat_groups, simpoints, sim_root_dir):
         writer.writerow(["fdip_ftq_occupancy_blocks_accumulated", "cycles", "BPC"])
         writer.writerow([blocks, c, float(blocks)/float(c)])
 
+stat_groups = [
+    StatGroup("dcache_access", "memory.stat.0.out",
+            [
+            Stat("DCACHE_MISS", 1),
+            Stat("DCACHE_ST_BUFFER_HIT", 1),
+            Stat("DCACHE_HIT", 1)
+            ]),
+    StatGroup("cycles", "core.stat.0.out",
+            [
+            Stat("NODE_CYCLE", 1)
+            ]),
+    StatGroup("instructions", "core.stat.0.out",
+            [
+            Stat("NODE_INST_COUNT", 1)
+            ]),
+
+    StatGroup("icache_access", "memory.stat.0.out",
+            [
+            Stat("ICACHE_HIT", 1),
+            Stat("ICACHE_MISS", 1)
+            ]),
+    StatGroup("icache_miss_reason", "memory.stat.0.out",
+            [
+            Stat("ICACHE_MISS_NOT_PREFETCHED", 1),
+            Stat("ICACHE_MISS_PREFETCHED_AND_EVICTED_BY_IFETCH", 1),
+            Stat("ICACHE_MISS_PREFETCHED_AND_EVICTED_BY_FDIP", 1),
+            Stat("ICACHE_MISS_MSHR_HIT", 1)
+            ]),
+    StatGroup("icache_hit_by_fdip_on_off", "memory.stat.0.out",
+            [
+            Stat("ICACHE_HIT_BY_FDIP_ONPATH", 1),
+            Stat("ICACHE_HIT_BY_FDIP_OFFPATH", 1)
+            ]),
+    StatGroup("icache_miss_mshr_hit_by_fdip_on_off", "memory.stat.0.out",
+            [
+            Stat("ICACHE_MISS_MSHR_HIT_BY_FDIP_ONPATH", 1),
+            Stat("ICACHE_MISS_MSHR_HIT_BY_FDIP_OFFPATH", 1)
+            ]),
+    StatGroup("icache_hit_on_off_by_fdip", "memory.stat.0.out",
+            [
+            Stat("ICACHE_HIT_ONPATH_BY_FDIP", 1),
+            Stat("ICACHE_HIT_OFFPATH_BY_FDIP", 1)
+            ]),
+    StatGroup("icache_miss_mshr_hit_on_off_by_fdip", "memory.stat.0.out",
+            [
+            Stat("ICACHE_MISS_MSHR_HIT_ONPATH_BY_FDIP", 1),
+            Stat("ICACHE_MISS_MSHR_HIT_OFFPATH_BY_FDIP", 1)
+            ]),
+
+    StatGroup("fdip_new_prefetches_on_off", "pref.stat.0.out",
+            [
+            Stat("FDIP_NEW_PREFETCHES_ONPATH", 1),
+            Stat("FDIP_NEW_PREFETCHES_OFFPATH", 1)
+            ]),
+    StatGroup("fdip_pref_icache_probe_hit_on_off", "pref.stat.0.out",
+            [
+            Stat("FDIP_PREF_ICACHE_PROBE_HIT_ONPATH", 1),
+            Stat("FDIP_PREF_ICACHE_PROBE_HIT_OFFPATH", 1)
+            ]),
+    StatGroup("fdip_pref_mshr_probe_hit_on_off", "pref.stat.0.out",
+            [
+            Stat("FDIP_PREF_MSHR_PROBE_HIT_ONPATH", 1),
+            Stat("FDIP_PREF_MSHR_PROBE_HIT_OFFPATH", 1)
+            ]),
+    StatGroup("fdip_attempted_pref_on_off", "pref.stat.0.out",
+            [
+            Stat("FDIP_ATTEMPTED_PREF_ONPATH", 1),
+            Stat("FDIP_ATTEMPTED_PREF_OFFPATH", 1)
+            ]),
+    StatGroup("fdip_avg_ftq_occupancy", "pref.stat.0.out",
+            [
+            Stat("FDIP_AVG_FTQ_OCCUPANCY", 1)
+            ]),
+
+    StatGroup("inst_lost_wait_for_icache_miss", "fetch.stat.0.out",
+            [
+            Stat("INST_LOST_WAIT_FOR_ICACHE_MISS", 1)
+            ]),
+    StatGroup("inst_lost_wait_for_icache_miss_reason", "fetch.stat.0.out",
+            [
+            Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_NOT_PREFETCHED", 1),
+            Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_PREFETCHED_AND_EVICTED_BY_IFETCH", 1),
+            Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_PREFETCHED_AND_EVICTED_BY_FDIP", 1),
+            Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_MSHR_HIT", 1)
+            ]),
+
+    StatGroup("fdip_ftq_occupancy_ops_accumulated", "pref.stat.0.out",
+            [
+            Stat("FDIP_FTQ_OCCUPANCY_OPS_ACCUMULATED", 1)
+            ]),
+    StatGroup("fdip_ftq_occupancy_blocks_accumulated", "pref.stat.0.out",
+            [
+            Stat("FDIP_FTQ_OCCUPANCY_BLOCKS_ACCUMULATED", 1)
+            ])
+]
+
 if __name__ == "__main__":
     if not os.path.isdir(sys.argv[1]):
         print("simpoint directory {} does not exist!")
@@ -163,102 +259,6 @@ if __name__ == "__main__":
     if not os.path.isdir(sys.argv[2]):
         print("simulation directory {} does not exist!")
         exit
-
-    stat_groups = [
-        StatGroup("dcache_access", "memory.stat.0.out",
-                [
-                Stat("DCACHE_MISS", 1),
-                Stat("DCACHE_ST_BUFFER_HIT", 1),
-                Stat("DCACHE_HIT", 1)
-                ]),
-        StatGroup("cycles", "core.stat.0.out",
-                [
-                Stat("NODE_CYCLE", 1)
-                ]),
-        StatGroup("instructions", "core.stat.0.out",
-                [
-                Stat("NODE_INST_COUNT", 1)
-                ]),
-
-        StatGroup("icache_access", "memory.stat.0.out",
-                [
-                Stat("ICACHE_HIT", 1),
-                Stat("ICACHE_MISS", 1)
-                ]),
-        StatGroup("icache_miss_reason", "memory.stat.0.out",
-                [
-                Stat("ICACHE_MISS_NOT_PREFETCHED", 1),
-                Stat("ICACHE_MISS_PREFETCHED_AND_EVICTED_BY_IFETCH", 1),
-                Stat("ICACHE_MISS_PREFETCHED_AND_EVICTED_BY_FDIP", 1),
-                Stat("ICACHE_MISS_MSHR_HIT", 1)
-                ]),
-        StatGroup("icache_hit_by_fdip_on_off", "memory.stat.0.out",
-                [
-                Stat("ICACHE_HIT_BY_FDIP_ONPATH", 1),
-                Stat("ICACHE_HIT_BY_FDIP_OFFPATH", 1)
-                ]),
-        StatGroup("icache_miss_mshr_hit_by_fdip_on_off", "memory.stat.0.out",
-                [
-                Stat("ICACHE_MISS_MSHR_HIT_BY_FDIP_ONPATH", 1),
-                Stat("ICACHE_MISS_MSHR_HIT_BY_FDIP_OFFPATH", 1)
-                ]),
-        StatGroup("icache_hit_on_off_by_fdip", "memory.stat.0.out",
-                [
-                Stat("ICACHE_HIT_ONPATH_BY_FDIP", 1),
-                Stat("ICACHE_HIT_OFFPATH_BY_FDIP", 1)
-                ]),
-        StatGroup("icache_miss_mshr_hit_on_off_by_fdip", "memory.stat.0.out",
-                [
-                Stat("ICACHE_MISS_MSHR_HIT_ONPATH_BY_FDIP", 1),
-                Stat("ICACHE_MISS_MSHR_HIT_OFFPATH_BY_FDIP", 1)
-                ]),
-
-        StatGroup("fdip_new_prefetches_on_off", "pref.stat.0.out",
-                [
-                Stat("FDIP_NEW_PREFETCHES_ONPATH", 1),
-                Stat("FDIP_NEW_PREFETCHES_OFFPATH", 1)
-                ]),
-        StatGroup("fdip_pref_icache_probe_hit_on_off", "pref.stat.0.out",
-                [
-                Stat("FDIP_PREF_ICACHE_PROBE_HIT_ONPATH", 1),
-                Stat("FDIP_PREF_ICACHE_PROBE_HIT_OFFPATH", 1)
-                ]),
-        StatGroup("fdip_pref_mshr_probe_hit_on_off", "pref.stat.0.out",
-                [
-                Stat("FDIP_PREF_MSHR_PROBE_HIT_ONPATH", 1),
-                Stat("FDIP_PREF_MSHR_PROBE_HIT_OFFPATH", 1)
-                ]),
-        StatGroup("fdip_attempted_pref_on_off", "pref.stat.0.out",
-                [
-                Stat("FDIP_ATTEMPTED_PREF_ONPATH", 1),
-                Stat("FDIP_ATTEMPTED_PREF_OFFPATH", 1)
-                ]),
-        StatGroup("fdip_avg_ftq_occupancy", "pref.stat.0.out",
-                [
-                Stat("FDIP_AVG_FTQ_OCCUPANCY", 1)
-                ]),
-
-        StatGroup("inst_lost_wait_for_icache_miss", "fetch.stat.0.out",
-                [
-                Stat("INST_LOST_WAIT_FOR_ICACHE_MISS", 1)
-                ]),
-        StatGroup("inst_lost_wait_for_icache_miss_reason", "fetch.stat.0.out",
-                [
-                Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_NOT_PREFETCHED", 1),
-                Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_PREFETCHED_AND_EVICTED_BY_IFETCH", 1),
-                Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_PREFETCHED_AND_EVICTED_BY_FDIP", 1),
-                Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_MSHR_HIT", 1)
-                ]),
-
-        StatGroup("fdip_ftq_occupancy_ops_accumulated", "pref.stat.0.out",
-                [
-                Stat("FDIP_FTQ_OCCUPANCY_OPS_ACCUMULATED", 1)
-                ]),
-        StatGroup("fdip_ftq_occupancy_blocks_accumulated", "pref.stat.0.out",
-                [
-                Stat("FDIP_FTQ_OCCUPANCY_BLOCKS_ACCUMULATED", 1)
-                ])
-    ]
 
     simpoints = read_simpoints(sys.argv[1], sys.argv[2])
     read_simpoint_stats(stat_groups, simpoints)
