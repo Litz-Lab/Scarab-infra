@@ -62,6 +62,9 @@ do
     echo "copying chunk 0000"
     cp ./chunk.0000 "./$segID"
 
+    # append to zip file
+    zip -j -m "./$segID.zip" "./$segID/chunk.0000"
+
     for chunkID in $(seq $roiStart $roiEnd);
     do
         # ref: https://stackoverflow.com/questions/1117134/padding-zeros-in-a-string
@@ -69,15 +72,17 @@ do
         padChunkID=$(printf %04d $chunkID)
         echo "unzipping chunk $padChunkID"
         unzip "$TRACEFILE" "chunk.$padChunkID" -d "./$segID"
+        # append to zip file
+        zip -j -m "./$segID.zip" "./$segID/chunk.$padChunkID"
     done
 
     # rezip the dir
-    echo "zipping segment $segID"
-    zip -j -r "./$segID.zip" "./$segID"
+    # echo "zipping segment $segID"
+    # zip -j -r "./$segID.zip" "./$segID"
 
     # delete tmp unzipped file folder
     echo "removing tmp segment folder"
-    rm -rf "./$segID"
+    rmdir "./$segID"
 done
 
 rm "./chunk.0000"
