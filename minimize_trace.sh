@@ -72,8 +72,12 @@ do
         padChunkID=$(printf %04d $chunkID)
         echo "unzipping chunk $padChunkID"
         unzip "$TRACEFILE" "chunk.$padChunkID" -d "./$segID"
+
+        # pad one more zero to distinguish from chunk 0000
+        padChunkIDMore=$(printf %05d $chunkID)
+        mv "./$segID/chunk.$padChunkID" "./$segID/chunk.$padChunkIDMore"
         # append to zip file
-        zip -j -m "./$segID.zip" "./$segID/chunk.$padChunkID"
+        zip -j -m "./$segID.zip" "./$segID/chunk.$padChunkIDMore"
     done
 
     # rezip the dir
