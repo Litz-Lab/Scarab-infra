@@ -29,7 +29,10 @@ clusterMap[$clusterID]=$segID
 done < $SPDIR/opt.p
 
 # even if zero is included in the simulation region,
-# copy chunk zero to get rid of the special case handling and embrace laziness
+# copy chunk zero to get rid of the special case handling and embrace laziness <- does not work
+# zip will not append the same file to the same archive
+# and dynamirio does not like to read chunk 0 header twice as well
+# need the special case handling
 echo "unzipping chunk 0000"
 unzip "$TRACEFILE" "chunk.0000" -d "."
 
