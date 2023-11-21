@@ -28,6 +28,11 @@ while IFS=" " read -r segID clusterID; do
 clusterMap[$clusterID]=$segID
 done < $SPDIR/opt.p
 
+# even if zero is included in the simulation region,
+# copy chunk zero to get rid of the special case handling and embrace laziness
+echo "unzipping chunk 0000"
+unzip "$TRACEFILE" "chunk.0000" -d "."
+
 # create simp trace folder and unzip original trace
 for clusterID in "${!clusterMap[@]}"
 do
@@ -53,10 +58,9 @@ do
         roiStart=0
     fi
 
-    # even if zero is included in the simulation region,
-    # copy chunk zero to get rid of the special case handling and embrace laziness
-    echo "unzipping chunk 0000"
-    unzip "$TRACEFILE" "chunk.0000" -d "./$segID"
+    # copy chunk zero
+    echo "copying chunk 0000"
+    cp ./chunk.0000 "./$segID"
 
     for chunkID in $(seq $roiStart $roiEnd);
     do
@@ -69,13 +73,14 @@ do
 
     # rezip the dir
     echo "zipping segment $segID"
-    zip -r "./$segID.zip" "./$segID"
+    zip -j -r "./$segID.zip" "./$segID"
 
     # delete tmp unzipped file folder
     echo "removing tmp segment folder"
     rm -rf "./$segID"
 done
 
+rm "./chunk.0000"
 # after doing this, can move around the entire folder
 # then run update modules log,
 # and copy bin modules log into raw folder since
