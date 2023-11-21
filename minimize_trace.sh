@@ -32,8 +32,6 @@ done < $SPDIR/opt.p
 # copy chunk zero to get rid of the special case handling and embrace laziness
 echo "unzipping chunk 0000"
 unzip "$TRACEFILE" "chunk.0000" -d "."
-# adding one more zero
-mv "chunk.0000" "chunk.00000"
 
 # create simp trace folder and unzip original trace
 for clusterID in "${!clusterMap[@]}"
@@ -61,8 +59,8 @@ do
     fi
 
     # copy chunk zero
-    echo "copying chunk 00000"
-    cp ./chunk.00000 "./$segID"
+    echo "copying chunk 0000"
+    cp ./chunk.0000 "./$segID"
 
     for chunkID in $(seq $roiStart $roiEnd);
     do
@@ -71,9 +69,6 @@ do
         padChunkID=$(printf %04d $chunkID)
         echo "unzipping chunk $padChunkID"
         unzip "$TRACEFILE" "chunk.$padChunkID" -d "./$segID"
-
-        padChunkIDMore=$(printf %05d $chunkID)
-        mv "./$segID/chunk.$padChunkID" "./$segID/chunk.$padChunkIDMore"
     done
 
     # rezip the dir
@@ -85,7 +80,7 @@ do
     rm -rf "./$segID"
 done
 
-rm "./chunk.00000"
+rm "./chunk.0000"
 # after doing this, can move around the entire folder
 # then run update modules log,
 # and copy bin modules log into raw folder since
