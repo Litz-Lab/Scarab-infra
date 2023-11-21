@@ -11,6 +11,17 @@ SEGSIZE=$6
 OUTDIR=$7
 WARMUPORG=$8
 
+# if TRACESSIMP is 1,
+# TRACEFILE is supposed to be traces_simp FOLDER
+TRACESSIMP=$9
+
+if [ "$TRACESSIMP" == "1" ]; then
+    if [ ! -d $TRACEFILE ]; then
+        echo "TRACEFILE is supposed to be traces_simp FOLDER"
+        exit
+    fi
+fi
+
 cd $OUTDIR
 
 ################################################################
@@ -60,16 +71,35 @@ do
 
     instLimit=$(( $roiEnd - $roiStart + 1 ))
 
-    scarabCmd="$SCARABHOME/src/scarab \
-    --frontend memtrace \
-    --cbp_trace_r0=$TRACEFILE \
-    --memtrace_modules_log=$MODULESDIR \
-    --memtrace_roi_begin=$roiStart \
-    --memtrace_roi_end=$roiEnd \
-    --inst_limit=$instLimit \
-    --full_warmup=$WARMUP \
-    $SCARABPARAMS \
-    &> sim.log"
+    if [ "$TRACESSIMP" != "1" ]; then
+        scarabCmd="$SCARABHOME/src/scarab \
+        --frontend memtrace \
+        --cbp_trace_r0=$TRACEFILE \
+        --memtrace_modules_log=$MODULESDIR \
+        --memtrace_roi_begin=$roiStart \
+        --memtrace_roi_end=$roiEnd \
+        --inst_limit=$instLimit \
+        --full_warmup=$WARMUP \
+        $SCARABPARAMS \
+        &> sim.log"
+    elif [ "$TRACESSIMP" == "1" ]; then
+        # with TRACESSIMP
+        # simultion uses the specific trace file
+        # the roiStart is always the second chunk, which is assumed to be segment size
+        # the roiEnd is always the end of the trace -- (dynamorio uses 0)
+        # the warmup is the same
+
+        scarabCmd="$SCARABHOME/src/scarab \
+        --frontend memtrace \
+        --cbp_trace_r0=$TRACEFILE/$segID.zip \
+        --memtrace_modules_log=$MODULESDIR \
+        --memtrace_roi_begin=$(( $SEGSIZE + 1)) \
+        --memtrace_roi_end=$(( $SEGSIZE + $instLimit )) \
+        --inst_limit=$instLimit \
+        --full_warmup=$WARMUP \
+        $SCARABPARAMS \
+        &> sim.log"
+    fi
 
     echo "simulating clusterID ${clusterID}, segment $segID..."
     echo "command: ${scarabCmd}"
