@@ -208,6 +208,16 @@ stat_groups = [
             Stat("ICACHE_MISS_MSHR_HIT_ONPATH_BY_FDIP", 1),
             Stat("ICACHE_MISS_MSHR_HIT_OFFPATH_BY_FDIP", 1)
             ]),
+    StatGroup("icache_evict_miss_on_off_by_fdip", "memory.stat.0.out",
+            [
+            Stat("ICACHE_EVICT_MISS_ONPATH_BY_FDIP", 1),
+            Stat("ICACHE_EVICT_MISS_OFFPATH_BY_FDIP", 1)
+            ]),
+    StatGroup("icache_evict_miss_by_fdip", "memory.stat.0.out",
+            [
+            Stat("ICACHE_EVICT_MISS_BY_FDIP_ONPATH", 1),
+            Stat("ICACHE_EVICT_MISS_BY_FDIP_OFFPATH", 1)
+            ]),
 
     StatGroup("fdip_new_prefetches_on_off", "pref.stat.0.out",
             [
@@ -232,6 +242,18 @@ stat_groups = [
     StatGroup("fdip_avg_ftq_occupancy", "pref.stat.0.out",
             [
             Stat("FDIP_AVG_FTQ_OCCUPANCY", 1)
+            ]),
+    StatGroup("fdip_conf", "pref.stat.0.out",
+            [
+            Stat("FDIP_OFF_CONF_ON", 1),
+            Stat("FDIP_OFF_CONF_OFF", 1),
+            Stat("FDIP_ON_CONF_ON", 1),
+            Stat("FDIP_ON_CONF_OFF", 1)
+            ]),
+    StatGroup("fdip_conf_true_miss", "pref.stat.0.out",
+            [
+            Stat("FDIP_OFF_CONF_ON_EMIT_UNUSEFUL", 1),
+            Stat("FDIP_ON_CONF_OFF_MISS_USEFUL", 1)
             ]),
 
     StatGroup("inst_lost_wait_for_icache_miss", "fetch.stat.0.out",
@@ -258,6 +280,16 @@ stat_groups = [
     StatGroup("fdip_ftq_occupancy_blocks_accumulated", "pref.stat.0.out",
             [
             Stat("FDIP_FTQ_OCCUPANCY_BLOCKS_ACCUMULATED", 1)
+            ]),
+    StatGroup("cbr", "bp.stat.0.out",
+            [
+            Stat("CBR_CORRECT", 1),
+            Stat("CBR_CORRECT_BTB_MISS_NT_NT", 1),
+            Stat("CBR_RECOVER_MISPREDICT", 1),
+            Stat("CBR_RECOVER_MISFETCH", 1),
+            Stat("CBR_RECOVER_BTB_MISS_T_T", 1),
+            Stat("CBR_RECOVER_BTB_MISS_T_NT", 1),
+            Stat("CBR_RECOVER_BTB_MISS_NT_T", 1)
             ])
 ]
 
