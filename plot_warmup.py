@@ -95,7 +95,7 @@ def run_vary_warmup_legth(SCARABHOME, MODULESDIR, TRACEFILE, OUTDIR, segID, SEGS
                     sleep(120)
 
     print("wait for all warm-up runs to finish...")
-    for p in run_warmup_tests_for_bench_p_list:
+    for p in p_list:
         p.wait()
 
 def plot(OUTDIR, segID, ub):
@@ -111,7 +111,8 @@ def plot(OUTDIR, segID, ub):
                     x=list(range(len(y_vals))),
                     y=y_vals,
                     name=s.s_name,
-                    visible='legendonly'
+                    showlegend=True
+                    # visible='legendonly'
                 )
             )
         fig.update_layout(
