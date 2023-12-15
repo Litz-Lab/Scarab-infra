@@ -59,6 +59,10 @@ case $APPNAME in
     echo "example"
     APP_GROUPNAME="example"
     ;;
+  allbench)
+    echo "allbench"
+    APP_GROUPNAME="allbench_traces"
+    ;;
   *)
     APP_GROUPNAME="unknown"
     echo "unknown application"
@@ -134,6 +138,9 @@ case $APPNAME in
     ;;
   example)
     BINCMD="/home/dcuser/scarab/utils/qsort/test_qsort"
+    ;;
+  allbench)
+    echo "No BINCMD available for allbench"
     ;;
   *)
     echo "unknown application"

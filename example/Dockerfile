@@ -5,13 +5,13 @@ FROM ubuntu:focal
 
 INCLUDE+ ./common/Dockerfile.common
 
+WORKDIR $tmpdir
+
 # TODO: Install required packages
 RUN apt-get install -y make
 
-RUN cd /home/dcuser/scarab/utils/qsort && make test_qsort
+RUN cd $tmpdir/scarab/utils/qsort && make test_qsort
 
-# Switch to the dcuser user
-USER dcuser
-
+WORKDIR /home/$username
 # Start your application
 CMD ["/bin/bash"]

@@ -5,6 +5,7 @@ FROM ubuntu:focal
 
 #scarab & dynamorio
 INCLUDE+ ./common/Dockerfile.common
+WORKDIR $tmpdir
 
 #reqs
 USER root
@@ -17,10 +18,10 @@ RUN apt-get install --no-install-recommends -y patch
 RUN useradd -MUr qtss
 
 #get source
-WORKDIR /home/dcuser
+WORKDIR $tmpdir
 RUN wget https://github.com/macosforge/dss/archive/refs/tags/6.0.3.tar.gz
 RUN tar -xzf 6.0.3.tar.gz
-WORKDIR /home/dcuser/dss-6.0.3
+WORKDIR $tmpdir/dss-6.0.3
 
 #patches to make dss compatable with 64-bit ubuntu linux by github:mdavid
 RUN wget https://github.com/mdavid/DarwinStreamingServer-Linux/raw/master/DSS-6.0.3-linux.patch
@@ -36,7 +37,7 @@ RUN sed -i 's/^\(LIBS \=\)\(\ $(CORE_LINK_LIBS)\)\( .*\)$/\1\3\2/g' QTFileTools/
 
 #build and install
 RUN ./Buildit install
-WORKDIR /home/dcuser/dss-6.0.3/DarwinStreamingSrvr-Linux
+WORKDIR $tmpdir/dss-6.0.3/DarwinStreamingSrvr-Linux
 RUN sed -i 's/^\(eval "use Net::SSLeay";\)/if ($^O eq "linux")\n{\n\tpush(@INC, "\/var\/streaming\/AdminHtml");\n}\n\1/1' streamingadminserver.pl
 #Darwin Streaming Server 6.0.3 7,500 clients, 60GB dataset, high bitratez
 RUN sed -i 's/^concurrentclients.*$/concurrentclients\t1/1' streamingloadtool.conf
@@ -52,6 +53,6 @@ RUN cp /usr/local/movies/sample_100kbit.mov /usr/local/movies/streamingloadtool.
 #run server: DarwinStreamingServer
 #testing: StreamingLoadTool -f /etc/streaming/streamingloadtool.conf
 
-WORKDIR /home/dcuser
+WORKDIR /home/$username
 CMD ["/bin/bash"]
 

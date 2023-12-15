@@ -6,8 +6,9 @@ INCLUDE+ ./common/Dockerfile.common
 USER root
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y clang lld
 
-# Switch to the dcuser user
-USER dcuser
+# Switch to the $username user
+USER $username
+WORKDIR $tmpdir
 
 # install bazel, fleetbench
 RUN wget https://github.com/bazelbuild/bazelisk/releases/download/v1.16.0/bazelisk-linux-amd64

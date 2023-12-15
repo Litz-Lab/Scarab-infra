@@ -4,27 +4,35 @@ ARG user_id
 ENV user_id=$user_id
 ARG group_id
 ENV group_id=$group_id
-ENV username
-ARG username=$username
+ARG username
+ENV username=$username
 
 # Install required packages
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     python3 \
     python3-pip \
+    python2 \
     git \
     sudo \
     wget \
     cmake \
     binutils \
     libunwind-dev \
+    libboost-dev \
     zlib1g-dev \
     libsnappy-dev \
     liblz4-dev \
-    g++ \
-    g++-multilib \
+    g++-9 \
+    g++-9-multilib \
     doxygen \
     libconfig++-dev \
-    vim
+    libboost-dev \
+    vim \
+    bc \
+    unzip \
+    gosu
+
+RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 1
 
 # Create a new user with $username
 RUN useradd -u $user_id -o -m $username && \
@@ -43,6 +51,7 @@ RUN touch /home/$username/.ssh/known_hosts && \
     chown -R $username:root /home/$username/.ssh/known_hosts && \
     chmod 700 /home/$username/.ssh/known_hosts
 RUN ssh-keyscan github.com >> /home/$username/.ssh/known_hosts
+
 
 # Copy workflow simpoint/no_simpoint script
 COPY utilities.sh /usr/local/bin/utilities.sh
@@ -67,26 +76,6 @@ WORKDIR $tmpdir
 # Switch to the user
 USER $username
 
-# DynamoRIO build from source
-RUN cd $tmpdir && git clone --recursive https://github.com/DynamoRIO/dynamorio.git && cd dynamorio && git reset --hard release_10.0.0 && mkdir build && cd build && cmake .. && make -j 40
-
-# Build DynamoRIO package for fingerprint client
-RUN mkdir $tmpdir/dynamorio/package && \
-    cd $tmpdir/dynamorio/package && \
-    ctest -V -S ../make/package.cmake,build=1\;no32
-ENV DYNAMORIO_HOME=$tmpdir/dynamorio/package/build_release-64/
-
-# Build fingerprint client
-COPY fingerprint_src $tmpdir/fingerprint_src/
-RUN mkdir $tmpdir/fingerprint_src/build && \
-    cd $tmpdir/fingerprint_src/build && \
-    cmake -DDynamoRIO_DIR=$DYNAMORIO_HOME/cmake .. && \
-    make && \
-    cp ./libfpg.so $tmpdir/libfpg.so
-
-# for future use after running the container with mounted host directory $OUTDIR
-ENV DYNAMORIO_HOME=/home/$username/dynamorio/package/build_release-64/
-
 # Clone the Scarab repository
 # Comment out if you don't use scarab at all and don't have ssh key permitted to clone 'scarab_hlitz'
 RUN cd $tmpdir && git clone -b decoupled_fe git@github.com:hlitz/scarab_hlitz.git scarab
@@ -100,16 +89,6 @@ ENV PIN_ROOT /home/$username/pin-3.15-98253-gb56e429b1-gcc-linux
 ENV SCARAB_ENABLE_PT_MEMTRACE 1
 ENV LD_LIBRARY_PATH /home/$username/pin-3.15-98253-gb56e429b1-gcc-linux/extras/xed-intel64/lib
 ENV LD_LIBRARY_PATH /home/$username/pin-3.15-98253-gb56e429b1-gcc-linux/intel64/runtime/pincrt:$LD_LIBRARY_PATH
-
-# Build SimPoint 3.2
-# Reference:
-# https://github.com/intel/pinplay-tools/blob/main/pinplay-scripts/PinPointsHome/Linux/bin/Makefile
-RUN cd $tmpdir/ && \
-    wget -O - http://cseweb.ucsd.edu/~calder/simpoint/releases/SimPoint.3.2.tar.gz | tar -x -f - -z && \
-    wget https://raw.githubusercontent.com/intel/pinplay-tools/main/pinplay-scripts/PinPointsHome/Linux/bin/simpoint_modern_gcc.patch -P SimPoint.3.2/ && \
-    patch --directory=SimPoint.3.2 --strip=1 < SimPoint.3.2/simpoint_modern_gcc.patch && \
-    make -C SimPoint.3.2 && \
-    ln -s SimPoint.3.2/bin/simpoint ./simpoint
 
 ENV HOME /home/$username
 # Set the working directory

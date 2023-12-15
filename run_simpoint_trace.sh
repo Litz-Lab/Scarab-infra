@@ -8,11 +8,10 @@ SEGSIZE=10000000
 # chunk size within trace file. Use 10M due to conversion issue.
 CHUNKSIZE=10000000
 SIMPOINT="$4"
-COLLECTTRACES="$5"
 
 source /home/dcuser/utilities.sh
 
-# Get command to run for Spe17
+# Get command to run for Spec17
 if [ "$APP_GROUPNAME" == "spec2017" ] && [ "$APPNAME" != "clang" ] && [ "$APPNAME" != "gcc" ]; then
   # environment
   cd /home/dcuser/cpu2017
@@ -175,78 +174,76 @@ elif [ "$SIMPOINT" == "1" ]; then
   ################################################################
   # collect traces
 
-  if [ "$COLLECTTRACES" == "1" ]; then
-    # tracing, raw2trace
-    taskPids=()
-    start=`date +%s`
-    for clusterID in "${!clusterMap[@]}"
-    do
-      mkdir -p $APPHOME/traces/$clusterID
-      cd $APPHOME/traces/$clusterID
-      segID=${clusterMap[$clusterID]}
-      start_inst=$(( $segID * $SEGSIZE ))
-      traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces/$clusterID -offline -trace_after_instrs $start_inst -trace_for_instrs $SEGSIZE -- ${BINCMD}"
-      echo "tracing cluster ${clusterID}, segment ${segID}..."
-      echo "command: ${traceCmd}"
-      # if [ "$APP_GROUPNAME" == "spec2017" ]; then
-      #   # have to go to that dir for the spec app cmd to work
-      #   ogo $APPNAME run
-      #   cd run_base_train*
-      # fi
-      eval $traceCmd &
-      taskPids+=($!)
-      sleep 2
-    done
+  # tracing, raw2trace
+  taskPids=()
+  start=`date +%s`
+  for clusterID in "${!clusterMap[@]}"
+  do
+    mkdir -p $APPHOME/traces/$clusterID
+    cd $APPHOME/traces/$clusterID
+    segID=${clusterMap[$clusterID]}
+    start_inst=$(( $segID * $SEGSIZE ))
+    traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces/$clusterID -offline -trace_after_instrs $start_inst -trace_for_instrs $SEGSIZE -- ${BINCMD}"
+    echo "tracing cluster ${clusterID}, segment ${segID}..."
+    echo "command: ${traceCmd}"
+    # if [ "$APP_GROUPNAME" == "spec2017" ]; then
+    #   # have to go to that dir for the spec app cmd to work
+    #   ogo $APPNAME run
+    #   cd run_base_train*
+    # fi
+    eval $traceCmd &
+    taskPids+=($!)
+    sleep 2
+  done
 
-    echo "wait for all tracing to finish..."
-    # ref: https://stackoverflow.com/a/29535256
-    for taskPid in ${taskPids[@]}; do
-      if wait $taskPid; then
-        echo "tracing process $taskPid success"
-      else
-        echo "tracing process $taskPid fail"
-        # # ref: https://serverfault.com/questions/479460/find-command-from-pid
-        # cat /proc/${taskPid}/cmdline | xargs -0 echo
-        exit
-      fi
-    done
+  echo "wait for all tracing to finish..."
+  # ref: https://stackoverflow.com/a/29535256
+  for taskPid in ${taskPids[@]}; do
+    if wait $taskPid; then
+      echo "tracing process $taskPid success"
+    else
+      echo "tracing process $taskPid fail"
+      # # ref: https://serverfault.com/questions/479460/find-command-from-pid
+      # cat /proc/${taskPid}/cmdline | xargs -0 echo
+      exit
+    fi
+  done
 
-    taskPids=()
-    # TODO: which dynamorio to use, release or scarab submodule?
-    for clusterID in "${!clusterMap[@]}"
-    do
-      cd $APPHOME/traces/$clusterID
-      mv dr*/raw/ ./raw
-      mkdir -p bin
-      cp raw/modules.log bin/modules.log
-      cp raw/modules.log raw/modules.log.bak
-      echo "dcuser" | sudo -S python2 /home/dcuser/scarab/utils/memtrace/portabilize_trace.py .
-      cp bin/modules.log raw/modules.log
-      $DYNAMORIO_HOME/clients/bin64/drraw2trace -indir ./raw/ &
-      taskPids+=($!)
-      sleep 2
-    done
+  taskPids=()
+  # TODO: which dynamorio to use, release or scarab submodule?
+  for clusterID in "${!clusterMap[@]}"
+  do
+    cd $APPHOME/traces/$clusterID
+    mv dr*/raw/ ./raw
+    mkdir -p bin
+    cp raw/modules.log bin/modules.log
+    cp raw/modules.log raw/modules.log.bak
+    echo "dcuser" | sudo -S python2 /home/dcuser/scarab/utils/memtrace/portabilize_trace.py .
+    cp bin/modules.log raw/modules.log
+    $DYNAMORIO_HOME/clients/bin64/drraw2trace -indir ./raw/ &
+    taskPids+=($!)
+    sleep 2
+  done
 
-    echo "wait for all raw2trace to finish..."
-    for taskPid in ${taskPids[@]}; do
-      if wait $taskPid; then
-        echo "raw2trace process $taskPid success"
-      else
-        echo "raw2trace process $taskPid fail"
-        # # ref https://serverfault.com/questions/479460/find-command-from-pid
-        # cat /proc/${taskPid}/cmdline | xargs -0 echo
-        exit
-      fi
-    done
-    end=`date +%s`
-    runtime=$((end-start))
-    hours=$((runtime / 3600));
-    minutes=$(( (runtime % 3600) / 60 ));
-    seconds=$(( (runtime % 3600) % 60 ));
-    echo "tracing Runtime: $hours:$minutes:$seconds (hh:mm:ss)"
+  echo "wait for all raw2trace to finish..."
+  for taskPid in ${taskPids[@]}; do
+    if wait $taskPid; then
+      echo "raw2trace process $taskPid success"
+    else
+      echo "raw2trace process $taskPid fail"
+      # # ref https://serverfault.com/questions/479460/find-command-from-pid
+      # cat /proc/${taskPid}/cmdline | xargs -0 echo
+      exit
+    fi
+  done
+  end=`date +%s`
+  runtime=$((end-start))
+  hours=$((runtime / 3600));
+  minutes=$(( (runtime % 3600) / 60 ));
+  seconds=$(( (runtime % 3600) % 60 ));
+  echo "tracing Runtime: $hours:$minutes:$seconds (hh:mm:ss)"
 
-    ################################################################
-  fi
+  ################################################################
 else # non-simpoint
   # dir for all relevant data: traces, log, sim stats...
   mkdir -p /home/dcuser/nonsimpoint_flow/$APPNAME
@@ -257,86 +254,84 @@ else # non-simpoint
   ################################################################
   # collect traces
 
-  if [ "$COLLECTTRACES" == "1" ]; then
-    # tracing, raw2trace
-    taskPids=()
-    start=`date +%s`
-    mkdir -p $APPHOME/traces
-    cd $APPHOME/traces
-    start_inst=$(( 20 * $SEGSIZE ))
-    SEGSIZE=$(( 50 * $SEGSIZE ))
+  # tracing, raw2trace
+  taskPids=()
+  start=`date +%s`
+  mkdir -p $APPHOME/traces
+  cd $APPHOME/traces
+  start_inst=$(( 20 * $SEGSIZE ))
+  SEGSIZE=$(( 50 * $SEGSIZE ))
 
-    case $APPNAME in
-      cassandra | kafka | tomcat)
-        # TODO: Java does not work under DynamoRIO : tried -disable_traces -no_hw_cache_consistency -no_sandbox_writes -no_enable_reset -sandbox2ro_threshold 0 -ro2sandbox_threshold 0
-        traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces -offline -trace_after_instrs $start_inst -exit_after_tracing $SEGSIZE -- ${BINCMD}"
-        ;;
-      chirper | http)
-        # TODO: Java does not work under DynamoRIO : tried -disable_traces -no_hw_cache_consistency -no_sandbox_writes -no_enable_reset -sandbox2ro_threshold 0 -ro2sandbox_threshold 0
-        traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces -offline -trace_after_instrs $start_inst -exit_after_tracing $SEGSIZE -- ${BINCMD}"
-        ;;
-      solr)
-        # TODO: Java does not work under DynamoRIO : tried -disable_traces -no_hw_cache_consistency -no_sandbox_writes -no_enable_reset -sandbox2ro_threshold 0 -ro2sandbox_threshold 0
-        # https://github.com/DynamoRIO/dynamorio/commits/i3733-jvm-bug-fixes does not work: "DynamoRIO Cache Simulator Tracer interval crash at PC 0x00007fe16d8e8fdb. Please report this at https://dynamorio.org/issues"
-        # Scarab does not work either: "setarch: failed to set personality to x86_64: Operation not permitted"
-        # Solr uses many threads and seems to run too long on simpoint's fingerprint collection
-        traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces -offline -trace_after_instrs $start_inst -exit_after_tracing $SEGSIZE -- ${BINCMD}"
-        ;;
-      *)
-        traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces -offline -trace_after_instrs $start_inst -exit_after_tracing $SEGSIZE -- ${BINCMD}"
-        ;;
-    esac
-    echo "tracing ..."
-    echo "command: ${traceCmd}"
-    eval $traceCmd &
-    taskPids+=($!)
-    sleep 2
+  case $APPNAME in
+    cassandra | kafka | tomcat)
+      # TODO: Java does not work under DynamoRIO : tried -disable_traces -no_hw_cache_consistency -no_sandbox_writes -no_enable_reset -sandbox2ro_threshold 0 -ro2sandbox_threshold 0
+      traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces -offline -trace_after_instrs $start_inst -exit_after_tracing $SEGSIZE -- ${BINCMD}"
+      ;;
+    chirper | http)
+      # TODO: Java does not work under DynamoRIO : tried -disable_traces -no_hw_cache_consistency -no_sandbox_writes -no_enable_reset -sandbox2ro_threshold 0 -ro2sandbox_threshold 0
+      traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces -offline -trace_after_instrs $start_inst -exit_after_tracing $SEGSIZE -- ${BINCMD}"
+      ;;
+    solr)
+      # TODO: Java does not work under DynamoRIO : tried -disable_traces -no_hw_cache_consistency -no_sandbox_writes -no_enable_reset -sandbox2ro_threshold 0 -ro2sandbox_threshold 0
+      # https://github.com/DynamoRIO/dynamorio/commits/i3733-jvm-bug-fixes does not work: "DynamoRIO Cache Simulator Tracer interval crash at PC 0x00007fe16d8e8fdb. Please report this at https://dynamorio.org/issues"
+      # Scarab does not work either: "setarch: failed to set personality to x86_64: Operation not permitted"
+      # Solr uses many threads and seems to run too long on simpoint's fingerprint collection
+      traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces -offline -trace_after_instrs $start_inst -exit_after_tracing $SEGSIZE -- ${BINCMD}"
+      ;;
+    *)
+      traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces -offline -trace_after_instrs $start_inst -exit_after_tracing $SEGSIZE -- ${BINCMD}"
+      ;;
+  esac
+  echo "tracing ..."
+  echo "command: ${traceCmd}"
+  eval $traceCmd &
+  taskPids+=($!)
+  sleep 2
 
-    echo "wait for all tracing to finish..."
-    # ref: https://stackoverflow.com/a/29535256
-    for taskPid in ${taskPids[@]}; do
-      if wait $taskPid; then
-        echo "tracing process $taskPid success"
-      else
-        echo "tracing process $taskPid fail"
-        # # ref: https://serverfault.com/questions/479460/find-command-from-pid
-        # cat /proc/${taskPid}/cmdline | xargs -0 echo
-        exit
-      fi
-    done
+  echo "wait for all tracing to finish..."
+  # ref: https://stackoverflow.com/a/29535256
+  for taskPid in ${taskPids[@]}; do
+    if wait $taskPid; then
+      echo "tracing process $taskPid success"
+    else
+      echo "tracing process $taskPid fail"
+      # # ref: https://serverfault.com/questions/479460/find-command-from-pid
+      # cat /proc/${taskPid}/cmdline | xargs -0 echo
+      exit
+    fi
+  done
 
-    taskPids=()
-    # TODO: which dynamorio to use, release or scarab submodule?
-    cd $APPHOME/traces
-    mv dr*/raw/ ./raw
-    mkdir -p bin
-    cp raw/modules.log bin/modules.log
-    cp raw/modules.log raw/modules.log.bak
-    echo "dcuser" | sudo -S python2 /home/dcuser/scarab/utils/memtrace/portabilize_trace.py .
-    cp bin/modules.log raw/modules.log
-    $DYNAMORIO_HOME/clients/bin64/drraw2trace -indir ./raw/ &
-    taskPids+=($!)
-    sleep 2
+  taskPids=()
+  # TODO: which dynamorio to use, release or scarab submodule?
+  cd $APPHOME/traces
+  mv dr*/raw/ ./raw
+  mkdir -p bin
+  cp raw/modules.log bin/modules.log
+  cp raw/modules.log raw/modules.log.bak
+  echo "dcuser" | sudo -S python2 /home/dcuser/scarab/utils/memtrace/portabilize_trace.py .
+  cp bin/modules.log raw/modules.log
+  $DYNAMORIO_HOME/clients/bin64/drraw2trace -indir ./raw/ &
+  taskPids+=($!)
+  sleep 2
 
-    echo "wait for all raw2trace to finish..."
-    for taskPid in ${taskPids[@]}; do
-      if wait $taskPid; then
-        echo "raw2trace process $taskPid success"
-      else
-        echo "raw2trace process $taskPid fail"
-        # # ref https://serverfault.com/questions/479460/find-command-from-pid
-        # cat /proc/${taskPid}/cmdline | xargs -0 echo
-        exit
-      fi
-    done
-    end=`date +%s`
-    runtime=$((end-start))
-    hours=$((runtime / 3600));
-    minutes=$(( (runtime % 3600) / 60 ));
-    seconds=$(( (runtime % 3600) % 60 ));
-    echo "tracing Runtime: $hours:$minutes:$seconds (hh:mm:ss)"
+  echo "wait for all raw2trace to finish..."
+  for taskPid in ${taskPids[@]}; do
+    if wait $taskPid; then
+      echo "raw2trace process $taskPid success"
+    else
+      echo "raw2trace process $taskPid fail"
+      # # ref https://serverfault.com/questions/479460/find-command-from-pid
+      # cat /proc/${taskPid}/cmdline | xargs -0 echo
+      exit
+    fi
+  done
+  end=`date +%s`
+  runtime=$((end-start))
+  hours=$((runtime / 3600));
+  minutes=$(( (runtime % 3600) / 60 ));
+  seconds=$(( (runtime % 3600) % 60 ));
+  echo "tracing Runtime: $hours:$minutes:$seconds (hh:mm:ss)"
 
   ################################################################
-  fi
 fi
 ###############################################################

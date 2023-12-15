@@ -50,14 +50,14 @@ RUN     cd $SOLR_HOME \
 #INSTALL DOCKER
 RUN apt-get update && apt-get install -y curl && curl -sSL https://get.docker.com/ | sh
 
-COPY solr/docker-entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY solr/docker-entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 EXPOSE $SOLR_PORT
 
 RUN sed -i "/SOLR_JETTY_HOST/c\SOLR_JETTY_HOST=\"0.0.0.0\"" ${SOLR_HOME}/bin/solr.in.sh 
 
-WORKDIR /home/dcuser
+WORKDIR /home/$username
 
 RUN mkdir $SOLR_HOME/server/logs
 RUN touch $SOLR_HOME/server/logs/solr_gc.log
