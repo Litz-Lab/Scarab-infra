@@ -42,7 +42,7 @@ case $APP_GROUPNAME in
     docker exec --privileged $APP_GROUPNAME /bin/bash -c "/usr/local/bin/common_entrypoint.sh"
     docker exec --privileged $APP_GROUPNAME /bin/bash -c "/usr/local/bin/entrypoint.sh \"$APPNAME\""
     ;;
-  allbench_trace)
+  allbench_traces)
     docker run -dit --privileged --name $APP_GROUPNAME --mount type=bind,source=/soe/hlitz/lab/traces,target=/simpoint_traces,readonly --mount type=bind,source=$OUTDIR,target=/home/$USER $APP_GROUPNAME:latest /bin/bash
     docker start $APP_GROUPNAME
     docker exec --privileged $APP_GROUPNAME /bin/bash -c "/usr/local/bin/common_entrypoint.sh"
