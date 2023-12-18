@@ -9,12 +9,12 @@ SEGSIZE=10000000
 CHUNKSIZE=10000000
 SIMPOINT="$4"
 
-source /home/dcuser/utilities.sh
+source utilities.sh
 
 # Get command to run for Spec17
 if [ "$APP_GROUPNAME" == "spec2017" ] && [ "$APPNAME" != "clang" ] && [ "$APPNAME" != "gcc" ]; then
   # environment
-  cd /home/dcuser/cpu2017
+  cd $HOME/cpu2017
   source ./shrc
   # compile and get command for application
   # TODO: this is just for one input
@@ -36,10 +36,10 @@ fi
 
 if [ "$SIMPOINT" == "2" ]; then
   # dir for all relevant data: fingerprint, traces, log, sim stats...
-  mkdir -p /home/dcuser/simpoint_flow/$APPNAME
-  cd /home/dcuser/simpoint_flow/$APPNAME
+  mkdir -p $HOME/simpoint_flow/$APPNAME
+  cd $HOME/simpoint_flow/$APPNAME
   mkdir -p traces
-  APPHOME=/home/dcuser/simpoint_flow/$APPNAME
+  APPHOME=$HOME/simpoint_flow/$APPNAME
 
 
   ################################################################
@@ -77,7 +77,7 @@ if [ "$SIMPOINT" == "2" ]; then
   wait_for "whole app tracing" "${taskPids[@]}"
   end=`date +%s`
   if [ "$APPNAME" == "mysql" ] || [ "$APPNAME" == "postgres" ]; then
-    sudo chown -R dcuser:dcuser $APPHOME/traces/whole
+    sudo chown -R $username:$username $APPHOME/traces/whole
   fi
   report_time "whole app tracing" "$start" "$end"
 
@@ -91,7 +91,7 @@ if [ "$SIMPOINT" == "2" ]; then
     mkdir -p bin
     cp raw/modules.log bin/modules.log
     cp raw/modules.log raw/modules.log.bak
-    echo "dcuser" | sudo -S python2 /home/dcuser/scarab/utils/memtrace/portabilize_trace.py .
+    sudo python2 $HOME/scarab/utils/memtrace/portabilize_trace.py .
     cp bin/modules.log raw/modules.log
     $DYNAMORIO_HOME/clients/bin64/drraw2trace -jobs 40 -indir ./raw/ -chunk_instr_count $CHUNKSIZE &
     taskPids+=($!)
@@ -111,24 +111,24 @@ if [ "$SIMPOINT" == "2" ]; then
     wholeTrace=$(ls $APPHOME/traces/whole/drmemtrace.*.dir/trace/dr*.zip)
     echo "modulesDIR: $modulesDir"
     echo "wholeTrace: $wholeTrace"
-    bash /home/dcuser/run_trace_post_processing.sh $APPHOME $modulesDir $wholeTrace $CHUNKSIZE $SEGSIZE
+    bash run_trace_post_processing.sh $APPHOME $modulesDir $wholeTrace $CHUNKSIZE $SEGSIZE
   else
   # otherwise ask the user to run manually
     echo -e "There are multiple trace files.\n\
-    Decide and run \"/home/dcuser/run_trace_post_processing.sh <OUTDIR> <MODULESDIR> <TRACEFILE> <CHUNKSIZE> <SEGSIZE>\"\n\
-    Then run /home/dcuser/run_clustering.sh <FPFILE> <OUTDIR>"
+    Decide and run \"/usr/local/bin/run_trace_post_processing.sh <OUTDIR> <MODULESDIR> <TRACEFILE> <CHUNKSIZE> <SEGSIZE>\"\n\
+    Then run /usr/local/bin/run_clustering.sh <FPFILE> <OUTDIR>"
     exit
   fi
 
   # clustering
-  bash /home/dcuser/run_clustering.sh $APPHOME/fingerprint/bbfp $APPHOME
+  bash run_clustering.sh $APPHOME/fingerprint/bbfp $APPHOME
 
 elif [ "$SIMPOINT" == "1" ]; then
   # dir for all relevant data: fingerprint, traces, log, sim stats...
-  mkdir -p /home/dcuser/simpoint_flow/$APPNAME
-  cd /home/dcuser/simpoint_flow/$APPNAME
+  mkdir -p $HOME/simpoint_flow/$APPNAME
+  cd $HOME/simpoint_flow/$APPNAME
   mkdir -p fingerprint traces
-  APPHOME=/home/dcuser/simpoint_flow/$APPNAME
+  APPHOME=$HOME/simpoint_flow/$APPNAME
 
 
   ################################################################
@@ -136,7 +136,7 @@ elif [ "$SIMPOINT" == "1" ]; then
   # collect fingerprint
   # TODO: add parameter: size and warm-up
   cd $APPHOME/fingerprint
-  fpCmd="$DYNAMORIO_HOME/bin64/drrun -opt_cleancall 2 -c /home/dcuser/libfpg.so -segment_size $SEGSIZE -- $BINCMD"
+  fpCmd="$DYNAMORIO_HOME/bin64/drrun -opt_cleancall 2 -c $HOME/libfpg.so -segment_size $SEGSIZE -- $BINCMD"
   echo "generate fingerprint..."
   echo "command: ${fpCmd}"
   # if [ "$APP_GROUPNAME" == "spec2017" ]; then
@@ -160,7 +160,7 @@ elif [ "$SIMPOINT" == "1" ]; then
   ################################################################
 
   # run SimPoint clustering
-  bash /home/dcuser/run_clustering.sh $APPHOME/fingerprint/bbfp $APPHOME
+  bash $HOME/run_clustering.sh $APPHOME/fingerprint/bbfp $APPHOME
 
   ################################################################
   # read in simpoint
@@ -218,7 +218,7 @@ elif [ "$SIMPOINT" == "1" ]; then
     mkdir -p bin
     cp raw/modules.log bin/modules.log
     cp raw/modules.log raw/modules.log.bak
-    echo "dcuser" | sudo -S python2 /home/dcuser/scarab/utils/memtrace/portabilize_trace.py .
+    sudo python2 $HOME/scarab/utils/memtrace/portabilize_trace.py .
     cp bin/modules.log raw/modules.log
     $DYNAMORIO_HOME/clients/bin64/drraw2trace -indir ./raw/ &
     taskPids+=($!)
@@ -246,10 +246,10 @@ elif [ "$SIMPOINT" == "1" ]; then
   ################################################################
 else # non-simpoint
   # dir for all relevant data: traces, log, sim stats...
-  mkdir -p /home/dcuser/nonsimpoint_flow/$APPNAME
-  cd /home/dcuser/nonsimpoint_flow/$APPNAME
+  mkdir -p $HOME/nonsimpoint_flow/$APPNAME
+  cd $HOME/nonsimpoint_flow/$APPNAME
   mkdir -p traces
-  APPHOME=/home/dcuser/nonsimpoint_flow/$APPNAME
+  APPHOME=$HOME/nonsimpoint_flow/$APPNAME
 
   ################################################################
   # collect traces
@@ -308,7 +308,7 @@ else # non-simpoint
   mkdir -p bin
   cp raw/modules.log bin/modules.log
   cp raw/modules.log raw/modules.log.bak
-  echo "dcuser" | sudo -S python2 /home/dcuser/scarab/utils/memtrace/portabilize_trace.py .
+  sudo python2 $HOME/scarab/utils/memtrace/portabilize_trace.py .
   cp bin/modules.log raw/modules.log
   $DYNAMORIO_HOME/clients/bin64/drraw2trace -indir ./raw/ &
   taskPids+=($!)

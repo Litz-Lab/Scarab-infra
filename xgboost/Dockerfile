@@ -11,12 +11,10 @@ RUN apt update && apt upgrade -y
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
     curl \
     unzip
-COPY --chown=dcuser ./xgboost/train.py /home/dcuser/train.py
-COPY --chown=dcuser ./xgboost/test-arg.py /home/dcuser/test-arg.py
+COPY --chown=$username./xgboost/train.py $tmpdir/train.py
+COPY --chown=$username ./xgboost/test-arg.py $tmpdir/test-arg.py
 
-# Switch to the dcuser user
-USER dcuser
-WORKDIR /home/dcuser
+WORKDIR $tmpdir
 
 RUN wget https://mlphysics.ics.uci.edu/data/higgs/HIGGS.csv.gz
 
@@ -26,9 +24,11 @@ RUN pip install pandas
 RUN pip install xgboost
 RUN pip install scikit-learn
 
-RUN python3 /home/dcuser/train.py
+RUN python3 $tmpdir/train.py
 RUN unzip mymodel.zip
-RUN cd /home/dcuser/libmymodel && make -j40
+RUN cd $tmpdir/libmymodel && make -j40
 
+WORKDIR /home/$username
+USER $username
 # Start your application
 CMD ["/bin/bash"]

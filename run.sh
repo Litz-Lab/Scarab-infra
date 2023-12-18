@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x #echo on
+#set -x #echo on
 
 # code to ignore case restrictions
 shopt -s nocasematch
@@ -30,8 +30,8 @@ help()
   echo "c     Clean up all the containers/volumes after run. 0: No clean up 2: Clean up e.g) -c 1"
 }
 
-SHORT=h:,o:,b:,t:,s:
-LONG=help:,outdir:,build:,trace:,scarab:
+SHORT=h:,o:,b:,t:,s:,c:
+LONG=help:,outdir:,build:,trace:,scarab:,cleanup:
 OPTS=$(getopt -a -n run.sh --options $SHORT --longoptions $LONG -- "$@")
 
 VALID_ARGUMENTS=$# # Returns the count of arguments that are in short or long options
@@ -110,11 +110,11 @@ while read APPNAME ;do
     # run simpoint/trace
     echo "run simpoint/trace.."
 
-    docker exec --privileged $APP_GROUPNAME /home/dcuser/run_simpoint_trace.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SIMPOINT" &
+    docker exec --privileged $APP_GROUPNAME run_simpoint_trace.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SIMPOINT" &
     sleep 2
     while read -r line ;do
       IFS=" " read PID CMD <<< $line
-      if [ "$CMD" == "/bin/bash /home/dcuser/run_simpoint_trace.sh $APPNAME $APP_GROUPNAME $BINCMD $SIMPOINT" ]; then
+      if [ "$CMD" == "/bin/bash /usr/local/bin/run_simpoint_trace.sh $APPNAME $APP_GROUPNAME $BINCMD $SIMPOINT" ]; then
         taskPids+=($PID)
       fi
     done < <(docker top $APP_GROUPNAME -eo pid,cmd)
@@ -134,11 +134,15 @@ if [ $SCARABMODE ]; then
   while read APPNAME; do
     source setup_apps.sh
     while IFS=, read -r SCENARIONUM SCARABPARAMS; do
-      docker exec --privileged $APP_GROUPNAME /home/dcuser/run_scarab.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SCENARIONUM" "$SCARABPARAMS" "$SCARABMODE" &
+      if [ "$APP_GROUPNAME" == "allbench_traces" ]; then
+        docker exec --privileged $APP_GROUPNAME run_scarab_allbench.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SCENARIONUM" "$SCARABPARAMS" "$SCARABMODE" &
+      else
+        docker exec --privileged $APP_GROUPNAME run_scarab.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SCENARIONUM" "$SCARABPARAMS" "$SCARABMODE" &
+      fi
       sleep 2
       while read -r line; do
         IFS=" " read PID CMD <<< $line
-        if [ "$CMD" == "/bin/bash /home/dcuser/run_scarab.sh $APPNAME $APP_GROUPNAME $BINCMD $SCENARIONUM $SCARABPARAMS $SCARABMODE" ]; then
+        if [ "$CMD" == "/bin/bash /usr/local/bin/run_scarab.sh $APPNAME $APP_GROUPNAME $BINCMD $SCENARIONUM $SCARABPARAMS $SCARABMODE" ]; then
           taskPids+=($PID)
         fi
       done < <(docker top $APP_GROUPNAME -eo pid,cmd)

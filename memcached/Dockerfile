@@ -11,10 +11,12 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libzmq3-dev
 RUN apt-get build-dep memcached
 
-# Switch to the dcuser user
-USER dcuser
-RUN git clone https://github.com/shaygalon/memcache-perf.git
+WORKDIR $tmpdir
+RUN cd $tmpdir && git clone https://github.com/shaygalon/memcache-perf.git
 RUN cd memcache-perf && make
+
+WORKDIR /home/$username
+USER $username
 
 # Start your application
 CMD ["/bin/bash"]

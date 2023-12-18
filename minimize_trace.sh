@@ -7,7 +7,7 @@ SPDIR=$3
 
 # warmup is specified in the unit of chunks, e.g., 1 or 4
 WARMUPCHUNKSORG=$4
-# supposed to be /home/dcuser/simpoint_flow/APPNAME/simp_traces
+# supposed to be /home/$USER/simpoint_flow/APPNAME/simp_traces
 OUTDIR=$5
 
 # create the folders

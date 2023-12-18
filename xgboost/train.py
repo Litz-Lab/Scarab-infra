@@ -7,9 +7,10 @@ import treelite
 import xgboost
 from sklearn.model_selection import train_test_split
 import os.path
+import os.environ
 import treelite_runtime
 
-data_dir = "/home/dcuser/"
+data_dir = os.environ['tmpdir']
 full_data_path = os.path.join(data_dir, "HIGGS.csv.gz")
 train_path = os.path.join(data_dir, "HIGGS_train.csv.gz")
 test_path = os.path.join(data_dir, "HIGGS_test.csv")
@@ -32,5 +33,6 @@ bst = xgboost.train(params, dtrain, 1600, [(dtrain, 'train')])
 model = treelite.Model.from_xgboost(bst)
 toolchain = 'gcc'
 print("Saving Model")
-#model.export_lib(toolchain=toolchain, libpath='/home/dcuser/libmymodel.so', params={'parallel_comp': 4}, verbose=True)
-model.export_srcpkg(platform='unix', toolchain=toolchain, pkgpath='./mymodel.zip', libname='libmymodel.so', verbose=True, params={'parallel_comp':30})
+modelpath = os.environ['tmpdir']
+modelpath = os.path.join(modelpath, '/mymodel.zip')
+model.export_srcpkg(platform='unix', toolchain=toolchain, pkgpath=modelpath, libname='libmymodel.so', verbose=True, params={'parallel_comp':30})

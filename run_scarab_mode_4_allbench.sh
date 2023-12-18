@@ -5,7 +5,7 @@ source utilities.sh
 SCARABHOME=$1
 MODULESDIR=$2
 TRACEFILE=$3
-SCARABPARAMS=$4
+CARABPARAMS=$4
 SPDIR=$5
 SEGSIZE=$6
 OUTDIR=$7
@@ -51,7 +51,7 @@ do
     roiStart=$(( $segID * $SEGSIZE + 1 ))
     roiEnd=$(( $segID * $SEGSIZE + $SEGSIZE ))
 
-    if [ "$SPDIR" == "$HOME/simpoint_flow/verilator/simpoints/" ]; then
+    if [ "$SPDIR" == "$TRACEHOME/verilator/simpoints/" ]; then
         # hard-coded scenario for verilator
         # warm-up within the segment, and only simulate 10M
         # chances are that the trace end before warmup finish
@@ -130,4 +130,4 @@ report_time "simpoint simiulations" "$start" "$end"
 
 # aggregate the simulation results
 cd $OUTDIR
-python3 gather_cluster_results.py $SPDIR $OUTDIR
+python3 /usr/local/bin/gather_cluster_results.py $SPDIR $OUTDIR

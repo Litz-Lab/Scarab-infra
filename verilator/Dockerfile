@@ -29,14 +29,18 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libboost-all-dev \
     default-jre
 
-# Switch to the dcuser user
-USER dcuser
+WORKDIR $tmpdir
 
-run git clone https://github.com/ucb-bar/rocket-chip.git
+run cd $tmpdir && git clone https://github.com/ucb-bar/rocket-chip.git
 run cd rocket-chip && git checkout aca2f0c3b9fb81f42e4d1 && git submodule update --init riscv-tools && cd riscv-tools && git submodule update --init riscv-fesvr
 
-RUN mkdir /home/dcuser/rocket-chip/riscv
-ENV RISCV=/home/dcuser/rocket-chip/riscv
-RUN cd /home/dcuser/rocket-chip/riscv-tools/riscv-fesvr && mkdir build && cd build && ../configure --prefix=$RISCV --target=riscv64-unknown-elf && make install
-RUN cd /home/dcuser/rocket-chip && gdown https://drive.google.com/uc?id=1WnrYhhYTGUMpndvoNpnzJOjgxdTOBHyL && tar -xvf emulator.tar.gz
-ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/home/dcuser/rocket-chip/riscv/lib"
+RUN mkdir $tmpdir/rocket-chip/riscv
+ENV RISCV=$tmpdir/rocket-chip/riscv
+RUN cd $tmpdir/rocket-chip/riscv-tools/riscv-fesvr && mkdir build && cd build && ../configure --prefix=$RISCV --target=riscv64-unknown-elf && make install
+RUN cd $tmpdir/rocket-chip && gdown https://drive.google.com/uc?id=1WnrYhhYTGUMpndvoNpnzJOjgxdTOBHyL && tar -xvf emulator.tar.gz
+ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$HOME/rocket-chip/riscv/lib"
+
+WORKDIR /home/$username
+USER $username
+# Start your application
+CMD ["/bin/bash"]

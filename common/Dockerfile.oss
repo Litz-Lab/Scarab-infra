@@ -51,9 +51,11 @@ COPY run_trace_post_processing.sh /usr/local/bin/run_trace_post_processing.sh
 
 COPY run_simpoint_trace.sh /usr/local/bin/run_simpoint_trace.sh
 COPY run_scarab.sh /usr/local/bin/run_scarab.sh
+COPY run_scarab_allbench.sh /usr/local/bin/run_scarab_allbench.sh
 COPY gather_fp_pieces.py /usr/local/bin/gather_fp_pieces.py
 
 COPY run_scarab_mode_4.sh /usr/local/bin/run_scarab_mode_4.sh
+COPY run_scarab_mode_4_allbench.sh /usr/local/bin/run_scarab_mode_4_allbench.sh
 COPY gather_cluster_results.py /usr/local/bin/gather_cluster_results.py
 COPY ./common/common_entrypoint.sh /usr/local/bin/common_entrypoint.sh
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source /home/dcuser/utilities.sh
+source utilities.sh
 
 OUTDIR=$1
 MODULESDIR=$2
@@ -47,7 +47,7 @@ fi
 if [ "$SEGSIZE" -lt "$CHUNKSIZE" ]; then
   echo "SEGSIZE is $SEGSIZE, less than CHUNKSIZE $CHUNKSIZE, which is too small??"
 
-  if [ "$OUTDIR" == "/home/dcuser/simpoint_flow/verilator/simpoint_10M" ]; then
+  if [ "$OUTDIR" == "$HOME/simpoint_flow/verilator/simpoint_10M" ]; then
     echo "This is a hard-coded scenario for verilator, which has chunk size > segment size"
     # verilator last chunk chunk.3945 has 35181523 instructions
     # so the total number of instruction is
@@ -71,7 +71,7 @@ do
   mkdir $segmentID
   # do not care about the params file
   cd $segmentID
-  scarabCmd="/home/dcuser/scarab/src/scarab --frontend memtrace \
+  scarabCmd="$HOME/scarab/src/scarab --frontend memtrace \
             --cbp_trace_r0=$TRACEFILE \
             --memtrace_modules_log=$MODULESDIR \
             --mode=trace_bbv_distributed \
@@ -104,6 +104,5 @@ end=`date +%s`
 report_time "post-processing" "$start" "$end"
 
 # aggregate the fingerprint pieces
-cd /home/dcuser
-python3 ./gather_fp_pieces.py $OUTDIR/fingerprint/pieces $numSegment
+python3 gather_fp_pieces.py $OUTDIR/fingerprint/pieces $numSegment
 cp $OUTDIR/fingerprint/pieces/bbfp $OUTDIR/fingerprint/bbfp

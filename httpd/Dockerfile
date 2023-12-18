@@ -12,12 +12,12 @@ RUN apt-get install --no-install-recommends -y libpcre2-dev
 RUN apt-get install --no-install-recommends -y libexpat1-dev
 
 #get source
-WORKDIR /home/dcuser
+WORKDIR $tmpdir
 RUN wget https://dlcdn.apache.org/httpd/httpd-2.4.57.tar.gz
 RUN tar -xzf httpd-2.4.57.tar.gz
 
 #dependencies
-WORKDIR /home/dcuser/httpd-2.4.57/srclib
+WORKDIR $tmpdir/httpd-2.4.57/srclib
 RUN wget https://dlcdn.apache.org//apr/apr-1.7.4.tar.gz
 RUN tar -xzf apr-1.7.4.tar.gz
 RUN mv apr-1.7.4 apr
@@ -26,7 +26,7 @@ RUN tar -xzf apr-util-1.6.3.tar.gz
 RUN mv apr-util-1.6.3 apr-util
 
 #build and install
-WORKDIR /home/dcuser/httpd-2.4.57
+WORKDIR $tmpdir/httpd-2.4.57
 RUN ./configure
 RUN make
 RUN make install
@@ -35,6 +35,8 @@ RUN make install
 #run server: /usr/local/apache2/bin/apachectl -k start
 #testing: /usr/loca/apache2/bin/ab -n 1 -c 1 http://172.17.0.2:80/
 
-WORKDIR /home/dcuser
+WORKDIR /home/$username
+USER $username
+
 CMD ["/bin/bash"]
 

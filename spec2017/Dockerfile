@@ -6,7 +6,7 @@ FROM ubuntu:focal
 INCLUDE+ ./common/Dockerfile.common
 
 # Copy spec2017
-COPY ./spec2017/cpu2017-1_0_5.iso /home/dcuser/
+COPY ./spec2017/cpu2017-1_0_5.iso $tmpdir
 
 USER root
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -15,17 +15,17 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
     software-properties-common
 
 
-# Switch to the dcuser user
-WORKDIR /home/dcuser
-USER dcuser
+WORKDIR $tmpdir
 
-RUN echo "dcuser" | wget https://apt.llvm.org/llvm.sh
+RUN cd $tmpdir && wget https://apt.llvm.org/llvm.sh
 RUN chmod u+x llvm.sh
-RUN echo "dcuser" | sudo -S ./llvm.sh 16
+RUN sudo ./llvm.sh 16
 
-COPY ./spec2017/compile-538-clang.sh /home/dcuser
-COPY ./spec2017/memtrace.cfg /home/dcuser
-COPY ./spec2017/entrypoint.sh /home/dcuser
+COPY ./spec2017/compile-538-clang.sh $tmpdir
+COPY ./spec2017/memtrace.cfg $tmpdir
+COPY ./spec2017/entrypoint.sh $tmpdir
 
+WORKDIR /home/$username
+USER $username
 # Start your application
 CMD ["/bin/bash"]

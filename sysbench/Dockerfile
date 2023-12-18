@@ -20,10 +20,11 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
 
 RUN chmod -R 755 /var/run/mysqld
 
-# Switch to the dcuser user
-USER dcuser
-RUN git clone https://github.com/akopytov/sysbench.git
-COPY ./sysbench/entrypoint.sh /home/dcuser
+WORKDIR $tmpdir
+RUN cd $tmpdir && git clone https://github.com/akopytov/sysbench.git
+COPY ./sysbench/entrypoint.sh $tmpdir
 
+WORKDIR /home/$username
+USER $username
 # Start your application
 CMD ["/bin/bash"]

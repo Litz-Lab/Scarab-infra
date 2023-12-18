@@ -1,6 +1,6 @@
 docker build . -f Fleetbench/Dockerfile --no-cache -t fleet:latest
 	^ may be better to remove --no-cache for redoing while testing
-docker run -it --privileged --name fleet -v fleet:/home/dcuser fleet:latest /bin/bash
+docker run -it --privileged --name fleet -v fleet:/home/$USER fleet:latest /bin/bash
 
 run fleetbench commands in fleetbench/ not fleetbench/fleetbench/
 
@@ -12,19 +12,19 @@ see what command it runs to start the benchmark so we can run it through dynamor
 	GLIBC_TUNABLES=glibc.pthread.rseq=0 bazel run --subcommands --config=opt fleetbench/swissmap:hot_swissmap_benchmark
 
 the command it runs to start the benchmark (usually the second one):
-	/home/dcuser/.cache/bazel/_bazel_dcuser/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/swissmap/hot_swissmap_benchmark
-	/home/dcuser/.cache/bazel/_bazel_dcuser/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/swissmap/hot_swissmap_benchmark.runfiles/com_google_fleetbench/fleetbench/swissmap/hot_swissmap_benchmark
+	/home/$USER/.cache/bazel/_bazel_$USER/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/swissmap/hot_swissmap_benchmark
+	/home/$USER/.cache/bazel/_bazel_$USER/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/swissmap/hot_swissmap_benchmark.runfiles/com_google_fleetbench/fleetbench/swissmap/hot_swissmap_benchmark
 	
 command to run memtrace, scarab, etc:
-	cd /home/dcuser/traces && /home/dcuser/dynamorio/build/bin64/drrun -t drcachesim -offline -trace_after_instrs 100000000
+	cd /home/$USER/traces && /home/$USER/dynamorio/build/bin64/drrun -t drcachesim -offline -trace_after_instrs 100000000
 -exit_after_tracing 101000000 -outdir ./ --
-/home/dcuser/.cache/bazel/_bazel_dcuser/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/swissmap/hot_swissmap_benchmark.runfiles/com_google_fleetbench/fleetbench/swissmap/hot_swissmap_benchmark
-&& cd /home/dcuser/traces && read TRACEDIR < <(bash ../scarab/utils/memtrace/run_portabilize_trace.sh) && cd /home/dcuser/exp && ../scarab/src/scarab --cbp_trace_r0=../traces/$TRACEDIRtrace --memtrace_modules_log=../traces/$TRACEDIRraw --frontend memtrace --inst_limit 1000000
+/home/$USER/.cache/bazel/_bazel_$USER/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/swissmap/hot_swissmap_benchmark.runfiles/com_google_fleetbench/fleetbench/swissmap/hot_swissmap_benchmark
+&& cd /home/$USER/traces && read TRACEDIR < <(bash ../scarab/utils/memtrace/run_portabilize_trace.sh) && cd /home/$USER/exp && ../scarab/src/scarab --cbp_trace_r0=../traces/$TRACEDIRtrace --memtrace_modules_log=../traces/$TRACEDIRraw --frontend memtrace --inst_limit 1000000
 	
 broken down version of the same command:
-cd /home/dcuser/traces && /home/dcuser/dynamorio/build/bin64/drrun -t drcachesim -offline -trace_after_instrs 100000000
--exit_after_tracing 101000000 -outdir ./ -- /home/dcuser/.cache/bazel/_bazel_dcuser/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/swissmap/hot_swissmap_benchmark.runfiles/com_google_fleetbench/fleetbench/swissmap/hot_swissmap_benchmark
-cd /home/dcuser/traces && read TRACEDIR < <(bash ../scarab/utils/memtrace/run_portabilize_trace.sh) 
+cd /home/$USER/traces && /home/$USER/dynamorio/build/bin64/drrun -t drcachesim -offline -trace_after_instrs 100000000
+-exit_after_tracing 101000000 -outdir ./ -- /home/$USER/.cache/bazel/_bazel_$USER/107a4c1ce14e7747be85d98e8915ea0d/execroot/com_google_fleetbench/bazel-out/k8-opt-clang/bin/fleetbench/swissmap/hot_swissmap_benchmark.runfiles/com_google_fleetbench/fleetbench/swissmap/hot_swissmap_benchmark
+cd /home/$USER/traces && read TRACEDIR < <(bash ../scarab/utils/memtrace/run_portabilize_trace.sh) 
 	^ sometimes I had to go into ../scarab/utils/memtrace/run_portabilize_trace.sh and modify "python2 $SCRIPTDIR/portabilize_trace.py ." to "echo memtrace | sudo -S python2 $SCRIPTDIR/portabilize_trace.py ."
-cd /home/dcuser/exp && ../scarab/src/scarab --cbp_trace_r0=../traces/$TRACEDIRtrace --memtrace_modules_log=../traces/$TRACEDIRraw --frontend memtrace --inst_limit 1000000
+cd /home/$USER/exp && ../scarab/src/scarab --cbp_trace_r0=../traces/$TRACEDIRtrace --memtrace_modules_log=../traces/$TRACEDIRraw --frontend memtrace --inst_limit 1000000
 	^ may need to manually type in the $TRACEDIRtrace and $TRACEDIRraw parts

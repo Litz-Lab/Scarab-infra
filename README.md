@@ -18,48 +18,46 @@ To run the SPEC2017 benchmarks, the host machine should have the image `cpu2017-
 Usage: ./run.sh [ -h | --help ]
                 [ -o | --outdir ]
                 [ -b | --build]
-                [ -s | --simpoint ]
-                [ -t | --collect_traces]
-                [ -m | --mode]
+                [ -t | --trace]
+                [ -s | --scarab ]
                 [ -c | --cleanup]
 
 !! Modify 'apps.list' and 'params.new' to specify the apps and Scarab parameters before run !!
 The entire process of simulating a data center workload is the following.
 1) application setup by building a docker image (each directory represents an application group)
-2) simpoint workflow to extract the representative execution of each application
-3) collect traces for trace-based simulation
-4) run Scarab simulation in different modes
+2) collect traces with different simpoint workflows for trace-based simulation
+3) run Scarab simulation in different modes
 To perform the later step, the previous steps must be performed first, meaning all the necessary options should be set at the same time. However, you can only run earlier step(s) by unsetting the later steps for debugging purposes.
 Options:
 h     Print this Help.
-o     Output existing directory where simpoints/traces/simulation results are copied to (-o <DIR_NAME>). If not given, the results are not copied and only remain in the container. e.g) -o .
+o     Absolute path to the directory for scarab repo, pin, traces, simpoints, and simulation results. scarab and pin will be installed if they don't exist in the given path. The directory will be mounted as home directory of a container e.g) -o /soe/user/testbench_container_home
 b     Build a docker image with application setup. 0: Run a container of existing docker image 1: Build cached image and run a container of the cached image, 2: Build a new image from the beginning and overwrite whatever image with the same name. e.g) -b 2
-s     SimPoint workflow. 0: No simpoint workflow, 1: simpoint workflow - instrumentation first (Collect fingerprints, do simpoint clustering) 2: simpoint workflow - post-processing (trace, collect fingerprints, do simpoint clustering). e.g) -s 1
-t     Collect traces. 0: Do not collect traces, 1: Collect traces based on the SimPoint workflow (-s). e.g) -t 0
-m     Scarab simulation mode. 0: No simulation 1: execution-driven simulation w/o SimPoint 2: trace-based simulation w/o SimPoint (-t should be 1 if no traces exist already in the container). 3: execution-driven simulation w/ SimPoint 4: trace-based simulation w/ SimPoint e.g) -m 4
+t     Collect traces with different SimPoint workflows. 0: Do not collect traces, 1: Collect traces based on SimPoint workflow - post-processing (trace, collect fingerprints, do simpoint clustering). e.g), 2: Collect traces based on SimPoint workflow - instrumentation first (Collect fingerprints, do simpoint clustering) -t 1
+s     Scarab simulation mode. 0: No simulation 1: execution-driven simulation w/o SimPoint 2: trace-based simulation w/o SimPoint (-t should be 1 if no traces exist already in the container). 3: execution-driven simulation w/ SimPoint 4: trace-based simulation w/ SimPoint e.g) -s 4
 c     Clean up all the containers/volumes after run. 0: No clean up 2: Clean up e.g) -c 1
 ```
-There are four ways to run Scarab: 1) execution-driven w/o SimPoint (-m 1) 2) trace-based w/o SimPoint (-m 2) 3) execution-driven w/ SimPoint (-m 3) 4) trace-based w/ SimPoint (-m 4). The execution-driven simulation runs the application binary directly without using traces while the trace-based simulation needs collected traces to run the application. SimPoints are used for fast-forwarding on the execution-driven run and for collecting traces/simulating on the trace-based run.
+There are four ways to run Scarab: 1) execution-driven w/o SimPoint (-s 1) 2) trace-based w/o SimPoint (-s 2) 3) execution-driven w/ SimPoint (-s 3) 4) trace-based w/ SimPoint (-s 4). The execution-driven simulation runs the application binary directly without using traces while the trace-based simulation needs collected traces to run the application. SimPoints are used for fast-forwarding on the execution-driven run and for collecting traces/simulating on the trace-based run.
 You need to provide the list of the applications you want to run in 'apps.list' file, and the list of the Scarab parameters to overwrite the sunny cove default PARAMS.in in 'params.new'. Each line in 'params.new' should represent SENARIONUM,SCARABPARAMS. Please refer to the 'apps.list' and 'params.new' files for the examples.
 
 #### Example command (Build the image from the beginning and run the application with trace-base mode by collecting the traces without simpoint methodology. Copy the collected traces and the simulation results to host after the run.)
 ```
-./run.sh -o . -b 2 -s 0 -t 1 -m 2
+./run.sh -o /home/$USER/example_home -b 2 -s 0 -t 1 -s 2
 ```
 ### Step-by-step on an interactive attachment
 #### Build an image
 ```
-DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build . -f ./example/Dockerfile --no-cache -t example:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)"
+DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build . -f ./example/Dockerfile --no-cache -t example:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)" --build-arg user_id=$USER_ID --build-arg group-id=$GROUP_ID --build-arg username="$USER"
 ```
 or
 ```
-./run.sh -b 2
+./run.sh -b 2 -o /home/$USER/example_home
 ```
 or
 ```
 export APPNAME="example"
 export BUILD=2
-./setup_apps.sh
+source ./setup_apps.sh
+./build_apps.sh
 ```
 
 #### Check the built image
@@ -72,18 +70,19 @@ example                      latest    1dd7a6097ef0   3 hours ago    6.66GB
 #### Run a container of the image
 'docker run' will stop the container after it runs the given command. Run with -v to create a volume and keep the updates inside the container remain. 'docker start' after the run will start the container again. You can run other commands inside the container by running 'docker exec'
 ```
-docker run -dit --privileged --name example -v example:/home/dcuser example:latest /bin/bash
+docker run -dit --privileged --name example --mount type=bind,source=/home/$USER/example_home example:latest /bin/bash
 docker start example
+docker exec --privileged example /bin/bash -c "/usr/local/bin/common_entrypoint.sh"
 ```
 
 #### Run simpoint workflow and collect traces on an existing container
 ```
-./run.sh -o . -b 0 -s 1 -t 1 -m 0
+./run.sh -o /home/$USER/example_home -b 0 -s 1 -t 1 -s 0
 ```
 
 #### Run simulation with already collected simpoint traces on an existing container
 ```
-./run.sh -o . -b 0 -s 0 -t 0 -m 4
+./run.sh -o /home/$USER/example_home -b 0 -s 0 -t 0 -s 4
 ```
 
 ## Developers

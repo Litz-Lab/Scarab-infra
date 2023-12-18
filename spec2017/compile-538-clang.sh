@@ -9,7 +9,7 @@ echo "pid:$pid";echo "===============================";
 
 if [ "$bs" = "538.imagick_r_train" ]; then
   #: '
-  benchmark_path="/home/dcuser/cpu2017/benchspec/CPU/538.imagick_r/src"
+  benchmark_path="$HOME/cpu2017/benchspec/CPU/538.imagick_r/src"
   cd $benchmark_path
   mkdir $bs"-compiled-W-clang."$pid
   echo "  1) Compile $bs original code with clang-16 ..."

@@ -32,16 +32,16 @@ echo "================================="
 
 # Run Solr
 
-# cd /home/dcuser/traces && /home/dcuser/dynamorio/build/bin64/drrun -t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $SOLR_HOME/bin/solr start -force -cloud -f -p $SOLR_PORT -s $SOLR_CORE_DIR -m $SERVER_HEAP_SIZE
+# cd /home/$username/traces && /home/$username/dynamorio/build/bin64/drrun -t drcachesim -offline -trace_after_instrs 100000000 -exit_after_tracing 101000000 -outdir ./ -- $SOLR_HOME/bin/solr start -force -cloud -f -p $SOLR_PORT -s $SOLR_CORE_DIR -m $SERVER_HEAP_SIZE
 
-# sed -i 's/exec/cd \/home\/dcuser\/traces \&\& \/home\/dcuser\/dynamorio\/build\/bin64\/drrun -disable_traces -no_hw_cache_consistency -no_sandbox_writes -no_enable_reset -sandbox2ro_threshold 0 -ro2sandbox_threshold 0 -t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 101M -outdir .\/ -- /' $SOLR_HOME/bin/solr
+# sed -i 's/exec/cd \/home\/$username\/traces \&\& \/home\/$username\/dynamorio\/build\/bin64\/drrun -disable_traces -no_hw_cache_consistency -no_sandbox_writes -no_enable_reset -sandbox2ro_threshold 0 -ro2sandbox_threshold 0 -t drcachesim -offline -trace_after_instrs 100M -exit_after_tracing 101M -outdir .\/ -- /' $SOLR_HOME/bin/solr
 # sed -i 's/S -jar start.jar/S -jar \/usr\/src\/solr-9.1.1\/server\/start.jar/' $SOLR_HOME/bin/solr
 
 # $SOLR_HOME/bin/solr start -force -cloud -f -p $SOLR_PORT -s $SOLR_CORE_DIR -m 14g
 # echo $SOLR_HOME/bin/solr start -force -cloud -f -p $SOLR_PORT -s $SOLR_CORE_DIR -m $SERVER_HEAP_SIZE
 
-cp -r $SOLR_HOME/server/. /home/dcuser/traces
-cp -r $SOLR_HOME/server/. /home/dcuser/exp
+cp -r $SOLR_HOME/server/. /home/$username/traces
+cp -r $SOLR_HOME/server/. /home/$username/exp
 # (docker run -it --name web_search_client --net host cloudsuite/web-search:client $(hostname -I) 10 && pkill java) &
 
 # (docker run -i --name web_search_client --net host cloudsuite/web-search:client $(hostname -I) 10 && pkill java) &

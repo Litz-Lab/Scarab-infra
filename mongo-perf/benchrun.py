@@ -172,7 +172,7 @@ def main():
     commands = []
 
     # load test files
-    for testfile in ['/home/dcuser/mongo-perf/util/utils.js', '/home/dcuser/mongo-perf/util/docGenerators.js'] + args.testfiles:
+    for testfile in ['/home/$USER/mongo-perf/util/utils.js', '/home/$USER/mongo-perf/util/docGenerators.js'] + args.testfiles:
         if not os.path.exists(testfile):
             raise MongoShellCommandError("test file %s doesn't exist" % testfile)
         commands.append("load('%s');" % testfile)
