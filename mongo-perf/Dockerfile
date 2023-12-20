@@ -30,7 +30,5 @@ RUN cd mongo-perf && git reset --hard 11aaf7c
 # overwrite the script due to the relative path
 COPY mongo-perf/benchrun.py $tmpdir/mongo-perf
 
-WORKDIR /home/$username
-USER $username
 # Start your application
 CMD ["/bin/bash"]

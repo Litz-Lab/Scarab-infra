@@ -66,7 +66,7 @@ esac
 # Get command to run for Spe17
 if [ "$APP_GROUPNAME" == "spec2017" ]; then
   # environment
-  cd $HOME/cpu2017
+  cd $tmpdir/cpu2017
   source ./shrc
   # compile and get command for application
   # TODO: this is just for one input

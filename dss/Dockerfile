@@ -53,6 +53,5 @@ RUN cp /usr/local/movies/sample_100kbit.mov /usr/local/movies/streamingloadtool.
 #run server: DarwinStreamingServer
 #testing: StreamingLoadTool -f /etc/streaming/streamingloadtool.conf
 
-WORKDIR /home/$username
 CMD ["/bin/bash"]
 

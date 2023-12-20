@@ -14,7 +14,7 @@ source utilities.sh
 # Get command to run for Spec17
 if [ "$APP_GROUPNAME" == "spec2017" ] && [ "$APPNAME" != "clang" ] && [ "$APPNAME" != "gcc" ]; then
   # environment
-  cd $HOME/cpu2017
+  cd $tmpdir/cpu2017
   source ./shrc
   # compile and get command for application
   # TODO: this is just for one input
@@ -160,7 +160,7 @@ elif [ "$SIMPOINT" == "1" ]; then
   ################################################################
 
   # run SimPoint clustering
-  bash $HOME/run_clustering.sh $APPHOME/fingerprint/bbfp $APPHOME
+  bash run_clustering.sh $APPHOME/fingerprint/bbfp $APPHOME
 
   ################################################################
   # read in simpoint

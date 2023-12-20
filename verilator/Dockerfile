@@ -38,9 +38,7 @@ RUN mkdir $tmpdir/rocket-chip/riscv
 ENV RISCV=$tmpdir/rocket-chip/riscv
 RUN cd $tmpdir/rocket-chip/riscv-tools/riscv-fesvr && mkdir build && cd build && ../configure --prefix=$RISCV --target=riscv64-unknown-elf && make install
 RUN cd $tmpdir/rocket-chip && gdown https://drive.google.com/uc?id=1WnrYhhYTGUMpndvoNpnzJOjgxdTOBHyL && tar -xvf emulator.tar.gz
-ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$HOME/rocket-chip/riscv/lib"
+ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$tmpdir/rocket-chip/riscv/lib"
 
-WORKDIR /home/$username
-USER $username
 # Start your application
 CMD ["/bin/bash"]

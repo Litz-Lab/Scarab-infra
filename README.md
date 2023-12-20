@@ -41,12 +41,12 @@ You need to provide the list of the applications you want to run in 'apps.list' 
 
 #### Example command (Build the image from the beginning and run the application with trace-base mode by collecting the traces without simpoint methodology. Copy the collected traces and the simulation results to host after the run.)
 ```
-./run.sh -o /home/$USER/example_home -b 2 -s 0 -t 1 -s 2
+./run.sh -o /soe/$USER/example_home -b 2 -s 0 -t 1 -s 2
 ```
 ### Step-by-step on an interactive attachment
 #### Build an image
 ```
-DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build . -f ./example/Dockerfile --no-cache -t example:latest --build-arg ssh_prv_key="$(cat ~/.ssh/id_rsa)" --build-arg user_id=$USER_ID --build-arg group-id=$GROUP_ID --build-arg username="$USER"
+DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build . -f ./example/Dockerfile --no-cache -t example:latest
 ```
 or
 ```
@@ -70,9 +70,14 @@ example                      latest    1dd7a6097ef0   3 hours ago    6.66GB
 #### Run a container of the image
 'docker run' will stop the container after it runs the given command. Run with -v to create a volume and keep the updates inside the container remain. 'docker start' after the run will start the container again. You can run other commands inside the container by running 'docker exec'
 ```
-docker run -dit --privileged --name example --mount type=bind,source=/home/$USER/example_home example:latest /bin/bash
-docker start example
-docker exec --privileged example /bin/bash -c "/usr/local/bin/common_entrypoint.sh"
+export LOCAL_UID=$(id -u $USER)
+export LOCAL_GID=$(id -g $USER)
+export USER_ID=${LOCAL_UID:-9001}
+export GROUP_ID=${LOCAL_GID:-9001}
+docker run -e user_id=$USER_ID -e group_id=$GROUP_ID -e username=$USER -dit --privileged --name example_$USER --mount type=bind,source=/home/$USER/example_home example:latest /bin/bash
+docker start example_$USER
+docker exec --privileged example_$USER /bin/bash -c "/usr/local/bin/common_entrypoint.sh"
+docker exec --user=$USER --workdir=/home/$USER --privileged example_$USER /bin/bash -c "cd /home/$USER/scarab/src && make"
 ```
 
 #### Run simpoint workflow and collect traces on an existing container

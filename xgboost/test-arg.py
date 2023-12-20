@@ -4,7 +4,7 @@ import sys
 import os.path
 import os.environ
 
-model=os.environ['HOME']
+model=os.environ['tmpdir']
 model=os.path.join(model, '/libmymodel/libmymodel.so')
 if len(sys.argv) > 1:
     model=sys.argv[1]

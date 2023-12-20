@@ -2,17 +2,13 @@
 set -x #echo on
 
 useradd -u $user_id -o -m $username && groupmod -g $group_id $username
-chown -R $username:$username $tmpdir
-
-# Check scarab and pin already exist after the container runs with mounted $OUTDIR. Copy them only if not exist.
-shopt -s extglob
-if [ -d "/home/$username/scarab" ] && [ -d "/home/$username/pin-3.15-98253-gb56e429b1-gcc-linux" ]; then
-  sudo -u $username cp -r /tmp_home/!(scarab | pin-3.15-98253-gb56e429b1-gcc-linux) /home/$username
-elif [ -d "/home/$username/scarab" ] && [ ! -d "/home/$username/pin-3.15-98253-gb56e429b1-gcc-linux" ]; then
-  sudo -u $username cp -r /tmp_home/!(scarab) /home/$username
-elif [ ! -d "/home/$username/scarab" ] && [ -d "/home/$username/pin-3.15-98253-gb56e429b1-gcc-linux" ]; then
-  sudo -u $username cp -r /tmp_home/!(pin-3.15-98253-gb56e429b1-gcc-linux) /home/$username
-else
-  sudo -u $username cp -r /tmp_home/* /home/$username
+cd /home/$username
+if [ ! -d "/home/$username/scarab" ]; then
+  sudo -u $username touch /home/$username/.ssh/known_hosts
+  sudo -u $username /bin/bash -c "ssh-keyscan github.com >> /home/$username/.ssh/known_hosts"
+  sudo -u $username git clone -b decoupled_fe git@github.com:hlitz/scarab_hlitz.git scarab
 fi
-rm -r /tmp_home/*
+
+pip3 install -r /home/$username/scarab/bin/requirements.txt
+sudo -u $username rm /home/$username/.ssh/id_rsa
+sudo -u $username rm /home/$username/.ssh/known_hosts

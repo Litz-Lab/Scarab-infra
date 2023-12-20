@@ -1,10 +1,10 @@
 #!/bin/bash
 set -x
 
-mkdir -p $HOME/cpu2017_install
-mkdir -p $HOME/cpu2017
-sudo mount -t iso9660 -o ro,exec,loop $HOME/cpu2017-1_0_5.iso $HOME/cpu2017_install
-cd $HOME/cpu2017_install && echo "yes" | ./install.sh -d $HOME/cpu2017
+mkdir -p $tmpdir/cpu2017_install
+mkdir -p $tmpdir/cpu2017
+sudo mount -t iso9660 -o ro,exec,loop $tmpdir/cpu2017-1_0_5.iso $tmpdir/cpu2017_install
+cd $tmpdir/cpu2017_install && echo "yes" | ./install.sh -d $tmpdir/cpu2017
 
-mv $HOME/memtrace.cfg $HOME/cpu2017/config/memtrace.cfg
-mv $HOME/compile-538-clang.sh $HOME/cpu2017/benchspec/CPU
+mv $tmpdir/memtrace.cfg $tmpdir/cpu2017/config/memtrace.cfg
+mv $tmpdir/compile-538-clang.sh $tmpdir/cpu2017/benchspec/CPU

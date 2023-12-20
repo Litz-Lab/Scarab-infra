@@ -11,3 +11,4 @@ docker cp ./run_simpoint_trace.sh $CONTAINERID:/usr/local/bin
 docker cp ./run_trace_post_processing.sh $CONTAINERID:/usr/local/bin
 docker cp ./gather_cluster_results.py $CONTAINERID:/usr/local/bin
 docker cp ./gather_fp_pieces.py $CONTAINERID:/usr/local/bin
+docker cp ./common/common_entrypoint.sh $CONTAINERID:/usr/local/bin

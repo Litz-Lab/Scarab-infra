@@ -25,7 +25,5 @@ COPY ./spec2017/compile-538-clang.sh $tmpdir
 COPY ./spec2017/memtrace.cfg $tmpdir
 COPY ./spec2017/entrypoint.sh $tmpdir
 
-WORKDIR /home/$username
-USER $username
 # Start your application
 CMD ["/bin/bash"]

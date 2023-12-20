@@ -35,8 +35,5 @@ RUN make install
 #run server: /usr/local/apache2/bin/apachectl -k start
 #testing: /usr/loca/apache2/bin/ab -n 1 -c 1 http://172.17.0.2:80/
 
-WORKDIR /home/$username
-USER $username
-
 CMD ["/bin/bash"]
 

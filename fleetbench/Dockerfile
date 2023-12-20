@@ -53,8 +53,5 @@ RUN GLIBC_TUNABLES=glibc.pthread.rseq=0 bazel build --config=opt fleetbench/swis
 RUN GLIBC_TUNABLES=glibc.pthread.rseq=0 bazel build --config=opt fleetbench/swissmap:hot_swissmap_benchmark
 RUN GLIBC_TUNABLES=glibc.pthread.rseq=0 bazel build --config=opt fleetbench/tcmalloc:empirical_driver
 
-WORKDIR /home/$username
-USER $username
-
 # Start your application
 CMD ["/bin/bash"]

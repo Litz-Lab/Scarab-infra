@@ -24,7 +24,5 @@ WORKDIR $tmpdir
 RUN cd $tmpdir && git clone https://github.com/akopytov/sysbench.git
 COPY ./sysbench/entrypoint.sh $tmpdir
 
-WORKDIR /home/$username
-USER $username
 # Start your application
 CMD ["/bin/bash"]

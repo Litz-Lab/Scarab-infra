@@ -11,8 +11,8 @@ RUN apt update && apt upgrade -y
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
     curl \
     unzip
-COPY --chown=$username./xgboost/train.py $tmpdir/train.py
-COPY --chown=$username ./xgboost/test-arg.py $tmpdir/test-arg.py
+COPY ./xgboost/train.py $tmpdir/train.py
+COPY ./xgboost/test-arg.py $tmpdir/test-arg.py
 
 WORKDIR $tmpdir
 
@@ -28,7 +28,5 @@ RUN python3 $tmpdir/train.py
 RUN unzip mymodel.zip
 RUN cd $tmpdir/libmymodel && make -j40
 
-WORKDIR /home/$username
-USER $username
 # Start your application
 CMD ["/bin/bash"]
