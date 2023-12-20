@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x #echo on
 
 # TODO: for other apps?
 APPNAME="$1"
@@ -12,6 +13,54 @@ SEGSIZE=100000000
 SCARABMODE="$6"
 # 50M warmup by default
 WARMUP=50000000
+
+case $APPNAME in
+  mysql)
+    MODULESDIR=/simpoint_traces/mysql/traces/whole/drmemtrace.mysqld.123776.5088.dir/raw
+    TRACEFILE=/simpoint_traces/mysql/traces/whole/drmemtrace.mysqld.123776.5088.dir/trace/drmemtrace.mysqld.123827.6272.trace.zip
+    ;;
+  postgres)
+    MODULESDIR=/simpoint_traces/postgres/traces/whole/drmemtrace.postgres.10865.1082.dir/raw
+    TRACEFILE=/simpoint_traces/postgres/traces/whole/drmemtrace.postgres.10865.1082.dir/trace/drmemtrace.postgres.10865.3710.trace.zip
+    ;;
+  clang)
+    MODULESDIR=/simpoint_traces/clang/traces/whole/drmemtrace.clang.03072.7752.dir/raw
+    TRACEFILE=/simpoint_traces/clang/traces/whole/drmemtrace.clang.03072.7752.dir/trace/drmemtrace.clang.03072.4467.trace.zip
+    ;;
+  gcc)
+    MODULESDIR=/simpoint_traces/gcc/traces/whole/drmemtrace.cc1.04250.2989.dir/raw
+    TRACEFILE=/simpoint_traces/gcc/traces/whole/drmemtrace.cc1.04250.2989.dir/trace/drmemtrace.cc1.04250.5506.trace.zip
+    ;;
+  mongodb)
+    MODULESDIR=/simpoint_traces/mongodb/traces/whole/drmemtrace.mongod.04280.8169.dir/raw
+    TRACEFILE=/simpoint_traces/mongodb/traces/whole/drmemtrace.mongod.04280.8169.dir/trace/drmemtrace.mongod.04332.7098.trace.zip
+    ;;
+  verilator)
+    MODULESDIR=/simpoint_traces/verilator/traces/whole/raw
+    TRACEFILE=/simpoint_traces/verilator/traces/whole/trace/drmemtrace.emulator-freechips.rocketchip.system-DefaultConfigN8.00025.6005.trace.zip
+    ;;
+  xgboost)
+    MODULESDIR=/simpoint_traces/xgboost/traces/whole/drmemtrace.python3.8.00025.6828.dir/raw
+    TRACEFILE=/simpoint_traces/xgboost/traces/whole/drmemtrace.python3.8.00025.6828.dir/trace/drmemtrace.python3.8.00025.0843.trace.zip
+    ;;
+  memcached)
+    MODULESDIR=/simpoint_traces/memcached/traces/whole/drmemtrace.memcached.07432.6868.dir/raw
+    TRACEFILE=/simpoint_traces/memcached/traces/whole/drmemtrace.memcached.07432.6868.dir/trace/drmemtrace.memcached.07434.0028.trace.zip
+    ;;
+  redis)
+    MODULESDIR=/simpoint_traces/redis/traces/drmemtrace.redis-server.40792.8757.dir/raw/
+    TRACEFILE=/simpoint_traces/redis/traces/drmemtrace.redis-server.40792.8757.dir/trace/drmemtrace.redis-server.40792.6868.trace.zip
+    ;;
+  rocksdb)
+    MODULESDIR=/simpoint_traces/rocksdb/traces_simp/raw/
+    TRACEFILE=/simpoint_traces/rocksdb/traces_simp/trace/
+    mode="1"
+    ;;
+  *)
+    echo "unknown application"
+    ;;
+esac
+
 
 # TODO: get all cmd for spec in advance instead of in place
 # Get command to run for Spe17
