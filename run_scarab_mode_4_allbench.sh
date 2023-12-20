@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -x #echo on
 source utilities.sh
 
 SCARABHOME=$1

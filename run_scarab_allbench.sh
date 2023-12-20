@@ -11,8 +11,8 @@ SCARABPARAMS="$5"
 # for trace post-processing flow, SEGSIZE is read from file
 SEGSIZE=100000000
 SCARABMODE="$6"
-# 50M warmup by default
-WARMUP=50000000
+# 10M warmup by default
+WARMUP=10000000
 
 case $APPNAME in
   mysql)
