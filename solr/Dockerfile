@@ -57,7 +57,6 @@ EXPOSE $SOLR_PORT
 
 RUN sed -i "/SOLR_JETTY_HOST/c\SOLR_JETTY_HOST=\"0.0.0.0\"" ${SOLR_HOME}/bin/solr.in.sh 
 
-WORKDIR /home/$username
 
 RUN mkdir $SOLR_HOME/server/logs
 RUN touch $SOLR_HOME/server/logs/solr_gc.log

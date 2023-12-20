@@ -1,11 +1,5 @@
 ARG ssh_prv_key
 ENV ssh_prv_key=$ssh_prv_key
-ARG user_id
-ENV user_id=$user_id
-ARG group_id
-ENV group_id=$group_id
-ARG username
-ENV username=$username
 
 # Install required packages
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -34,23 +28,16 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
 
 RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 1
 
-# Create a new user with $username
-RUN useradd -u $user_id -o -m $username && \
-    groupmod -g $group_id $username
-
 # Authorize SSH Host
-RUN mkdir -p /home/$username/.ssh && \
-    chown -R $username:root /home/$username/.ssh && \
-    chmod 700 /home/$username/.ssh
+RUN mkdir -p /root/.ssh && \
+    chmod 700 /root/.ssh
 
 # Add the key and set permission
-RUN echo "$ssh_prv_key" > /home/$username/.ssh/id_rsa && \
-    chown -R $username:root /home/$username/.ssh/id_rsa && \
-    chmod 700 /home/$username/.ssh/id_rsa
-RUN touch /home/$username/.ssh/known_hosts && \
-    chown -R $username:root /home/$username/.ssh/known_hosts && \
-    chmod 700 /home/$username/.ssh/known_hosts
-RUN ssh-keyscan github.com >> /home/$username/.ssh/known_hosts
+RUN echo "$ssh_prv_key" > /root/.ssh/id_rsa && \
+    chmod 700 /root/.ssh/id_rsa
+RUN touch /root/.ssh/known_hosts && \
+    chmod 700 /root/.ssh/known_hosts
+RUN ssh-keyscan github.com >> /root/.ssh/known_hosts
 
 
 # Copy workflow simpoint/no_simpoint script
@@ -69,14 +56,11 @@ COPY gather_cluster_results.py /usr/local/bin/gather_cluster_results.py
 COPY ./common/common_entrypoint.sh /usr/local/bin/common_entrypoint.sh
 
 RUN mkdir -p /simpoint_traces
-ENV tmpdir="/tmp_home"
-RUN mkdir -p $tmpdir && chown -R $username:$username $tmpdir
 
 # Set the working directory
+ENV tmpdir="/tmp_home"
+RUN mkdir -p $tmpdir
 WORKDIR $tmpdir
-
-# Switch to the user
-USER $username
 
 # Clone the Scarab repository
 # Comment out if you don't use scarab at all and don't have ssh key permitted to clone 'scarab_hlitz'
@@ -87,17 +71,16 @@ RUN pip3 install -r $tmpdir/scarab/bin/requirements.txt
 RUN cd $tmpdir && wget -nc https://software.intel.com/sites/landingpage/pintool/downloads/pin-3.15-98253-gb56e429b1-gcc-linux.tar.gz && tar -xzvf pin-3.15-98253-gb56e429b1-gcc-linux.tar.gz
 
 # Env to build Scarab
-ENV PIN_ROOT /home/$username/pin-3.15-98253-gb56e429b1-gcc-linux
+ENV PIN_ROOT $tmpdir/pin-3.15-98253-gb56e429b1-gcc-linux
 ENV SCARAB_ENABLE_PT_MEMTRACE 1
-ENV LD_LIBRARY_PATH /home/$username/pin-3.15-98253-gb56e429b1-gcc-linux/extras/xed-intel64/lib
-ENV LD_LIBRARY_PATH /home/$username/pin-3.15-98253-gb56e429b1-gcc-linux/intel64/runtime/pincrt:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH $tmpdir/pin-3.15-98253-gb56e429b1-gcc-linux/extras/xed-intel64/lib
+ENV LD_LIBRARY_PATH $tmpdir/pin-3.15-98253-gb56e429b1-gcc-linux/intel64/runtime/pincrt:$LD_LIBRARY_PATH
 
-ENV HOME /home/$username
-# Set the working directory
-WORKDIR /home/$username
+RUN cd $tmpdir/scarab/src && make
 
 ENV DOCKER_BUILDKIT 1
 ENV COMPOSE_DOCKER_CLI_BUILD 1
 
 # Do not comment out
-RUN rm /home/$username/.ssh/id_rsa && rm /home/$username/.ssh/known_hosts
+RUN rm /root/.ssh/id_rsa && rm /root/.ssh/known_hosts
+RUN rm -r $tmpdir/scarab/.git
