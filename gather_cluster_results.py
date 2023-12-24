@@ -31,10 +31,12 @@ class Stat:
         self.weighted_ratio = 0
 
 class Simpoint:
-    def __init__(self, seg_id, weight, sim_dir):
+    def __init__(self, seg_id, weight, sim_dir, c_id):
         self.seg_id = seg_id
         self.weight = weight
         self.sim_dir = sim_dir
+        # some times the cluster ids by simpoint are not consecutive
+        self.c_id = c_id
         # paralell with stat groups
         # 2-d
         self.stat_vals = []
@@ -47,9 +49,10 @@ def read_simpoints(sp_dir, sim_root_dir):
         for line1, line2 in zip(f1, f2):
             seg_id = int(line1.split()[0])
             weight = float(line2.split()[0])
+            c_id = int(line1.split()[1])
             assert(int(line1.split()[1]) == int(line2.split()[1]))
             total_weight += weight
-            simpoints.append(Simpoint(seg_id, weight, sim_root_dir + "/" + str(seg_id)))
+            simpoints.append(Simpoint(seg_id, weight, sim_root_dir + "/" + str(seg_id), c_id))
     
     if total_weight - 1 > 1e-5:
         print("total weight of SimPoint does not add up to 1? {}".format(total_weight))
