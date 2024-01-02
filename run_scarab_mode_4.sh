@@ -80,6 +80,7 @@ do
         --memtrace_roi_end=$roiEnd \
         --inst_limit=$instLimit \
         --full_warmup=$WARMUP \
+        --use_fetched_count=1 \
         $SCARABPARAMS \
         &> sim.log"
     elif [ "$TRACESSIMP" == "1" ]; then
@@ -100,6 +101,7 @@ do
             --memtrace_roi_end=$instLimit \
             --inst_limit=$instLimit \
             --full_warmup=$WARMUP \
+            --use_fetched_count=1 \
             $SCARABPARAMS \
             &> sim.log"
         else
@@ -111,6 +113,7 @@ do
             --memtrace_roi_end=$(( $SEGSIZE + $instLimit )) \
             --inst_limit=$instLimit \
             --full_warmup=$WARMUP \
+            --use_fetched_count=1 \
             $SCARABPARAMS \
             &> sim.log"
         fi

@@ -79,6 +79,7 @@ do
             --memtrace_roi_begin=$(( $segmentID * $SEGSIZE + 1 )) \
             --memtrace_roi_end=$(( $segmentID * $SEGSIZE + $SEGSIZE )) \
             --trace_bbv_output=$OUTDIR/fingerprint/pieces/segment.$segmentID \
+            --use_fetched_count=1 \
             &> sim.log"
   echo "processing segmentID ${segmentID}..."
   echo "command: ${scarabCmd}"
@@ -104,5 +105,5 @@ end=`date +%s`
 report_time "post-processing" "$start" "$end"
 
 # aggregate the fingerprint pieces
-python3 gather_fp_pieces.py $OUTDIR/fingerprint/pieces $numSegment
+python3 $HOME/gather_fp_pieces.py $OUTDIR/fingerprint/pieces $numSegment
 cp $OUTDIR/fingerprint/pieces/bbfp $OUTDIR/fingerprint/bbfp

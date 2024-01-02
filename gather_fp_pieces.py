@@ -47,8 +47,7 @@ def gather_fp_pieces(fp_dir, num_of_segments):
 
         with open(file, "r") as f:
             lines = f.read().splitlines()
-            if sum(1 for line in lines if line) != 1:
-                print("WARN: segment fp provides more than one line")
+            assert sum(1 for line in lines if line) == 1, "segment fp provides more than one line"
             segment_map = line_to_map(lines[0])
 
         segment_map, addr_id_map, bb_count = map_conversion(segment_map, addr_id_map, bb_count)
