@@ -31,7 +31,7 @@ cd $OUTDIR
 declare -A clusterMap
 while IFS=" " read -r segID clusterID; do
 clusterMap[$clusterID]=$segID 
-done < $SPDIR/opt.p
+done < $SPDIR/opt.p.lpt0.99
 
 ################################################################
 # trace-based simulations

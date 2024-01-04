@@ -26,7 +26,7 @@ cd trace
 declare -A clusterMap
 while IFS=" " read -r segID clusterID; do
 clusterMap[$clusterID]=$segID
-done < $SPDIR/opt.p
+done < $SPDIR/opt.p.lpt0.99
 
 # even if zero is included in the simulation region,
 # copy chunk zero to get rid of the special case handling and embrace laziness <- does not work

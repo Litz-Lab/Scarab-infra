@@ -137,7 +137,7 @@ elif [ "$SCARABMODE" == "3" ]; then
   declare -A clusterMap
   while IFS=" " read -r segID clusterID; do
     clusterMap[$clusterID]=$segID 
-  done < $TRACEHOME/simpoints/opt.p
+  done < $TRACEHOME/simpoints/opt.p.lpt0.99
 
   ################################################################
   # trace-based or exec-driven simulations

@@ -45,7 +45,7 @@ class Simpoint:
 def read_simpoints(sp_dir, sim_root_dir):
     total_weight = 0
     simpoints = []
-    with open(sp_dir + "opt.p", "r") as f1, open(sp_dir + "opt.w", "r") as f2:
+    with open(sp_dir + "opt.p.lpt0.99", "r") as f1, open(sp_dir + "opt.w.lpt0.99", "r") as f2:
         for line1, line2 in zip(f1, f2):
             seg_id = int(line1.split()[0])
             weight = float(line2.split()[0])
