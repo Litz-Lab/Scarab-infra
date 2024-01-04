@@ -31,7 +31,7 @@ def map_conversion(segment_map, addr_id_map, bb_count):
     return new_segment_map, addr_id_map, bb_count
     
     
-def gather_fp_pieces(fp_dir, num_of_segments):
+def gather_fp_pieces(fp_dir, num_of_segments, no_convert):
     import glob
     
     pre_segment_id = -1
@@ -50,7 +50,8 @@ def gather_fp_pieces(fp_dir, num_of_segments):
             assert sum(1 for line in lines if line) == 1, "segment fp provides more than one line"
             segment_map = line_to_map(lines[0])
 
-        segment_map, addr_id_map, bb_count = map_conversion(segment_map, addr_id_map, bb_count)
+        if (not no_convert):
+            segment_map, addr_id_map, bb_count = map_conversion(segment_map, addr_id_map, bb_count)
         append_bbfp(fp_dir + "/bbfp", segment_map)
 
     if pre_segment_id + 1 != num_of_segments:
@@ -63,4 +64,7 @@ if __name__ == "__main__":
     if not os.path.isdir(sys.argv[1]):
         print("segment directory {} does not exist!")
         exit
-    gather_fp_pieces(sys.argv[1], int(sys.argv[2]))
+    if len(sys.argv) == 4 and sys.argv[3] == "no_convert":
+        gather_fp_pieces(sys.argv[1], int(sys.argv[2]), True)
+    else:
+        gather_fp_pieces(sys.argv[1], int(sys.argv[2]), False)
