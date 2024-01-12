@@ -13,6 +13,7 @@ rm -rf fingerprint
 mkdir fingerprint
 cd fingerprint
 mkdir pieces
+mkdir footprint_pieces
 
 numChunk=$(unzip -l $TRACEFILE | grep "chunk." | wc -l)
 
@@ -79,6 +80,7 @@ do
             --memtrace_roi_begin=$(( $segmentID * $SEGSIZE + 1 )) \
             --memtrace_roi_end=$(( $segmentID * $SEGSIZE + $SEGSIZE )) \
             --trace_bbv_output=$OUTDIR/fingerprint/pieces/segment.$segmentID \
+            --trace_footprint_output=$OUTDIR/fingerprint/footprint_pieces/segment.$segmentID \
             --use_fetched_count=1 \
             &> sim.log"
   echo "processing segmentID ${segmentID}..."
