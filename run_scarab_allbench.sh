@@ -111,7 +111,7 @@ if [ "$SCARABMODE" == "4" ]; then
   fi
   SEGSIZE=$(cat "$segmentSizeFile")
   echo "SEGSIZE read from $segmentSizeFile is $SEGSIZE"
-  bash run_scarab_mode_4_allbench.sh "$SCARABHOME" "$MODULESDIR" "$TRACEFILE" "$SCARABPARAMS" "$SPDIR" "$SEGSIZE" "$OUTDIR" "$WARMUP"
+  bash run_scarab_mode_4_allbench.sh "$SCARABHOME" "$MODULESDIR" "$TRACEFILE" "$SCARABPARAMS" "$SPDIR" "$SEGSIZE" "$OUTDIR" "$WARMUP" "$SCARABARCH"
 elif [ "$SCARABMODE" == "3" ]; then
   SIMHOME=$HOME/simpoint_flow/simulations/$APPNAME
   EVALHOME=$HOME/simpoint_flow/evaluations/$APPNAME

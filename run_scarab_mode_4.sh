@@ -10,6 +10,7 @@ SPDIR=$5
 SEGSIZE=$6
 OUTDIR=$7
 WARMUPORG=$8
+SCARABARCH=$9
 
 # if TRACESSIMP is 1,
 # TRACEFILE is supposed to be traces_simp FOLDER
@@ -44,7 +45,7 @@ do
     WARMUP=$WARMUPORG
     segID=${clusterMap[$clusterID]}
     mkdir -p $OUTDIR/$segID
-    cp $SCARABHOME/src/PARAMS.sunny_cove $OUTDIR/$segID/PARAMS.in
+    cp $SCARABHOME/src/PARAMS.$SCARABARCH $OUTDIR/$segID/PARAMS.in
     cd $OUTDIR/$segID
 
     # roi is initialized by original segment boundary without warmup

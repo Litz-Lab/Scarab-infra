@@ -68,11 +68,11 @@ if [ "$SCARABMODE" == "4" ]; then
     fi
     SEGSIZE=$(cat "$segmentSizeFile")
     echo "SEGSIZE read from $segmentSizeFile is $SEGSIZE"
-    bash run_scarab_mode_4.sh "$SCARABHOME" "$MODULESDIR" "$TRACEFILE" "$SCARABPARAMS" "$SPDIR" "$SEGSIZE" "$OUTDIR" "$WARMUP"
+    bash run_scarab_mode_4.sh "$SCARABHOME" "$MODULESDIR" "$TRACEFILE" "$SCARABPARAMS" "$SPDIR" "$SEGSIZE" "$OUTDIR" "$WARMUP" "$SCARABARCH"
   else
   # otherwise ask the user to run manually
     echo -e "There are multiple trace files.\n\
-    Decide and run \"/usr/local/bin/run_scarab_mode_4.sh <SCARABHOME> <MODULESDIR> <TRACEFILE> "<SCARABPARAMS>" <SPDIR> <SEGSIZE> <OUTDIR> <WARMUP>\""
+    Decide and run \"/usr/local/bin/run_scarab_mode_4.sh <SCARABHOME> <MODULESDIR> <TRACEFILE> "<SCARABPARAMS>" <SPDIR> <SEGSIZE> <OUTDIR> <WARMUP> <SCARABARCH>\""
     exit
   fi
 elif [ "$SCARABMODE" == "3" ]; then
