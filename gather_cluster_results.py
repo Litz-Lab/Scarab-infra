@@ -163,6 +163,38 @@ def customized_report(stat_groups, simpoints, sim_root_dir):
         writer.writerow(["fdip_ftq_occupancy_blocks_accumulated", "cycles", "BPC"])
         writer.writerow([blocks, c, float(blocks)/float(c)])
 
+    sen_ftqs = 0
+    for g in stat_groups:
+        if g.g_name == "fdip_seniority_ftq_accumulated":
+            sen_ftqs = g.weighted_total
+            assert(g.weighted_total == g.s_list[0].weighted_average)
+            break
+
+    with open(sim_root_dir + "/sftq.csv", "w") as outfile:
+        writer = csv.writer(outfile)
+        writer.writerow(["fdip_seniority_ftq_accumulated", "cycles", "SFTQ"])
+        writer.writerow([blocks, c, float(sen_ftqs)/float(c)])
+
+ 
+    unuseful_cl_cyc = 0
+    for g in stat_groups:
+        if g.g_name == "icache_unuseful_cl_cyc":
+            unuseful_cl_cyc = g.weighted_total
+            assert(g.weighted_total == g.s_list[0].weighted_average)
+            break
+
+    unuseful_cls = 0
+    for g in stat_groups:
+        if g.g_name == "icache_unuseful_cl":
+            unuseful_cls = g.weighted_total
+            assert(g.weighted_total == g.s_list[0].weighted_average)
+            break
+
+    with open(sim_root_dir + "/unuseful_cl.csv", "w") as outfile:
+        writer = csv.writer(outfile)
+        writer.writerow(["icache_unuseful_cl_cyc", "icache_unuseful_cl", "UUCL"])
+        writer.writerow([unuseful_cl_cyc, unuseful_cls, float(unuseful_cl_cyc)/float(unuseful_cls)])
+
 stat_groups = [
     StatGroup("dcache_access", "memory.stat.0.out",
             [
@@ -210,6 +242,14 @@ stat_groups = [
             [
             Stat("ICACHE_MISS_MSHR_HIT_ONPATH_BY_FDIP", 1),
             Stat("ICACHE_MISS_MSHR_HIT_OFFPATH_BY_FDIP", 1)
+            ]),
+    StatGroup("icache_unuseful_cl_cyc", "memory.stat.0.out",
+            [
+            Stat("ICACHE_UNUSEFUL_CL_CYC", 1),
+            ]),
+    StatGroup("icache_unuseful_cl", "memory.stat.0.out",
+            [
+            Stat("ICACHE_UNUSEFUL_CL", 1),
             ]),
     StatGroup("icache_evict_miss_on_off_by_fdip", "memory.stat.0.out",
             [
@@ -283,6 +323,10 @@ stat_groups = [
     StatGroup("fdip_ftq_occupancy_blocks_accumulated", "pref.stat.0.out",
             [
             Stat("FDIP_FTQ_OCCUPANCY_BLOCKS_ACCUMULATED", 1)
+            ]),
+    StatGroup("fdip_seniority_ftq_accumulated", "pref.stat.0.out",
+            [
+            Stat("FDIP_SENIORITY_FTQ_ACCUMULATED", 1)
             ]),
     StatGroup("cbr", "bp.stat.0.out",
             [

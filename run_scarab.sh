@@ -10,6 +10,7 @@ SCARABPARAMS="$5"
 # for trace post-processing flow, SEGSIZE is read from file
 SEGSIZE=100000000
 SCARABMODE="$6"
+SCARABARCH="$7"
 # 50M warmup by default
 WARMUP=50000000
 
@@ -95,7 +96,7 @@ elif [ "$SCARABMODE" == "3" ]; then
   for clusterID in "${!clusterMap[@]}"
   do
     mkdir -p $APPHOME/simulations/$SCENARIONUM/$clusterID
-    cp $HOME/scarab/src/PARAMS.sunny_cove $APPHOME/simulations/$SCENARIONUM/$clusterID/PARAMS.in
+    cp $HOME/scarab/src/PARAMS.$SCARABARCH $APPHOME/simulations/$SCENARIONUM/$clusterID/PARAMS.in
     cd $APPHOME/simulations/$SCENARIONUM/$clusterID
 
     segID=${clusterMap[$clusterID]}
@@ -147,7 +148,7 @@ elif [ "$SCARABMODE" == "1" ] || [ "$SCARABMODE" == "2" ]; then
   taskPids=()
   start=`date +%s`
   mkdir -p $APPHOME/simulations/$SCENARIONUM
-  cp $HOME/scarab/src/PARAMS.sunny_cove $APPHOME/simulations/$SCENARIONUM/PARAMS.in
+  cp $HOME/scarab/src/PARAMS.$SCARABARCH $APPHOME/simulations/$SCENARIONUM/PARAMS.in
   cd $APPHOME/simulations/$SCENARIONUM
   if [ "$SCARABMODE" == "2" ]; then
     scarabCmd="$HOME/scarab/src/scarab --frontend memtrace --cbp_trace_r0=$APPHOME/traces/trace/${traceMap} --memtrace_modules_log=$APPHOME/traces/raw/ $SCARABPARAMS &> sim.log"

@@ -1,3 +1,0 @@
-0,--inst_limit 99900000 --fdip_enable 0
-1,--inst_limit 99900000 --fdip_enable 1 --fe_ftq_block_num 32
-2,--inst_limit 99900000 --fdip_enable 1 --fe_ftq_block_num 64

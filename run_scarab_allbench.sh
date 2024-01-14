@@ -11,6 +11,7 @@ SCARABPARAMS="$5"
 # for trace post-processing flow, SEGSIZE is read from file
 SEGSIZE=100000000
 SCARABMODE="$6"
+SCARABARCH="$7"
 # 10M warmup by default
 WARMUP=10000000
 
@@ -98,32 +99,19 @@ if [ "$SCARABMODE" == "4" ]; then
 
   cd $TRACEHOME/traces/whole
   # continue if only one trace file
-  numTrace=$(find -name "dr*.trace.zip" | grep "drmemtrace.*.trace.zip" | wc -l)
-  numDrFolder=$(find -type d -name "drmemtrace.*.dir" | grep "drmemtrace.*.dir" | wc -l)
-  if [ "$numTrace" == "1" ] && [ "$numDrFolder" == "1" ]; then
-    ###HEERREEE prepare raw dir, trace dir
-    SPDIR=$TRACEHOME/simpoints/
-    OUTDIR=$SIMHOME/$SCENARIONUM/
-    modulesDir=$(dirname $(ls $TRACEHOME/traces/whole/drmemtrace.*.dir/raw/modules.log))
-    wholeTrace=$(ls $TRACEHOME/traces/whole/drmemtrace.*.dir/trace/dr*.zip)
-    echo "modulesDIR: $modulesDir"
-    echo "wholeTrace: $wholeTrace"
+  ###HEERREEE prepare raw dir, trace dir
+  SPDIR=$TRACEHOME/simpoints/
+  OUTDIR=$SIMHOME/$SCENARIONUM/
 
-    segmentSizeFile="$TRACEHOME/fingerprint/segment_size"
-    if [ ! -f $segmentSizeFile ]
-    then
-            echo "$segmentSizeFile does not exist"
-            exit
-    fi
-    SEGSIZE=$(cat "$segmentSizeFile")
-    echo "SEGSIZE read from $segmentSizeFile is $SEGSIZE"
-    bash run_scarab_mode_4_allbench.sh "$SCARABHOME" "$MODULESDIR" "$TRACEFILE" "$SCARABPARAMS" "$SPDIR" "$SEGSIZE" "$OUTDIR" "$WARMUP"
-  else
-  # otherwise ask the user to run manually
-    echo -e "There are multiple trace files.\n\
-    Decide and run \"/usr/local/bin/run_scarab_mode_4_allbench.sh <SCARABHOME> <MODULESDIR> <TRACEFILE> "<SCARABPARAMS>" <SPDIR> <SEGSIZE> <OUTDIR> <WARMUP>\""
+  segmentSizeFile="$TRACEHOME/fingerprint/segment_size"
+  if [ ! -f $segmentSizeFile ]
+  then
+    echo "$segmentSizeFile does not exist"
     exit
   fi
+  SEGSIZE=$(cat "$segmentSizeFile")
+  echo "SEGSIZE read from $segmentSizeFile is $SEGSIZE"
+  bash run_scarab_mode_4_allbench.sh "$SCARABHOME" "$MODULESDIR" "$TRACEFILE" "$SCARABPARAMS" "$SPDIR" "$SEGSIZE" "$OUTDIR" "$WARMUP"
 elif [ "$SCARABMODE" == "3" ]; then
   SIMHOME=$HOME/simpoint_flow/simulations/$APPNAME
   EVALHOME=$HOME/simpoint_flow/evaluations/$APPNAME
@@ -147,7 +135,7 @@ elif [ "$SCARABMODE" == "3" ]; then
   for clusterID in "${!clusterMap[@]}"
   do
     mkdir -p $SIMHOME/$SCENARIONUM/$clusterID
-    cp $SCARABHOME/src/PARAMS.sunny_cove $SIMHOME/$SCENARIONUM/$clusterID/PARAMS.in
+    cp $SCARABHOME/src/PARAMS.$SCARABARCH $SIMHOME/$SCENARIONUM/$clusterID/PARAMS.in
     cd $SIMHOME/$SCENARIONUM/$clusterID
 
     segID=${clusterMap[$clusterID]}
@@ -201,7 +189,7 @@ elif [ "$SCARABMODE" == "1" ] || [ "$SCARABMODE" == "2" ]; then
   taskPids=()
   start=`date +%s`
   mkdir -p $SIMHOME/$SCENARIONUM
-  cp $SCARABHOME/src/PARAMS.sunny_cove $SIMHOME/$SCENARIONUM/PARAMS.in
+  cp $SCARABHOME/src/PARAMS.$SCARABARCH $SIMHOME/$SCENARIONUM/PARAMS.in
   cd $SIMHOME/$SCENARIONUM
   if [ "$SCARABMODE" == "2" ]; then
     scarabCmd="$SCARABHOME/src/scarab --frontend memtrace --cbp_trace_r0=$TRACEHOME/traces/whole/${traceMap} --memtrace_modules_log=$TRACEHOME/traces/raw/ $SCARABPARAMS &> sim.log"

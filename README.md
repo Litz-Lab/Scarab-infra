@@ -22,7 +22,7 @@ Usage: ./run.sh [ -h | --help ]
                 [ -s | --scarab ]
                 [ -c | --cleanup]
 
-!! Modify 'apps.list' and 'params.new' to specify the apps and Scarab parameters before run !!
+!! Modify 'apps.list' and 'params.scarab' to specify the apps and Scarab parameters before run !!
 The entire process of simulating a data center workload is the following.
 1) application setup by building a docker image (each directory represents an application group)
 2) collect traces with different simpoint workflows for trace-based simulation
@@ -37,7 +37,7 @@ s     Scarab simulation mode. 0: No simulation 1: execution-driven simulation w/
 c     Clean up all the containers/volumes after run. 0: No clean up 2: Clean up e.g) -c 1
 ```
 There are four ways to run Scarab: 1) execution-driven w/o SimPoint (-s 1) 2) trace-based w/o SimPoint (-s 2) 3) execution-driven w/ SimPoint (-s 3) 4) trace-based w/ SimPoint (-s 4). The execution-driven simulation runs the application binary directly without using traces while the trace-based simulation needs collected traces to run the application. SimPoints are used for fast-forwarding on the execution-driven run and for collecting traces/simulating on the trace-based run.
-You need to provide the list of the applications you want to run in 'apps.list' file, and the list of the Scarab parameters to overwrite the sunny cove default PARAMS.in in 'params.new'. Each line in 'params.new' should represent SENARIONUM,SCARABPARAMS. Please refer to the 'apps.list' and 'params.new' files for the examples.
+You need to provide the list of the applications you want to build images for them in 'apps.list' file, and the list of the Scarab parameters to generate parameter descriptor file in 'params.scarab'. Check the exmple 'params.scarab' and run 'generate_exp_descriptor.py', then you will see the exp2.descriptor.json file which will be used for Scarab runs. Please refer to the 'apps.list' and 'params.scarab' files for the examples.
 
 #### Example command (Build the image from the beginning and run the application with trace-base mode by collecting the traces without simpoint methodology. Copy the collected traces and the simulation results to host after the run.)
 ```

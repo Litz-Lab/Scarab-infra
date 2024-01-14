@@ -1,0 +1,6 @@
+architecture,sunny_cove
+experiment,exp2
+workloads_list,mongodb mysql verilator xgboost
+base_params,--inst_limit 99900000 --fdip_enable 1
+sweep_param,fe_ftq_block_num
+sweep_values,2 4 6 8 10 12

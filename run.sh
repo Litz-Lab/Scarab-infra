@@ -1,5 +1,5 @@
 #!/bin/bash
-#set -x #echo on
+set -x #echo on
 
 # code to ignore case restrictions
 shopt -s nocasematch
@@ -14,7 +14,7 @@ help()
                 [ -s | --scarab ]
                 [ -c | --cleanup]"
   echo
-  echo "!! Modify 'apps.list' and 'params.new' to specify the apps and Scarab parameters before run !!"
+  echo "!! Modify 'apps.list' and 'params.scarab' to specify the apps to build and Scarab parameters before run !!"
   echo "The entire process of simulating a data center workload is the following."
   echo "1) application setup by building a docker image (each directory represents an application group)"
   echo "2) collect traces with different simpoint workflows for trace-based simulation"
@@ -110,7 +110,7 @@ while read APPNAME ;do
     # run simpoint/trace
     echo "run simpoint/trace.."
 
-    docker exec --privileged $APP_GROUPNAME run_simpoint_trace.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SIMPOINT" &
+    docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME run_simpoint_trace.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SIMPOINT" &
     sleep 2
     while read -r line ;do
       IFS=" " read PID CMD <<< $line
@@ -131,22 +131,55 @@ if [ $SCARABMODE ]; then
   taskPids=()
   start=`date +%s`
 
+  while IFS=, read -r OPTNAME OPTVALUE; do
+    case $OPTNAME in
+      architecture)
+        ARCHITECTURE=$OPTVALUE
+        ;;
+      workloads_list)
+        WORKLOADS_LIST=$OPTVALUE
+        ;;
+      experiment)
+        EXPERIMENT=$OPTVALUE
+        ;;
+      base_params)
+        BASE_PARAMS=$OPTVALUE
+        ;;
+      sweep_param)
+        SWEEP_PARAM=$OPTVALUE
+        ;;
+      sweep_values)
+        SWEEP_VALUES=$OPTVALUE
+        ;;
+      *)
+        echo "unknown option"
+        ;;
+    esac
+  done < params.scarab
+
   while read APPNAME; do
     source setup_apps.sh
-    while IFS=, read -r SCENARIONUM SCARABPARAMS; do
-      if [ "$APP_GROUPNAME" == "allbench_traces" ]; then
-        docker exec --privileged $APP_GROUPNAME run_scarab_allbench.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SCENARIONUM" "$SCARABPARAMS" "$SCARABMODE" &
-      else
-        docker exec --privileged $APP_GROUPNAME run_scarab.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SCENARIONUM" "$SCARABPARAMS" "$SCARABMODE" &
-      fi
-      sleep 2
+    if [ "$APP_GROUPNAME" == "allbench_traces" ]; then
+      python3 generate_exp_descriptor.py -a $ARCHITECTURE -e $EXPERIMENT -w $WORKLOADS_LIST --base_params "$BASE_PARAMS" --sweep_param $SWEEP_PARAM --sweep_values $SWEEP_VALUES
+      cp ${EXPERIMENT}.descriptor.json $OUTDIR
+      docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.descriptor.json -a $APPNAME -g $APP_GROUPNAME -m 4 &
       while read -r line; do
         IFS=" " read PID CMD <<< $line
-        if [ "$CMD" == "/bin/bash /usr/local/bin/run_scarab.sh $APPNAME $APP_GROUPNAME $BINCMD $SCENARIONUM $SCARABPARAMS $SCARABMODE" ]; then
+        if [ "$CMD" == "python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.descriptor.json -a $APPNAME -g $APP_GROUPNAME -m 4" ]; then
           taskPids+=($PID)
         fi
       done < <(docker top $APP_GROUPNAME -eo pid,cmd)
-    done < params.new
+    else
+      python3 generate_exp_descriptor.py -a $ARCHITECTURE -e $EXPERIMENT -w $APPNAME --base_params "$BASE_PARAMS" --sweep_param $SWEEP_PARAM --sweep_values $SWEEP_VALUES
+      cp ${EXPERIMENT}.descriptor.json $OUTDIR
+      docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.descriptor.json -a $APPNAME -g $APP_GROUPNAME -c $BINCMD -m $SCARABMODE &
+      while read -r line; do
+        IFS=" " read PID CMD <<< $line
+        if [ "$CMD" == "python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.descriptor.json -a $APPNAME -g $APP_GROUPNAME -c $BINCMD -m $SCARABMODE" ]; then
+          taskPids+=($PID)
+        fi
+      done < <(docker top $APP_GROUPNAME -eo pid,cmd)
+    fi
   done < apps.list
 
   wait_for_non_child "Scarab-simulation" "${taskPids[@]}"
