@@ -42,31 +42,38 @@ class Simpoint:
         self.stat_vals = []
         self.w_stat_vals = []
 
-def read_simpoints(sp_dir, sim_root_dir):
+def read_simpoints(sp_dir, sim_root_dir, whole_sim = False):
     total_weight = 0
     simpoints = []
-    with open(sp_dir + "opt.p.lpt0.99", "r") as f1, open(sp_dir + "opt.w.lpt0.99", "r") as f2:
+    with open(sp_dir + "/opt.p.lpt0.99", "r") as f1, open(sp_dir + "/opt.w.lpt0.99", "r") as f2:
         for line1, line2 in zip(f1, f2):
             seg_id = int(line1.split()[0])
             weight = float(line2.split()[0])
             c_id = int(line1.split()[1])
             assert(int(line1.split()[1]) == int(line2.split()[1]))
             total_weight += weight
-            simpoints.append(Simpoint(seg_id, weight, sim_root_dir + "/" + str(seg_id), c_id))
-    
+            if whole_sim == False:
+                simpoints.append(Simpoint(seg_id, weight, sim_root_dir + "/" + str(seg_id), c_id))
+            else:
+                simpoints.append(Simpoint(seg_id, weight, sim_root_dir, c_id))
+
     if total_weight - 1 > 1e-5:
         print("total weight of SimPoint does not add up to 1? {}".format(total_weight))
         exit
     
     return simpoints
 
-def read_simpoint_stats(stat_groups, simpoints):
+def read_simpoint_stats(stat_groups, simpoints, whole_sim = False):
     for simp in simpoints:
         for g in stat_groups:
             simp.stat_vals.append([])
             for s in g.s_list:
-                stat_val = get_acc_stat_from_file(simp.sim_dir + "/" + g.f_name,
-                                                s.s_name, s.pos)
+                if whole_sim == False:
+                    stat_val = get_acc_stat_from_file(simp.sim_dir + "/" + g.f_name,
+                                                    s.s_name, s.pos)
+                else:
+                    stat_val = get_acc_stat_from_file(simp.sim_dir + "/" + g.f_name + ".period.{}".format(simp.seg_id),
+                                                    s.s_name, s.pos)
                 simp.stat_vals[-1].append(stat_val)
 
 def calculate_weighted_average(stat_groups, simpoints):
@@ -196,6 +203,12 @@ def customized_report(stat_groups, simpoints, sim_root_dir):
         writer.writerow([unuseful_cl_cyc, unuseful_cls, float(unuseful_cl_cyc)/float(unuseful_cls)])
 
 stat_groups = [
+    # use the "periodic" column when defining stats ("1" for most of the stats)
+    # make sure "instructions" is the first group
+    StatGroup("instructions", "core.stat.0.out",
+            [
+            Stat("NODE_INST_COUNT", 1)
+            ]),
     StatGroup("dcache_access", "memory.stat.0.out",
             [
             Stat("DCACHE_MISS", 1),
@@ -206,11 +219,6 @@ stat_groups = [
             [
             Stat("NODE_CYCLE", 1)
             ]),
-    StatGroup("instructions", "core.stat.0.out",
-            [
-            Stat("NODE_INST_COUNT", 1)
-            ]),
-
     StatGroup("icache_access", "memory.stat.0.out",
             [
             Stat("ICACHE_HIT", 1),
