@@ -41,8 +41,20 @@ c     Clean up all the containers/volumes after run. 0: No clean up 2: Clean up 
 There are four ways to run Scarab: 1) execution-driven w/o SimPoint (-s 1) 2) trace-based w/o SimPoint (-s 2) 3) execution-driven w/ SimPoint (-s 3) 4) trace-based w/ SimPoint (-s 4). The execution-driven simulation runs the application binary directly without using traces while the trace-based simulation needs collected traces to run the application. SimPoints are used for fast-forwarding on the execution-driven run and for collecting traces/simulating on the trace-based run.
 You need to provide the list of the applications you want to build images for them in 'apps.list' file, and the list of the Scarab parameters to generate parameter descriptor file in '<experiment_name>.json'. Please refer to the 'apps.list' and 'exp2.json' files for the examples.
 
-##### Run containers to set up applications for running/tracing/simulating
-#### Example command (Build the image from the beginning and run the application with trace-base mode by collecting the traces without simpoint methodology. Copy the collected traces and the simulation results to host after the run.)
+1. Run a container to run Scarab simulations with already-collected traces with simpoints (Should have access to UCSC NFS)
+#### Build the image where all the traces/simpoints are available and ready to run Scarab)
+```
+./run.sh -o /soe/$USER/allbench_home -b 2
+```
+#### Run Scarab simulations by using a descriptor file
+First, modify <experiment>.json file to provide all the simulationscenarios to run Scarab
+Run the following command with <experiment> name for -e.
+```
+./run.sh -o /soe/$USER/allbench_home -s 4 -e exp2
+```
+
+2. Run containers to set up applications for running/tracing/simulating
+#### Build the image from the beginning and run the application with trace-base mode by collecting the traces without simpoint methodology. Copy the collected traces and the simulation results to host after the run.
 ```
 ./run.sh -o /soe/$USER/example_home -b 2 -s 0 -t 1 -s 2
 ```
@@ -91,18 +103,6 @@ docker exec --user=$USER --workdir=/home/$USER --privileged example_$USER /bin/b
 #### Run simulation with already collected simpoint traces on an existing container
 ```
 ./run.sh -o /home/$USER/example_home -b 0 -s 0 -t 0 -s 4
-```
-
-##### Run a container to run Scarab simulations with already-collected traces with simpoints (Should have access to UCSC NFS)
-#### Build the image where all the traces/simpoints are available and ready to run Scarab)
-```
-./run.sh -o /soe/$USER/allbench_home -b 2
-```
-#### Run Scarab simulations by using a descriptor file
-First, modify <experiment>.json file to provide all the simulationscenarios to run Scarab
-Run the following command with <experiment> name for -e.
-```
-./run.sh -o /soe/$USER/allbench_home -s 4 -e exp2
 ```
 
 ## Developers
