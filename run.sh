@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x #echo on
+#set -x #echo on
 
 # code to ignore case restrictions
 shopt -s nocasematch
@@ -12,9 +12,10 @@ help()
                 [ -b | --build]
                 [ -t | --trace]
                 [ -s | --scarab ]
+                [ -e | --experiment ]
                 [ -c | --cleanup]"
   echo
-  echo "!! Modify 'apps.list' and 'params.scarab' to specify the apps to build and Scarab parameters before run !!"
+  echo "!! Modify 'apps.list' and '<experiment_name>.json' to specify the apps to build and Scarab parameters before run !!"
   echo "The entire process of simulating a data center workload is the following."
   echo "1) application setup by building a docker image (each directory represents an application group)"
   echo "2) collect traces with different simpoint workflows for trace-based simulation"
@@ -27,11 +28,12 @@ help()
   echo "b     Build a docker image with application setup. 0: Run a container of existing docker image 1: Build cached image and run a container of the cached image, 2: Build a new image from the beginning and overwrite whatever image with the same name. e.g) -b 2"
   echo "t     Collect traces with different SimPoint workflows. 0: Do not collect traces, 1: Collect traces based on SimPoint workflow - post-processing (trace, collect fingerprints, do simpoint clustering). e.g), 2: Collect traces based on SimPoint workflow - instrumentation first (Collect fingerprints, do simpoint clustering) -t 1"
   echo "s     Scarab simulation mode. 0: No simulation 1: execution-driven simulation w/o SimPoint 2: trace-based simulation w/o SimPoint (-t should be 1 if no traces exist already in the container). 3: execution-driven simulation w/ SimPoint 4: trace-based simulation w/ SimPoint e.g) -s 4"
+  echo "e     Experiment name. e.g.) -e exp2"
   echo "c     Clean up all the containers/volumes after run. 0: No clean up 2: Clean up e.g) -c 1"
 }
 
-SHORT=h:,o:,b:,t:,s:,c:
-LONG=help:,outdir:,build:,trace:,scarab:,cleanup:
+SHORT=h:,o:,b:,t:,s:,e:,c:
+LONG=help:,outdir:,build:,trace:,scarab:,experiment:,cleanup:
 OPTS=$(getopt -a -n run.sh --options $SHORT --longoptions $LONG -- "$@")
 
 VALID_ARGUMENTS=$# # Returns the count of arguments that are in short or long options
@@ -65,6 +67,10 @@ do
       ;;
     -s | --scarab) # scarab simulation mode
       SCARABMODE=$2
+      shift 2
+      ;;
+    -e | --experiment) # experiment name
+      EXPERIMENT=$2
       shift 2
       ;;
     -c | --cleanup) # clean up the containers
@@ -131,51 +137,23 @@ if [ $SCARABMODE ]; then
   taskPids=()
   start=`date +%s`
 
-  while IFS=, read -r OPTNAME OPTVALUE; do
-    case $OPTNAME in
-      architecture)
-        ARCHITECTURE=$OPTVALUE
-        ;;
-      workloads_list)
-        WORKLOADS_LIST=$OPTVALUE
-        ;;
-      experiment)
-        EXPERIMENT=$OPTVALUE
-        ;;
-      base_params)
-        BASE_PARAMS=$OPTVALUE
-        ;;
-      sweep_param)
-        SWEEP_PARAM=$OPTVALUE
-        ;;
-      sweep_values)
-        SWEEP_VALUES=$OPTVALUE
-        ;;
-      *)
-        echo "unknown option"
-        ;;
-    esac
-  done < params.scarab
-
   while read APPNAME; do
     source setup_apps.sh
     if [ "$APP_GROUPNAME" == "allbench_traces" ]; then
-      python3 generate_exp_descriptor.py -a $ARCHITECTURE -e $EXPERIMENT -w $WORKLOADS_LIST --base_params "$BASE_PARAMS" --sweep_param $SWEEP_PARAM --sweep_values $SWEEP_VALUES
-      cp ${EXPERIMENT}.descriptor.json $OUTDIR
-      docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.descriptor.json -a $APPNAME -g $APP_GROUPNAME -m 4 &
+      cp ${EXPERIMENT}.json $OUTDIR
+      docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -m 4 &
       while read -r line; do
         IFS=" " read PID CMD <<< $line
-        if [ "$CMD" == "python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.descriptor.json -a $APPNAME -g $APP_GROUPNAME -m 4" ]; then
+        if [ "$CMD" == "python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -m 4" ]; then
           taskPids+=($PID)
         fi
       done < <(docker top $APP_GROUPNAME -eo pid,cmd)
     else
-      python3 generate_exp_descriptor.py -a $ARCHITECTURE -e $EXPERIMENT -w $APPNAME --base_params "$BASE_PARAMS" --sweep_param $SWEEP_PARAM --sweep_values $SWEEP_VALUES
-      cp ${EXPERIMENT}.descriptor.json $OUTDIR
-      docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.descriptor.json -a $APPNAME -g $APP_GROUPNAME -c $BINCMD -m $SCARABMODE &
+      cp ${EXPERIMENT}.json $OUTDIR
+      docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -c $BINCMD -m $SCARABMODE &
       while read -r line; do
         IFS=" " read PID CMD <<< $line
-        if [ "$CMD" == "python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.descriptor.json -a $APPNAME -g $APP_GROUPNAME -c $BINCMD -m $SCARABMODE" ]; then
+        if [ "$CMD" == "python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -c $BINCMD -m $SCARABMODE" ]; then
           taskPids+=($PID)
         fi
       done < <(docker top $APP_GROUPNAME -eo pid,cmd)

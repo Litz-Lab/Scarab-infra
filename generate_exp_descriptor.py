@@ -3,19 +3,19 @@ import json
 
 def generate_descriptor(args):
     # Create a dictionary with keys and values from command-line arguments
-    descriptor_data = {"architecture": args.architecture, "workloads_list": args.workloads_list}
+    descriptor_data = {"architecture": args.architecture, "workloads_list": args.workloads_list, "experiment": args.experiment}
 
     # Create a dictionary of configurations
-    configuration_data = {args.experiment + "/baseline": args.base_params}
+    configuration_data = {"baseline": args.base_params}
     for value in args.sweep_values:
-        key = args.experiment + "/" + args.sweep_param + "." + str(value)
+        key = args.sweep_param + "." + str(value)
         configuration_data[key] = args.base_params + " --" + args.sweep_param + " " + value
 
     descriptor_data["configurations"] = configuration_data
 
     return descriptor_data
 
-def save_descriptor_to_json(descriptor_data, filename="descriptor.json"):
+def save_descriptor_to_json(descriptor_data, filename="experiment.json"):
     # Save the descriptor data to a JSON file
     with open(filename, 'w') as json_file:
         json.dump(descriptor_data, json_file, indent=4)
@@ -39,7 +39,7 @@ def main():
     descriptor_data = generate_descriptor(args)
 
     # Save descriptor data to a JSON file
-    save_descriptor_to_json(descriptor_data, args.experiment + ".descriptor.json")
+    save_descriptor_to_json(descriptor_data, args.experiment + ".json")
 
 if __name__ == "__main__":
     main()

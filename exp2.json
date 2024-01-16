@@ -1,0 +1,21 @@
+{
+    "architecture": "sunny_cove",
+    "workloads_list": [
+        "mongodb",
+        "mysql",
+        "verilator",
+        "xgboost"
+    ],
+    "experiment": "exp2",
+    "configurations": {
+        "baseline": "--inst_limit 99900000 --fdip_enable 1",
+        "fe_ftq_block_num.8": "--inst_limit 99900000 --fdip_enable 1 --fe_ftq_block_num 8",
+        "fe_ftq_block_num.16": "--inst_limit 99900000 --fdip_enable 1 --fe_ftq_block_num 16",
+        "fe_ftq_block_num.32": "--inst_limit 99900000 --fdip_enable 1 --fe_ftq_block_num 32",
+        "fe_ftq_block_num.64": "--inst_limit 99900000 --fdip_enable 1 --fe_ftq_block_num 64",
+        "fe_ftq_block_num.32/icache_size.32K ": "--inst_limit 99900000 --fdip_enable 1 --fe_ftq_block_num 32 --icache_size 32768",
+        "fe_ftq_block_num.32/icache_size.64K": "--inst_limit 99900000 --fdip_enable 1 --fe_ftq_block_num 32 --icache_size 65536",
+        "fe_ftq_block_num.64/icache_size.32K ": "--inst_limit 99900000 --fdip_enable 1 --fe_ftq_block_num 64--icache_size 32768",
+        "fe_ftq_block_num.64/icache_size.64K": "--inst_limit 99900000 --fdip_enable 1 --fe_ftq_block_num 64 --icache_size 65536"
+    }
+}

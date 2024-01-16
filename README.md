@@ -20,9 +20,10 @@ Usage: ./run.sh [ -h | --help ]
                 [ -b | --build]
                 [ -t | --trace]
                 [ -s | --scarab ]
+                [ -e | --experiment ]
                 [ -c | --cleanup]
 
-!! Modify 'apps.list' and 'params.scarab' to specify the apps and Scarab parameters before run !!
+!! Modify 'apps.list' and '<experiment_name>.json' to specify the apps to build and Scarab parameters before run !!
 The entire process of simulating a data center workload is the following.
 1) application setup by building a docker image (each directory represents an application group)
 2) collect traces with different simpoint workflows for trace-based simulation
@@ -34,11 +35,13 @@ o     Absolute path to the directory for scarab repo, pin, traces, simpoints, an
 b     Build a docker image with application setup. 0: Run a container of existing docker image 1: Build cached image and run a container of the cached image, 2: Build a new image from the beginning and overwrite whatever image with the same name. e.g) -b 2
 t     Collect traces with different SimPoint workflows. 0: Do not collect traces, 1: Collect traces based on SimPoint workflow - post-processing (trace, collect fingerprints, do simpoint clustering). e.g), 2: Collect traces based on SimPoint workflow - instrumentation first (Collect fingerprints, do simpoint clustering) -t 1
 s     Scarab simulation mode. 0: No simulation 1: execution-driven simulation w/o SimPoint 2: trace-based simulation w/o SimPoint (-t should be 1 if no traces exist already in the container). 3: execution-driven simulation w/ SimPoint 4: trace-based simulation w/ SimPoint e.g) -s 4
+e     Experiment name. e.g.) -e exp2
 c     Clean up all the containers/volumes after run. 0: No clean up 2: Clean up e.g) -c 1
 ```
 There are four ways to run Scarab: 1) execution-driven w/o SimPoint (-s 1) 2) trace-based w/o SimPoint (-s 2) 3) execution-driven w/ SimPoint (-s 3) 4) trace-based w/ SimPoint (-s 4). The execution-driven simulation runs the application binary directly without using traces while the trace-based simulation needs collected traces to run the application. SimPoints are used for fast-forwarding on the execution-driven run and for collecting traces/simulating on the trace-based run.
-You need to provide the list of the applications you want to build images for them in 'apps.list' file, and the list of the Scarab parameters to generate parameter descriptor file in 'params.scarab'. Check the exmple 'params.scarab' and run 'generate_exp_descriptor.py', then you will see the exp2.descriptor.json file which will be used for Scarab runs. Please refer to the 'apps.list' and 'params.scarab' files for the examples.
+You need to provide the list of the applications you want to build images for them in 'apps.list' file, and the list of the Scarab parameters to generate parameter descriptor file in '<experiment_name>.json'. Please refer to the 'apps.list' and 'exp2.json' files for the examples.
 
+##### Run containers to set up applications for running/tracing/simulating
 #### Example command (Build the image from the beginning and run the application with trace-base mode by collecting the traces without simpoint methodology. Copy the collected traces and the simulation results to host after the run.)
 ```
 ./run.sh -o /soe/$USER/example_home -b 2 -s 0 -t 1 -s 2
@@ -88,6 +91,18 @@ docker exec --user=$USER --workdir=/home/$USER --privileged example_$USER /bin/b
 #### Run simulation with already collected simpoint traces on an existing container
 ```
 ./run.sh -o /home/$USER/example_home -b 0 -s 0 -t 0 -s 4
+```
+
+##### Run a container to run Scarab simulations with already-collected traces with simpoints (Should have access to UCSC NFS)
+#### Build the image where all the traces/simpoints are available and ready to run Scarab)
+```
+./run.sh -o /soe/$USER/allbench_home -b 2
+```
+#### Run Scarab simulations by using a descriptor file
+First, modify <experiment>.json file to provide all the simulationscenarios to run Scarab
+Run the following command with <experiment> name for -e.
+```
+./run.sh -o /soe/$USER/allbench_home -s 4 -e exp2
 ```
 
 ## Developers

@@ -2,7 +2,7 @@ import json
 import argparse
 import os
 
-def read_descriptor_from_json(filename="descriptor.json"):
+def read_descriptor_from_json(filename="experiment.json"):
     # Read the descriptor data from a JSON file
     try:
         with open(filename, 'r') as json_file:
@@ -18,7 +18,7 @@ def read_descriptor_from_json(filename="descriptor.json"):
 def run_experiment():
     # Create a parser for command-line arguments
     parser = argparse.ArgumentParser(description='Read descriptor file name')
-    parser.add_argument('-d','--descriptor_name', required=True, help='Experiment descriptor name. Usage: -d exp2.descriptor.json')
+    parser.add_argument('-d','--descriptor_name', required=True, help='Experiment descriptor name. Usage: -d exp2.json')
     parser.add_argument('-a','--application_name', required=True, help='Application name. Usage: -a simple_multi_update')
     parser.add_argument('-g','--application_group_name', required=True, help='Application group name. Usage: -g mongodb')
     parser.add_argument('-c','--binary_command', required=False, help='Binary command. Usage -c /usr/bin/mongd --config /etc/mongod.conf')
@@ -39,14 +39,22 @@ def run_experiment():
         print(descriptor_data)
 
     architecture = descriptor_data["architecture"]
+    experiment = descriptor_data["experiment"]
+    for workload in descriptor_data["workloads_list"]:
+        exp_path = str(os.getenv('HOME')) + '/simpoint_flow/simulations/' + workload + '/' + experiment
+        print(exp_path)
+        if os.path.exists(exp_path):
+          print(f"The experiment already exists! Change the experiment name.")
+          return None
+
     # Run Scarab
     for workload in descriptor_data["workloads_list"]:
         for config_key in descriptor_data["configurations"].keys():
             config_value = descriptor_data["configurations"][config_key]
             if args.application_name == "allbench":
-                command = 'run_scarab_allbench.sh "' + workload + '" "allbench_traces" "" "' + config_key + '" "' + config_value + '" "4" "' + architecture + '"'
+                command = 'run_scarab_allbench.sh "' + workload + '" "allbench_traces" "" "' + experiment + '/' + config_key + '" "' + config_value + '" "4" "' + architecture + '"'
             else:
-                command = 'run_scarab.sh "' + args.application_name + '" "' + args.application_group_name + '" "' + args.binary_command + '" "' + config_key + '" "' + config_value + '" "' + args.scarab_mode + '" "' + architecture + '"'
+                command = 'run_scarab.sh "' + args.application_name + '" "' + args.application_group_name + '" "' + args.binary_command + '" "' + experiment + '/' + config_key + '" "' + config_value + '" "' + args.scarab_mode + '" "' + architecture + '"'
             os.system(command)
 
 if __name__ == "__main__":
