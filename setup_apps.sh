@@ -55,6 +55,22 @@ case $APPNAME in
     echo "memcached"
     APP_GROUPNAME="memcached"
     ;;
+  gapbs)
+    echo "gapbs"
+    APP_GROUPNAME="gapbs"
+    ;;
+  geekbench)
+    echo "geekbench"
+    APP_GROUPNAME="geekbench"
+    ;;
+  llama)
+    echo "llama"
+    APP_GROUPNAME="llama"
+    ;;
+  rocksdb)
+    echo "rocksdb"
+    APP_GROUPNAME="rocksdb"
+    ;;
   example)
     echo "example"
     APP_GROUPNAME="example"
@@ -133,6 +149,18 @@ case $APPNAME in
   postgres)
     BINCMD="/usr/lib/postgresql/12/bin/postgres -D /var/lib/postgresql/12/main -c config_file=/etc/postgresql/12/main/postgresql.conf"
     CLIENT_BINCMD="sysbench $tmpdir/sysbench/src/lua/oltp_point_select.lua --pgsql-host=127.0.0.1 --pgsql-port=5432 --pgsql-user=sbtest --pgsql-password=password --db-driver=pgsql --tables=10 --table-size=10000 --time=600 run"
+    ;;
+  gapbs)
+    #TODO
+    ;;
+  geekbench)
+    #TODO
+    ;;
+  llama)
+    #TODO
+    ;;
+  rocksdb)
+    #TODO
     ;;
   example)
     BINCMD="/home/$USER/scarab/utils/qsort/test_qsort"
