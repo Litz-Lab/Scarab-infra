@@ -12,7 +12,7 @@ lines=($(wc -l $FPFILE))
 # round to nearest int
 maxK=$(echo "(sqrt($lines)+0.5)/1" | bc)
 echo "fingerprint size: $lines, maxk: $maxK"
-spCmd="$tmpdir/simpoint -maxK $maxK -fixedLength off -numInitSeeds 1000 -loadFVFile $FPFILE -saveSimpoints $OUTDIR/simpoints/opt.p -saveSimpointWeights $OUTDIR/simpoints/opt.w -saveLabels $OUTDIR/simpoints/opt.l -coveragePct .99 &> $OUTDIR/simpoints/simp.opt.log"
+spCmd="$tmpdir/simpoint -maxK $maxK -fixedLength off -numInitSeeds 1000 -loadFVFile $FPFILE -saveSimpoints $OUTDIR/simpoints/opt.p -saveSimpointWeights $OUTDIR/simpoints/opt.w -saveVectorWeights $OUTDIR/simpoints/vector.w -saveLabels $OUTDIR/simpoints/opt.l -coveragePct .99 &> $OUTDIR/simpoints/simp.opt.log"
 echo "cluster fingerprint..."
 echo "command: ${spCmd}"
 start=`date +%s`
