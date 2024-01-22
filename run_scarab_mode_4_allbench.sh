@@ -24,8 +24,6 @@ if [ "$TRACESSIMP" == "1" ]; then
     fi
 fi
 
-cd $OUTDIR
-
 ################################################################
 # read in simpoint
 # ref: https://stackoverflow.com/q/56005842

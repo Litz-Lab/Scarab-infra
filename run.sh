@@ -116,7 +116,7 @@ while read APPNAME ;do
     # run simpoint/trace
     echo "run simpoint/trace.."
 
-    docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME run_simpoint_trace.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SIMPOINT" &
+    docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER run_simpoint_trace.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SIMPOINT" &
     sleep 2
     while read -r line ;do
       IFS=" " read PID CMD <<< $line
@@ -180,8 +180,8 @@ if [ $CLEANUP ]; then
         sleep 2
         ;;
     esac
-    docker stop $APP_GROUPNAME
-    rmCmd="docker rm $APP_GROUPNAME"
+    docker stop $APP_GROUPNAME\_$USER
+    rmCmd="docker rm $APP_GROUPNAME\_$USER"
     eval $rmCmd &
     taskPids+=($!)
     sleep 2
