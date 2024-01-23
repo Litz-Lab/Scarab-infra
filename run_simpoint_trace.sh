@@ -58,11 +58,11 @@ if [ "$SIMPOINT" == "2" ]; then
   traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces/whole -offline"
   if [ "$APPNAME" == "mysql" ] || [ "$APPNAME" == "postgres" ]; then
     sudo chown -R $APPNAME:$APPNAME $APPHOME/traces/whole
-    traceCmd="sudo -u $APPNAME "+$traceCmd+" -exit_after_tracing 15200000000 -- ${BINCMD}"
+    traceCmd="sudo -u $APPNAME $traceCmd -exit_after_tracing 15200000000 -- ${BINCMD}"
   elif [ "$APPNAME" == "long_multi_update" ]; then
-    traceCmd="sudo -u $APPNAME "+$traceCmd+" -exit_after_tracing 68000000000 -- ${BINCMD}"
+    traceCmd="sudo -u $APPNAME $traceCmd -exit_after_tracing 68000000000 -- ${BINCMD}"
   else
-    traceCmd=$traceCmd+" -- ${BINCMD}"
+    traceCmd="$traceCmd -- ${BINCMD}"
   fi
   echo "tracing whole app..."
   echo "command: ${traceCmd}"
