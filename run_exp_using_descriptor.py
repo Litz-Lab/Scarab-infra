@@ -40,16 +40,15 @@ def run_experiment():
 
     architecture = descriptor_data["architecture"]
     experiment = descriptor_data["experiment"]
-    for workload in descriptor_data["workloads_list"]:
-        exp_path = str(os.getenv('HOME')) + '/simpoint_flow/simulations/' + workload + '/' + experiment
-        print(exp_path)
-        if os.path.exists(exp_path):
-          print(f"The experiment already exists! Change the experiment name.")
-          return None
 
     # Run Scarab
     for workload in descriptor_data["workloads_list"]:
         for config_key in descriptor_data["configurations"].keys():
+            exp_path = str(os.getenv('HOME')) + '/simpoint_flow/simulations/' + workload + '/' + experiment + '/' + config_key
+            print(exp_path)
+            if os.path.exists(exp_path):
+              print(f"The experiment already exists! Change the experiment name.")
+              return None
             config_value = descriptor_data["configurations"][config_key]
             if args.application_name == "allbench":
                 command = 'run_scarab_allbench.sh "' + workload + '" "allbench_traces" "" "' + experiment + '/' + config_key + '" "' + config_value + '" "4" "' + architecture + '"'
