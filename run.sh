@@ -116,6 +116,8 @@ while read APPNAME ;do
     # run simpoint/trace
     echo "run simpoint/trace.."
 
+    # update the script
+    docker cp ./run_simpoint_trace.sh $APP_GROUPNAME\_$USER:/usr/local/bin
     docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER run_simpoint_trace.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SIMPOINT" &
     sleep 2
     while read -r line ;do
@@ -139,6 +141,8 @@ if [ $SCARABMODE ]; then
 
   while read APPNAME; do
     source setup_apps.sh
+    # update the script
+    docker cp ./run_exp_using_descriptor.py $APP_GROUPNAME\_$USER:/usr/local/bin
     if [ "$APP_GROUPNAME" == "allbench_traces" ]; then
       cp ${EXPERIMENT}.json $OUTDIR
       docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -m 4 &
