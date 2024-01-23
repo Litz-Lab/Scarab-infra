@@ -116,9 +116,18 @@ while read APPNAME ;do
     # run simpoint/trace
     echo "run simpoint/trace.."
 
+    # tokenize multiple environment variables
+    ENVVARS=""
+    echo $ENVVARS
+    for token in $ENVVAR;
+    do
+       ENVVARS+=" -e ";
+       ENVVARS+=$token;
+    done
+
     # update the script
     docker cp ./run_simpoint_trace.sh $APP_GROUPNAME\_$USER:/usr/local/bin
-    docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER run_simpoint_trace.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SIMPOINT" &
+    docker exec $ENVVARS --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER run_simpoint_trace.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SIMPOINT" &
     sleep 2
     while read -r line ;do
       IFS=" " read PID CMD <<< $line
