@@ -40,7 +40,7 @@ def gather_fp_pieces(fp_dir, num_of_segments, no_convert):
 
     # ref: https://stackoverflow.com/questions/4287209/sort-list-of-strings-by-integer-suffix
     for file in sorted(glob.glob(fp_dir + "/segment.*"), key = lambda x: int(x.split(".")[1])):
-        print(file)
+        print(file, flush=True)
         segment_id = file.split(".")[-1]
         assert int(segment_id) == pre_segment_id + 1, "{} != {}".format(segment_id, pre_segment_id + 1)
         pre_segment_id = int(segment_id)
@@ -48,11 +48,14 @@ def gather_fp_pieces(fp_dir, num_of_segments, no_convert):
         with open(file, "r") as f:
             lines = f.read().splitlines()
             assert sum(1 for line in lines if line) == 1, "segment fp provides more than one line"
-            segment_map = line_to_map(lines[0])
 
-        if (not no_convert):
-            segment_map, addr_id_map, bb_count = map_conversion(segment_map, addr_id_map, bb_count)
-        append_bbfp(fp_dir + "/bbfp", segment_map)
+            if (not no_convert):
+                segment_map = line_to_map(lines[0])
+                segment_map, addr_id_map, bb_count = map_conversion(segment_map, addr_id_map, bb_count)
+                append_bbfp(fp_dir + "/bbfp", segment_map)
+            else:
+                with open(fp_dir + "/bbfp", "a") as bbfp:
+                    bbfp.write(lines[0] + "\n")
 
     if pre_segment_id + 1 != num_of_segments:
         print("saw {} segments expected {}".format(pre_segment_id + 1, num_of_segments))
