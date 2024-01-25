@@ -24,6 +24,7 @@ RUN cd rocksdb && DEBUG_LEVEL=0 make db_bench
 #execute bulkload benchmark to preload the rocksb database
 RUN cd rocksdb && DB_DIR=/tmp/rocksdbtest-1000/ WAL_DIR=/tmp/rocksdbtest-1000/ NUM_KEYS=100000000 ./tools/benchmark.sh bulkload
 RUN chmod a+rwx /tmp
+RUN chmod a+w /tmp/rocksdbtest-1000/.
 RUN chmod a+w /tmp/rocksdbtest-1000/*
 
 # Switch to the dcuser user
