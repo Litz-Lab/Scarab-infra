@@ -134,7 +134,7 @@ while read APPNAME ;do
       if [ "$CMD" == "/bin/bash /usr/local/bin/run_simpoint_trace.sh $APPNAME $APP_GROUPNAME $BINCMD $SIMPOINT" ]; then
         taskPids+=($PID)
       fi
-    done < <(docker top $APP_GROUPNAME -eo pid,cmd)
+    done < <(docker top $APP_GROUPNAME\_$USER -eo pid,cmd)
   fi
 done < apps.list
 
@@ -160,7 +160,7 @@ if [ $SCARABMODE ]; then
         if [ "$CMD" == "python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -m 4" ]; then
           taskPids+=($PID)
         fi
-      done < <(docker top $APP_GROUPNAME -eo pid,cmd)
+      done < <(docker top $APP_GROUPNAME\_$USER -eo pid,cmd)
     else
       cp ${EXPERIMENT}.json $OUTDIR
       docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -c $BINCMD -m $SCARABMODE &
@@ -169,7 +169,7 @@ if [ $SCARABMODE ]; then
         if [ "$CMD" == "python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -c $BINCMD -m $SCARABMODE" ]; then
           taskPids+=($PID)
         fi
-      done < <(docker top $APP_GROUPNAME -eo pid,cmd)
+      done < <(docker top $APP_GROUPNAME\_$USER -eo pid,cmd)
     fi
   done < apps.list
 
