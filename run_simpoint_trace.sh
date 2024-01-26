@@ -8,6 +8,7 @@ SEGSIZE=10000000
 # chunk size within trace file. Use 10M due to conversion issue.
 CHUNKSIZE=10000000
 SIMPOINT="$4"
+DRIO_ARGS="$5"
 
 source utilities.sh
 
@@ -55,7 +56,9 @@ if [ "$SIMPOINT" == "2" ]; then
 
   mkdir -p $APPHOME/traces/whole
   cd $APPHOME/traces/whole
-  traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces/whole -offline"
+  echo ${DRIO_ARGS}
+  echo $BINCMD
+  traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces/whole -offline $DRIO_ARGS"
   if [ "$APPNAME" == "mysql" ] || [ "$APPNAME" == "postgres" ]; then
     sudo chown -R $APPNAME:$APPNAME $APPHOME/traces/whole
     traceCmd="sudo -u $APPNAME $traceCmd -exit_after_tracing 15200000000 -- ${BINCMD}"
