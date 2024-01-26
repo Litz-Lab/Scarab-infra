@@ -26,7 +26,7 @@ def map_conversion(segment_map, addr_id_map, bb_count):
     return new_segment_map, addr_id_map, bb_count
     
     
-def gather_fp_pieces(fp_dir, num_of_segments, no_convert):
+def gather_fp_pieces(fp_dir, num_of_segments, file_prefix, no_convert):
     import glob
     
     pre_segment_id = -1
@@ -34,7 +34,7 @@ def gather_fp_pieces(fp_dir, num_of_segments, no_convert):
     addr_id_map = {}
 
     # ref: https://stackoverflow.com/questions/4287209/sort-list-of-strings-by-integer-suffix
-    for file in sorted(glob.glob(fp_dir + "/segment.*"), key = lambda x: int(x.split(".")[1])):
+    for file in sorted(glob.glob("{}/{}.*".format(fp_dir, file_prefix)), key = lambda x: int(x.split(".")[1])):
         print(file, flush=True)
         segment_id = file.split(".")[-1]
         assert int(segment_id) == pre_segment_id + 1, "{} != {}".format(segment_id, pre_segment_id + 1)
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     if not os.path.isdir(sys.argv[1]):
         print("segment directory {} does not exist!")
         exit
-    if len(sys.argv) == 4 and sys.argv[3] == "no_convert":
-        gather_fp_pieces(sys.argv[1], int(sys.argv[2]), True)
+    if len(sys.argv) == 5 and sys.argv[4] == "no_convert":
+        gather_fp_pieces(sys.argv[1], int(sys.argv[2]), sys.argv[3], True)
     else:
-        gather_fp_pieces(sys.argv[1], int(sys.argv[2]), False)
+        gather_fp_pieces(sys.argv[1], int(sys.argv[2]), sys.argv[3], False)

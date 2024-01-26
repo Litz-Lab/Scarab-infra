@@ -107,5 +107,5 @@ end=`date +%s`
 report_time "post-processing" "$start" "$end"
 
 # aggregate the fingerprint pieces
-python3 /usr/local/bin/gather_fp_pieces.py $OUTDIR/fingerprint/pieces $numSegment
+python3 /usr/local/bin/gather_fp_pieces.py $OUTDIR/fingerprint/pieces $numSegment segment
 cp $OUTDIR/fingerprint/pieces/bbfp $OUTDIR/fingerprint/bbfp
