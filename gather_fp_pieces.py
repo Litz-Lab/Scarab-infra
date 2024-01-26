@@ -1,15 +1,10 @@
 def line_to_map(line):
     line = line.split()
-    bb_id_list = []
-    freq_list = []
+    fp = {}
     for pair in line:
         # format :bb_id:freq
         bb_id, freq = pair.split(":")[1:]
-        bb_id_list.append(int(bb_id))
-        freq_list.append(int(freq))
-    fp = {}
-    for i,j in zip(bb_id_list, freq_list):
-        fp[i] = j
+        fp[int(bb_id)] = int(freq)
     return fp
 
 def append_bbfp(fp_file, segment_map):
