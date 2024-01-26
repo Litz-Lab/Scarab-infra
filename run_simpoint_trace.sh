@@ -91,7 +91,7 @@ if [ "$SIMPOINT" == "2" ]; then
     mkdir -p bin
     cp raw/modules.log bin/modules.log
     cp raw/modules.log raw/modules.log.bak
-    sudo python2 $HOME/scarab/utils/memtrace/portabilize_trace.py .
+    python2 $HOME/scarab/utils/memtrace/portabilize_trace.py .
     cp bin/modules.log raw/modules.log
     $DYNAMORIO_HOME/clients/bin64/drraw2trace -jobs 40 -indir ./raw/ -chunk_instr_count $CHUNKSIZE &
     taskPids+=($!)
@@ -218,7 +218,7 @@ elif [ "$SIMPOINT" == "1" ]; then
     mkdir -p bin
     cp raw/modules.log bin/modules.log
     cp raw/modules.log raw/modules.log.bak
-    sudo python2 $HOME/scarab/utils/memtrace/portabilize_trace.py .
+    python2 $HOME/scarab/utils/memtrace/portabilize_trace.py .
     cp bin/modules.log raw/modules.log
     $DYNAMORIO_HOME/clients/bin64/drraw2trace -indir ./raw/ &
     taskPids+=($!)
@@ -308,7 +308,7 @@ else # non-simpoint
   mkdir -p bin
   cp raw/modules.log bin/modules.log
   cp raw/modules.log raw/modules.log.bak
-  sudo python2 $HOME/scarab/utils/memtrace/portabilize_trace.py .
+  python2 $HOME/scarab/utils/memtrace/portabilize_trace.py .
   cp bin/modules.log raw/modules.log
   $DYNAMORIO_HOME/clients/bin64/drraw2trace -indir ./raw/ &
   taskPids+=($!)
