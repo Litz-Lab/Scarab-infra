@@ -2,7 +2,7 @@
 
 # set APP_GROUPNAME
 case $APPNAME in
-  cassandra | kafka | tomcat)
+  cassandra | kafka | tomcat | jme | biojava)
     echo "DaCapo applications"
     APP_GROUPNAME="dacapo"
     ;;
