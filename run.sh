@@ -127,7 +127,7 @@ while read APPNAME ;do
 
     # update the script
     docker cp ./run_simpoint_trace.sh $APP_GROUPNAME\_$USER:/usr/local/bin
-    docker exec $ENVVARS --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER run_simpoint_trace.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SIMPOINT $DRIO_ARGS" &
+    docker exec $ENVVARS --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER run_simpoint_trace.sh "$APPNAME" "$APP_GROUPNAME" "$BINCMD" "$SIMPOINT" "$DRIO_ARGS" &
     sleep 2
     while read -r line ;do
       IFS=" " read PID CMD <<< $line
