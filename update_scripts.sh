@@ -13,3 +13,4 @@ docker cp ./gather_cluster_results.py $CONTAINERID:/usr/local/bin
 docker cp ./gather_fp_pieces.py $CONTAINERID:/usr/local/bin
 docker cp ./common/common_entrypoint.sh $CONTAINERID:/usr/local/bin
 docker cp ./run_exp_using_descriptor.py $CONTAINERID:/usr/local/bin
+docker cp ./gather_cluster_results_using_descriptor.py $CONTAINERID:/usr/local/bin
