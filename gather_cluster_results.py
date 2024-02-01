@@ -229,7 +229,8 @@ stat_groups = [
             Stat("ICACHE_MISS_NOT_PREFETCHED", 1),
             Stat("ICACHE_MISS_PREFETCHED_AND_EVICTED_BY_IFETCH", 1),
             Stat("ICACHE_MISS_PREFETCHED_AND_EVICTED_BY_FDIP", 1),
-            Stat("ICACHE_MISS_MSHR_HIT", 1)
+            Stat("ICACHE_MISS_MSHR_HIT_PREFETCHED_OFFPATH", 1),
+            Stat("ICACHE_MISS_MSHR_HIT_PREFETCHED_ONPATH", 1)
             ]),
     StatGroup("icache_hit_by_fdip_on_off", "memory.stat.0.out",
             [
@@ -316,7 +317,8 @@ stat_groups = [
             Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_NOT_PREFETCHED", 1),
             Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_PREFETCHED_AND_EVICTED_BY_IFETCH", 1),
             Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_PREFETCHED_AND_EVICTED_BY_FDIP", 1),
-            Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_MSHR_HIT", 1)
+            Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_MSHR_HIT_PREF_OFFPATH", 1),
+            Stat("INST_LOST_WAIT_FOR_ICACHE_MISS_MSHR_HIT_PREF_ONPATH", 1)
             ]),
     StatGroup("cf_ratio", "inst.stat.0.out",
             [
