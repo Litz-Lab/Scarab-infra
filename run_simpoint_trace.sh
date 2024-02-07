@@ -19,20 +19,10 @@ if [ "$APP_GROUPNAME" == "spec2017" ] && [ "$APPNAME" != "clang" ] && [ "$APPNAM
   source ./shrc
   # compile and get command for application
   # TODO: this is just for one input
-  ./bin/specperl ./bin/harness/runcpu --copies=1 --iterations=1 --threads=1 --config=memtrace --action=runsetup --size=train $APPNAME
+  ./bin/specperl ./bin/harness/runcpu --copies=1 --iterations=1 --threads=1 --config=memtrace --action=runsetup --size=ref $APPNAME
   ogo $APPNAME run
-  # TODO: the input size
-  cd run_base_train*
+  cd run_base_ref*
   BINCMD=$(specinvoke -nn | tail -2 | head -1)
-  for sub in $BINCMD; do
-    if [[ -f $sub ]]; then
-      # ref
-      # https://stackoverflow.com/a/13210909
-      # https://stackoverflow.com/a/7126780
-      replace=$(readlink -f "$sub")
-      BINCMD="${BINCMD/"$sub"/"$replace"}"
-    fi
-  done
 fi
 
 if [ "$SIMPOINT" == "2" ]; then
@@ -55,7 +45,15 @@ if [ "$SIMPOINT" == "2" ]; then
   start=`date +%s`
 
   mkdir -p $APPHOME/traces/whole
-  cd $APPHOME/traces/whole
+
+  # spec needs to run in its run dir
+  if [ "$APP_GROUPNAME" == "spec2017" ] && [ "$APPNAME" != "clang" ] && [ "$APPNAME" != "gcc" ]; then
+    ogo $APPNAME run
+    cd run_base_ref*
+  elif
+    cd $APPHOME/traces/whole
+  fi
+
   echo ${DRIO_ARGS}
   echo $BINCMD
   traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces/whole -offline $DRIO_ARGS"
