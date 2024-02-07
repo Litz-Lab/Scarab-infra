@@ -50,7 +50,7 @@ if [ "$SIMPOINT" == "2" ]; then
   if [ "$APP_GROUPNAME" == "spec2017" ] && [ "$APPNAME" != "clang" ] && [ "$APPNAME" != "gcc" ]; then
     ogo $APPNAME run
     cd run_base_ref*
-  elif
+  else
     cd $APPHOME/traces/whole
   fi
 
