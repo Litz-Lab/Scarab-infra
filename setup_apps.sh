@@ -34,7 +34,6 @@ case $APPNAME in
     echo "solr"
     APP_GROUPNAME="solr"
     ;;
-  # TODO: add all SPEC names
   600.perlbench_s | 602.gcc_s | 605.mcf_s | 620.omnetpp_s | 623.xalancbmk_s | 625.x264_s | 631.deepsjeng_s | 641.leela_s | 648.exchange2_s | 657.xz_s | \
   603.bwaves_s | 607.cactuBSSN_s | 619.lbm_s | 621.wrf_s | 627.cam4_s | 628.pop2_s | 638.imagick_s | 644.nab_s | 649.fotonik3d_s | 654.roms_s | \
   clang | gcc)
@@ -150,6 +149,10 @@ case $APPNAME in
     ;;
   solr)
     BINCMD="java -server -Xms14g -Xmx14g -XX:+UseG1GC -XX:+PerfDisableSharedMem -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=250 -XX:+UseLargePages -XX:+AlwaysPreTouch -XX:+ExplicitGCInvokesConcurrent -Xlog:gc\*:file=/usr/src/solr-9.1.1/server/logs/solr_gc.log:time\,uptime:filecount=9\,filesize=20M -Dsolr.jetty.inetaccess.includes= -Dsolr.jetty.inetaccess.excludes= -DzkClientTimeout=30000 -DzkRun -Dsolr.log.dir=/usr/src/solr-9.1.1/server/logs -Djetty.port=8983 -DSTOP.PORT=7983 -DSTOP.KEY=solrrocks -Duser.timezone=UTC -XX:-OmitStackTraceInFastThrow -XX:OnOutOfMemoryError=/usr/src/solr-9.1.1/bin/oom_solr.sh\ 8983\ /usr/src/solr-9.1.1/server/logs -Djetty.home=/usr/src/solr-9.1.1/server -Dsolr.solr.home=/usr/src/solr_cores -Dsolr.data.home= -Dsolr.install.dir=/usr/src/solr-9.1.1 -Dsolr.default.confdir=/usr/src/solr-9.1.1/server/solr/configsets/_default/conf -Dsolr.jetty.host=0.0.0.0 -Xss256k -XX:CompileCommand=exclude\,com.github.benmanes.caffeine.cache.BoundedLocalCache::put -Djava.security.manager -Djava.security.policy=/usr/src/solr-9.1.1/server/etc/security.policy -Djava.security.properties=/usr/src/solr-9.1.1/server/etc/security.properties -Dsolr.internal.network.permission=\* -DdisableAdminUI=false -jar /usr/src/solr-9.1.1/server/start.jar --module=http --module=requestlog --module=gzip"
+    ;;
+  600.perlbench_s | 602.gcc_s | 605.mcf_s | 620.omnetpp_s | 623.xalancbmk_s | 625.x264_s | 631.deepsjeng_s | 641.leela_s | 648.exchange2_s | 657.xz_s | \
+  603.bwaves_s | 607.cactuBSSN_s | 619.lbm_s | 621.wrf_s | 627.cam4_s | 628.pop2_s | 638.imagick_s | 644.nab_s | 649.fotonik3d_s | 654.roms_s)
+    BINCMD="placeholder"
     ;;
   xgboost)
     BINCMD="python3 \$tmpdir/test-arg.py"
