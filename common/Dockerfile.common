@@ -79,9 +79,7 @@ ENV LD_LIBRARY_PATH $tmpdir/pin-3.15-98253-gb56e429b1-gcc-linux/intel64/runtime/
 # Reference:
 # https://github.com/intel/pinplay-tools/blob/main/pinplay-scripts/PinPointsHome/Linux/bin/Makefile
 RUN cd $tmpdir/ && \
-    wget -O - http://cseweb.ucsd.edu/~calder/simpoint/releases/SimPoint.3.2.tar.gz | tar -x -f - -z && \
-    wget https://raw.githubusercontent.com/intel/pinplay-tools/main/pinplay-scripts/PinPointsHome/Linux/bin/simpoint_modern_gcc.patch -P SimPoint.3.2/ && \
-    patch --directory=SimPoint.3.2 --strip=1 < SimPoint.3.2/simpoint_modern_gcc.patch && \
+    git clone https://github.com/kofyou/SimPoint.3.2.git && \
     make -C SimPoint.3.2 && \
     ln -s SimPoint.3.2/bin/simpoint ./simpoint
 
