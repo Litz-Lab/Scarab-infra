@@ -38,7 +38,8 @@ case $APP_GROUPNAME in
     docker start $APP_GROUPNAME\_$USER
     docker exec --privileged $APP_GROUPNAME\_$USER /bin/bash -c "/usr/local/bin/common_entrypoint.sh"
     docker exec --user=$USER --privileged $APP_GROUPNAME\_$USER /bin/bash -c "cd /home/$USER/scarab/src && make clean && make"
-    docker exec --privileged $APP_GROUPNAME\_$USER /bin/bash -c "/usr/local/bin/entrypoint.sh"
+    docker exec --privileged $APP_GROUPNAME\_$USER /bin/bash -c "\$tmpdir/entrypoint.sh"
+    docker exec --user=$USER --privileged $APP_GROUPNAME\_$USER /bin/bash -c "\$tmpdir/install.sh"
     ;;
   sysbench)
     docker run -e user_id=$USER_ID -e group_id=$GROUP_ID -e username=$USER -e HOME=/home/$USER -dit --privileged --name $APP_GROUPNAME\_$USER --mount type=bind,source=$OUTDIR,target=/home/$USER $APP_GROUPNAME:latest /bin/bash

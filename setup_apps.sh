@@ -161,10 +161,10 @@ case $APPNAME in
     CLIENT_BINCMD="python3 \$tmpdir/mongo-perf/benchrun.py -f \$tmpdir/mongo-perf/testcases/$APPNAME.js -t 1"
     ;;
   clang)
-    BINCMD="\$tmpdir/cpu2017/benchspec/CPU/compile-538-clang.sh 538.imagick_r_train"
+    BINCMD="/home/\$username/cpu2017/benchspec/CPU/compile-538-clang.sh 538.imagick_r_train"
     ;;
   gcc)
-    BINCMD="/bin/bash \$tmpdir/cpu2017/bin/runcpu --config=memtrace --action=build 538.imagick_r"
+    BINCMD="/bin/bash /home/\$username/cpu2017/bin/runcpu --config=memtrace --action=build 538.imagick_r"
     ;;
   mysql)
     BINCMD="/usr/sbin/mysqld --basedir=/usr --datadir=/var/lib/mysql --plugin-dir=/usr/lib/mysql/plugin --log-error=/var/log/mysql/error.log --pid-file=53302ceef040.pid"

@@ -24,6 +24,7 @@ RUN sudo ./llvm.sh 16
 COPY ./spec2017/compile-538-clang.sh $tmpdir
 COPY ./spec2017/memtrace.cfg $tmpdir
 COPY ./spec2017/entrypoint.sh $tmpdir
+COPY ./spec2017/install.sh $tmpdir
 
 # Start your application
 CMD ["/bin/bash"]
