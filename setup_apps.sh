@@ -2,7 +2,7 @@
 
 # set APP_GROUPNAME
 case $APPNAME in
-  cassandra | kafka | tomcat | jme | biojava | lucene)
+  cassandra | kafka | tomcat | jme | biojava | luindex)
     echo "DaCapo applications"
     APP_GROUPNAME="dacapo"
     ;;
@@ -109,9 +109,9 @@ case $APPNAME in
     BINCMD="java -Djava.compiler=NONE -jar \$tmpdir/dacapo-23.11-chopin.jar $APPNAME -n 1 -t 1"
     DRIO_ARGS="-trace_after_instrs 1500000000000 -exit_after_tracing 50000000000 -dr_ops \"-disable_traces -no_enable_reset -no_sandbox_writes -no_hw_cache_consistency\""
     ;;
-  lucene)
+  luindex)
     BINCMD="java -Djava.compiler=NONE -jar \$tmpdir/dacapo-23.11-chopin.jar $APPNAME -n 1 -t 1"
-    DRIO_ARGS="-trace_after_instrs 3000000000000 -exit_after_tracing 500000000 -dr_ops \"-disable_traces -no_enable_reset -no_sandbox_writes -no_hw_cache_consistency\""
+    DRIO_ARGS="-trace_after_instrs 3000000000000 -exit_after_tracing 50000000000 -dr_ops \"-disable_traces -no_enable_reset -no_sandbox_writes -no_hw_cache_consistency\""
     ;;
   chirper | http)
     BINCMD="java -jar \$tmpdir/renaissance-gpl-0.10.0.jar finagle-$APPNAME -r 10"
