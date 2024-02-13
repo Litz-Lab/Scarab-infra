@@ -81,7 +81,11 @@ def calculate_weighted_average(stat_groups, simpoints):
         for g_id, g in enumerate(stat_groups):
             simp.w_stat_vals.append([])
             for s_id, s in enumerate(g.s_list):
-                simp.w_stat_vals[-1].append(simp.weight * float(simp.stat_vals[g_id][s_id]))
+                if simp.stat_vals[g_id][s_id] == None:
+                    print(s.s_name)
+                    simp.w_stat_vals[-1].append(simp.weight * 0)
+                else:
+                    simp.w_stat_vals[-1].append(simp.weight * float(simp.stat_vals[g_id][s_id]))
 
     for g_id, g in enumerate(stat_groups):
         for s_id, s in enumerate(g.s_list):
@@ -270,6 +274,16 @@ stat_groups = [
             Stat("ICACHE_EVICT_MISS_BY_FDIP_ONPATH", 1),
             Stat("ICACHE_EVICT_MISS_BY_FDIP_OFFPATH", 1)
             ]),
+    StatGroup("icache_fill_correct_req_by_fdip_hit_by_demand_load", "memory.stat.0.out",
+            [
+            Stat("ICACHE_FILL_CORRECT_REQ_BY_ON_FDIP_HIT_BY_DEMAND_LOAD", 1),
+            Stat("ICACHE_FILL_CORRECT_REQ_BY_OFF_FDIP_HIT_BY_DEMAND_LOAD", 1),
+            ]),
+    StatGroup("icache_fill_correct_req_cycle_delta_by_fdip_hit_by_demand_load", "memory.stat.0.out",
+            [
+            Stat("ICACHE_FILL_CORRECT_REQ_CYCLE_DELTA_BY_ON_FDIP_HIT_BY_DEMAND_LOAD", 1),
+            Stat("ICACHE_FILL_CORRECT_REQ_CYCLE_DELTA_BY_OFF_FDIP_HIT_BY_DEMAND_LOAD", 1),
+            ]),
 
     StatGroup("fdip_new_prefetches_on_off", "pref.stat.0.out",
             [
@@ -307,6 +321,11 @@ stat_groups = [
             Stat("FDIP_OFF_CONF_ON_EMIT_UNUSEFUL", 1),
             Stat("FDIP_ON_CONF_OFF_MISS_USEFUL", 1)
             ]),
+    StatGroup("fdip_mem_buf", "pref.stat.0.out",
+            [
+            Stat("FDIP_MEM_BUF_MISS", 1),
+            Stat("FDIP_MEM_BUF_HIT", 1)
+            ]),
 
     StatGroup("inst_lost_wait_for_icache_miss", "fetch.stat.0.out",
             [
@@ -337,6 +356,24 @@ stat_groups = [
     StatGroup("fdip_seniority_ftq_accumulated", "pref.stat.0.out",
             [
             Stat("FDIP_SENIORITY_FTQ_ACCUMULATED", 1)
+            ]),
+    StatGroup("icache_miss_after_warmup", "pref.stat.0.out",
+            [
+            Stat("ICACHE_FIRST_MISS_AFTER_WARMUP_SEEN_DURING_WARMUP", 1),
+            Stat("ICACHE_FIRST_MISS_AFTER_WARMUP_NOT_SEEN_DURING_WARMUP", 1)
+            ]),
+    StatGroup("icache_miss_after_warmup_seen_during_warmup", "pref.stat.0.out",
+            [
+            Stat("ICACHE_FIRST_MISS_AFTER_WARMUP_NO_PREF_DURING_WARMUP", 1),
+            Stat("ICACHE_FIRST_MISS_AFTER_WARMUP_TRAINED_UNUSEFUL_DURING_WARMUP", 1),
+            Stat("ICACHE_FIRST_MISS_AFTER_WARMUP_TRAINED_USEFUL_DURING_WARMUP", 1)
+            ]),
+    StatGroup("fdip_pref_hit", "pref.stat.0.out",
+            [
+            Stat("FDIP_PREFETCH_HIT_ICACHE", 1),
+            Stat("FDIP_PREFETCH_HIT_MLC", 1),
+            Stat("FDIP_PREFETCH_HIT_L1", 1),
+            Stat("FDIP_PREFETCH_HIT_DRAM", 1)
             ]),
     StatGroup("cbr", "bp.stat.0.out",
             [
