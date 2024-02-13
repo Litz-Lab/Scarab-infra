@@ -324,7 +324,7 @@ stat_groups = [
     StatGroup("fdip_mem_buf", "pref.stat.0.out",
             [
             Stat("FDIP_MEM_BUF_MISS", 1),
-            Stat("FDIP_MEM_BUF_HIT", 1)
+            Stat("FDIP_MEM_BUF_FOUND", 1)
             ]),
 
     StatGroup("inst_lost_wait_for_icache_miss", "fetch.stat.0.out",
