@@ -34,7 +34,7 @@ def gather_fp_pieces(fp_dir, num_of_segments, file_prefix, no_convert):
     addr_id_map = {}
 
     # ref: https://stackoverflow.com/questions/4287209/sort-list-of-strings-by-integer-suffix
-    for file in sorted(glob.glob("{}/{}.*".format(fp_dir, file_prefix)), key = lambda x: int(x.split(".")[1])):
+    for file in sorted(glob.glob("{}/{}.*".format(fp_dir, file_prefix)), key = lambda x: int(x.split("/")[-1].split(".")[1])):
         print(file, flush=True)
         segment_id = file.split(".")[-1]
         assert int(segment_id) == pre_segment_id + 1, "{} != {}".format(segment_id, pre_segment_id + 1)
