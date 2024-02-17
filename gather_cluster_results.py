@@ -42,10 +42,18 @@ class Simpoint:
         self.stat_vals = []
         self.w_stat_vals = []
 
-def read_simpoints(sp_dir, sim_root_dir, whole_sim = False):
+def read_simpoints(sp_dir, sim_root_dir, use_old_weights, whole_sim = False):
     total_weight = 0
     simpoints = []
-    with open(sp_dir + "/opt.p.lpt0.99", "r") as f1, open(sp_dir + "/opt.w.lpt0.99", "r") as f2:
+
+    # luckily no matter what weights are used,
+    # to calculate the weighted average, we always uses multiplication
+    if use_old_weights:
+        weights_file = "opt.w.lpt0.99"
+    else:
+        weights_file = "opt.w.2.lpt0.99"
+
+    with open(sp_dir + "/opt.p.lpt0.99", "r") as f1, open(sp_dir + "/" + weights_file, "r") as f2:
         for line1, line2 in zip(f1, f2):
             seg_id = int(line1.split()[0])
             weight = float(line2.split()[0])
@@ -388,14 +396,22 @@ stat_groups = [
 ]
 
 if __name__ == "__main__":
+    if len(sys.argv) < 3:
+        print("arg1: simpoint dir, arg2: simulation dir, optionally set arg3 to 1 to use old simpoint weights")
+        exit
     if not os.path.isdir(sys.argv[1]):
         print("simpoint directory {} does not exist!")
         exit
     if not os.path.isdir(sys.argv[2]):
         print("simulation directory {} does not exist!")
         exit
+    if len(sys.argv) == 4 and sys.argv[3] == "1":
+        print("using old simpoint weights")
+        use_old_weights = True
+    else:
+        use_old_weights = False
 
-    simpoints = read_simpoints(sys.argv[1], sys.argv[2])
+    simpoints = read_simpoints(sys.argv[1], sys.argv[2], use_old_weights)
     read_simpoint_stats(stat_groups, simpoints)
     # will calculate Stat.weighted_average, StatGroup.weighted_total, and Stat.weighted_ratio, 
     calculate_weighted_average(stat_groups, simpoints)
