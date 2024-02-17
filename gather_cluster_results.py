@@ -111,15 +111,20 @@ def calculate_weighted_average(stat_groups, simpoints):
             else:
                 s.weighted_ratio = "NA"
 
-def report(stat_groups, simpoints, sim_root_dir):
+def report(stat_groups, simpoints, sim_root_dir, use_old_weights):
 # simps,  weight, stat0 val, stat0 weighted, stat1 val, stat1 weighted,
 # simp 0
 # simp 1
 # simp x
 # w avg,    NA  ,  NA      , stat0 w avg   ,  NA  
 # w %  ,    NA  ,  NA      , stat1 w rat   ,  NA
+    if use_old_weights:
+        csv_old_suffix = ".old"
+    else:
+        csv_old_suffix = ""
+
     for g_id, g in enumerate(stat_groups):
-        with open(sim_root_dir + "/{}.csv".format(g.g_name), "w") as outfile:
+        with open(sim_root_dir + "/{}.csv{}".format(g.g_name, csv_old_suffix), "w") as outfile:
             writer = csv.writer(outfile)
 
             # title
@@ -150,7 +155,12 @@ def report(stat_groups, simpoints, sim_root_dir):
             # weighted total
             writer.writerow(["weighted_total", g.weighted_total])
 
-def customized_report(stat_groups, simpoints, sim_root_dir):
+def customized_report(stat_groups, simpoints, sim_root_dir, use_old_weights):
+    if use_old_weights:
+        csv_old_suffix = ".old"
+    else:
+        csv_old_suffix = ""
+
     i = 0
     for g in stat_groups:
         if g.g_name == "instructions":
@@ -165,7 +175,7 @@ def customized_report(stat_groups, simpoints, sim_root_dir):
             assert(g.weighted_total == g.s_list[0].weighted_average)
             break
 
-    with open(sim_root_dir + "/ipc.csv", "w") as outfile:
+    with open(sim_root_dir + "/ipc.csv" + csv_old_suffix, "w") as outfile:
         writer = csv.writer(outfile)
         writer.writerow(["instructions", "cycles", "IPC"])
         writer.writerow([i, c, float(i)/float(c)])
@@ -177,7 +187,7 @@ def customized_report(stat_groups, simpoints, sim_root_dir):
             assert(g.weighted_total == g.s_list[0].weighted_average)
             break
 
-    with open(sim_root_dir + "/bpc.csv", "w") as outfile:
+    with open(sim_root_dir + "/bpc.csv" + csv_old_suffix, "w") as outfile:
         writer = csv.writer(outfile)
         writer.writerow(["fdip_ftq_occupancy_blocks_accumulated", "cycles", "BPC"])
         writer.writerow([blocks, c, float(blocks)/float(c)])
@@ -189,7 +199,7 @@ def customized_report(stat_groups, simpoints, sim_root_dir):
             assert(g.weighted_total == g.s_list[0].weighted_average)
             break
 
-    with open(sim_root_dir + "/sftq.csv", "w") as outfile:
+    with open(sim_root_dir + "/sftq.csv" + csv_old_suffix, "w") as outfile:
         writer = csv.writer(outfile)
         writer.writerow(["fdip_seniority_ftq_accumulated", "cycles", "SFTQ"])
         writer.writerow([blocks, c, float(sen_ftqs)/float(c)])
@@ -209,7 +219,7 @@ def customized_report(stat_groups, simpoints, sim_root_dir):
             assert(g.weighted_total == g.s_list[0].weighted_average)
             break
 
-    with open(sim_root_dir + "/unuseful_cl.csv", "w") as outfile:
+    with open(sim_root_dir + "/unuseful_cl.csv" + csv_old_suffix, "w") as outfile:
         writer = csv.writer(outfile)
         writer.writerow(["icache_unuseful_cl_cyc", "icache_unuseful_cl", "UUCL"])
         writer.writerow([unuseful_cl_cyc, unuseful_cls, float(unuseful_cl_cyc)/float(unuseful_cls)])
@@ -416,5 +426,5 @@ if __name__ == "__main__":
     # will calculate Stat.weighted_average, StatGroup.weighted_total, and Stat.weighted_ratio, 
     calculate_weighted_average(stat_groups, simpoints)
     # simpoints.result
-    report(stat_groups, simpoints, sys.argv[2])
-    customized_report(stat_groups, simpoints, sys.argv[2])
+    report(stat_groups, simpoints, sys.argv[2], use_old_weights)
+    customized_report(stat_groups, simpoints, sys.argv[2], use_old_weights)
