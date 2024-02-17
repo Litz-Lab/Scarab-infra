@@ -57,6 +57,42 @@ case $APPNAME in
     TRACEFILE=/simpoint_traces/rocksdb/traces_simp/trace/
     mode="1"
     ;;
+  600.perlbench_s)
+    MODULESDIR=/simpoint_traces/600.perlbench_s/traces/whole/drmemtrace.perlbench_s_base.memtrace-m64.11679.5983.dir/raw
+    TRACEFILE=/simpoint_traces/600.perlbench_s/traces/whole/drmemtrace.perlbench_s_base.memtrace-m64.11679.5983.dir/trace/drmemtrace.perlbench_s_base.memtrace-m64.11679.4703.trace.zip
+    ;;
+  602.gcc_s)
+    MODULESDIR=/simpoint_traces/602.gcc_s/traces/whole/drmemtrace.sgcc_base.memtrace-m64.66312.0508.dir/raw
+    TRACEFILE=/simpoint_traces/602.gcc_s/traces/whole/drmemtrace.sgcc_base.memtrace-m64.66312.0508.dir/trace/drmemtrace.sgcc_base.memtrace-m64.66312.8159.trace.zip
+    ;;
+  605.mcf_s)
+    MODULESDIR=/simpoint_traces/605.mcf_s/traces/whole/drmemtrace.mcf_s_base.memtrace-m64.66517.6766.dir/raw
+    TRACEFILE=/simpoint_traces/605.mcf_s/traces/whole/drmemtrace.mcf_s_base.memtrace-m64.66517.6766.dir/trace/drmemtrace.mcf_s_base.memtrace-m64.66517.4453.trace.zip
+    ;;
+  620.omnetpp_s)
+    MODULESDIR=/simpoint_traces/620.omnetpp_s/traces/whole/drmemtrace.omnetpp_s_base.memtrace-m64.11305.6465.dir/raw
+    TRACEFILE=/simpoint_traces/620.omnetpp_s/traces/whole/drmemtrace.omnetpp_s_base.memtrace-m64.11305.6465.dir/trace/drmemtrace.omnetpp_s_base.memtrace-m64.11305.0389.trace.zip
+    ;;
+  623.xalancbmk_s)
+    MODULESDIR=/simpoint_traces/623.xalancbmk_s/traces/whole/drmemtrace.xalancbmk_s_base.memtrace-m64.68960.4320.dir/raw
+    TRACEFILE=/simpoint_traces/623.xalancbmk_s/traces/whole/drmemtrace.xalancbmk_s_base.memtrace-m64.68960.4320.dir/trace/drmemtrace.xalancbmk_s_base.memtrace-m64.68960.4051.trace.zip
+    ;;
+  625.x264_s)
+    MODULESDIR=/simpoint_traces/625.x264_s/traces/whole/drmemtrace.x264_s_base.memtrace-m64.69655.2784.dir/raw
+    TRACEFILE=/simpoint_traces/625.x264_s/traces/whole/drmemtrace.x264_s_base.memtrace-m64.69655.2784.dir/trace/drmemtrace.x264_s_base.memtrace-m64.69655.8596.trace.zip
+    ;;
+  641.leela_s)
+    MODULESDIR=/simpoint_traces/641.leela_s/traces/whole/drmemtrace.leela_s_base.memtrace-m64.69890.0911.dir/raw
+    TRACEFILE=/simpoint_traces/641.leela_s/traces/whole/drmemtrace.leela_s_base.memtrace-m64.69890.0911.dir/trace/drmemtrace.leela_s_base.memtrace-m64.69890.6754.trace.zip
+    ;;
+  648.exchange2_s)
+    MODULESDIR=/simpoint_traces/648.exchange2_s/traces/whole/drmemtrace.exchange2_s_base.memtrace-m64.70065.6658.dir/raw
+    TRACEFILE=/simpoint_traces/648.exchange2_s/traces/whole/drmemtrace.exchange2_s_base.memtrace-m64.70065.6658.dir/trace/drmemtrace.exchange2_s_base.memtrace-m64.70065.5851.trace.zip
+    ;;
+  657.xz_s)
+    MODULESDIR=/simpoint_traces/657.xz_s/traces/whole/drmemtrace.xz_s_base.memtrace-m64.70645.3373.dir/raw
+    TRACEFILE=/simpoint_traces/657.xz_s/traces/whole/drmemtrace.xz_s_base.memtrace-m64.70645.3373.dir/trace/drmemtrace.xz_s_base.memtrace-m64.70645.7323.trace.zip
+    ;;
   *)
     echo "unknown application"
     ;;
