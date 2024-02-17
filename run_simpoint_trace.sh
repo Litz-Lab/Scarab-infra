@@ -134,6 +134,14 @@ elif [ "$SIMPOINT" == "1" ]; then
 
   ################################################################
 
+  # spec needs to run in its run dir
+  if [ "$APP_GROUPNAME" == "spec2017" ] && [ "$APPNAME" != "clang" ] && [ "$APPNAME" != "gcc" ]; then
+    ogo $APPNAME run
+    cd run_base_ref*
+  else
+    cd $APPHOME/fingerprint
+  fi
+
   # collect fingerprint
   # TODO: add parameter: size and warm-up
   cd $APPHOME/fingerprint
@@ -156,7 +164,11 @@ elif [ "$SIMPOINT" == "1" ]; then
   seconds=$(( (runtime % 3600) % 60 ));
   echo "fingerprint Runtime: $hours:$minutes:$seconds (hh:mm:ss)"
 
-  # mv ./bbfp $APPHOME/fingerprint
+  # spec needs to run in its run dir
+  # by default the fp will be in the run dir
+  if [ "$APP_GROUPNAME" == "spec2017" ] && [ "$APPNAME" != "clang" ] && [ "$APPNAME" != "gcc" ]; then
+    mv ./bbfp $APPHOME/fingerprint
+  fi
 
   ################################################################
 
@@ -181,7 +193,13 @@ elif [ "$SIMPOINT" == "1" ]; then
   for clusterID in "${!clusterMap[@]}"
   do
     mkdir -p $APPHOME/traces/$clusterID
-    cd $APPHOME/traces/$clusterID
+    # spec needs to run in its run dir
+    if [ "$APP_GROUPNAME" == "spec2017" ] && [ "$APPNAME" != "clang" ] && [ "$APPNAME" != "gcc" ]; then
+      ogo $APPNAME run
+      cd run_base_ref*
+    else
+      cd $APPHOME/traces/$clusterID
+    fi
     segID=${clusterMap[$clusterID]}
     start_inst=$(( $segID * $SEGSIZE ))
     traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces/$clusterID -offline -trace_after_instrs $start_inst -trace_for_instrs $SEGSIZE -- ${BINCMD}"
@@ -192,7 +210,12 @@ elif [ "$SIMPOINT" == "1" ]; then
     #   ogo $APPNAME run
     #   cd run_base_train*
     # fi
-    eval $traceCmd &
+    # cannot invoke multiple spec apps at once
+    if [ "$APP_GROUPNAME" == "spec2017" ]; then
+      eval $traceCmd
+    else
+      eval $traceCmd &
+    fi
     taskPids+=($!)
     sleep 2
   done
@@ -212,6 +235,8 @@ elif [ "$SIMPOINT" == "1" ]; then
 
   taskPids=()
   # TODO: which dynamorio to use, release or scarab submodule?
+  # this assumes that the app is single-thread
+  # this flow would only work for single thread anyway
   for clusterID in "${!clusterMap[@]}"
   do
     cd $APPHOME/traces/$clusterID
@@ -221,7 +246,7 @@ elif [ "$SIMPOINT" == "1" ]; then
     cp raw/modules.log raw/modules.log.bak
     python2 $HOME/scarab/utils/memtrace/portabilize_trace.py .
     cp bin/modules.log raw/modules.log
-    $DYNAMORIO_HOME/clients/bin64/drraw2trace -indir ./raw/ &
+    $DYNAMORIO_HOME/clients/bin64/drraw2trace -jobs 40 -indir ./raw/ -chunk_instr_count $CHUNKSIZE &
     taskPids+=($!)
     sleep 2
   done
