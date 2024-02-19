@@ -153,15 +153,15 @@ elif [ "$SIMPOINT" == "1" ]; then
   #   cd run_base_train*
   # fi
 
-  # ref: https://unix.stackexchange.com/a/52347
+  taskPids=()
   start=`date +%s`
-  eval $fpCmd
+
+  eval $fpCmd &
+  taskPids+=($!)
+
+  wait_for "online fingerprint" "${taskPids[@]}"
   end=`date +%s`
-  runtime=$((end-start))
-  hours=$((runtime / 3600));
-  minutes=$(( (runtime % 3600) / 60 ));
-  seconds=$(( (runtime % 3600) % 60 ));
-  echo "fingerprint Runtime: $hours:$minutes:$seconds (hh:mm:ss)"
+  report_time "online fingerprint" "$start" "$end"
 
   # continue if only one bbfp file
   cd $APPHOME/fingerprint
