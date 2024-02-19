@@ -144,7 +144,7 @@ elif [ "$SIMPOINT" == "1" ]; then
 
   # collect fingerprint
   # TODO: add parameter: size and warm-up
-  fpCmd="$DYNAMORIO_HOME/bin64/drrun -max_bb_instrs 100000000 -opt_cleancall 2 -c $tmpdir/libfpg.so -segment_size $SEGSIZE -- $BINCMD"
+  fpCmd="$DYNAMORIO_HOME/bin64/drrun -max_bb_instrs 100000000 -opt_cleancall 2 -c $tmpdir/libfpg.so -use_bb_pc false -segment_size $SEGSIZE -output $APPHOME/fingerprint/bbfp -- $BINCMD"
   echo "generate fingerprint..."
   echo "command: ${fpCmd}"
   # if [ "$APP_GROUPNAME" == "spec2017" ]; then
@@ -163,16 +163,22 @@ elif [ "$SIMPOINT" == "1" ]; then
   seconds=$(( (runtime % 3600) % 60 ));
   echo "fingerprint Runtime: $hours:$minutes:$seconds (hh:mm:ss)"
 
-  # spec needs to run in its run dir
-  # by default the fp will be in the run dir
-  if [ "$APP_GROUPNAME" == "spec2017" ] && [ "$APPNAME" != "clang" ] && [ "$APPNAME" != "gcc" ]; then
-    mv ./bbfp $APPHOME/fingerprint
+  # continue if only one bbfp file
+  cd $APPHOME/fingerprint
+  numBBFP=$(find -name "bbfp.*" | grep "bbfp.*" | wc -l)
+  if [ "$numBBFP" == "1" ]; then
+    bbfpFile=$(ls $APPHOME/fingerprint/bbfp.*)
+    echo "bbfpFile: $bbfpFile"
+    # run SimPoint clustering
+    bash run_clustering.sh $bbfpFile $APPHOME
+  else
+  # otherwise ask the user to run manually
+    echo -e "There are multiple bbfp files. This simpoint flow would not work."
+    exit
   fi
 
   ################################################################
 
-  # run SimPoint clustering
-  bash run_clustering.sh $APPHOME/fingerprint/bbfp $APPHOME
 
   ################################################################
   # read in simpoint
