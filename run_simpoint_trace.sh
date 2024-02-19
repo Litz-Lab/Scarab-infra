@@ -144,7 +144,7 @@ elif [ "$SIMPOINT" == "1" ]; then
 
   # collect fingerprint
   # TODO: add parameter: size and warm-up
-  fpCmd="$DYNAMORIO_HOME/bin64/drrun -max_bb_instrs 100000000 -opt_cleancall 2 -c $tmpdir/libfpg.so -use_bb_pc false -segment_size $SEGSIZE -output $APPHOME/fingerprint/bbfp -- $BINCMD"
+  fpCmd="$DYNAMORIO_HOME/bin64/drrun -max_bb_instrs 100000000 -opt_cleancall 2 -c $tmpdir/libfpg.so -no_use_bb_pc -segment_size $SEGSIZE -output $APPHOME/fingerprint/bbfp -- $BINCMD"
   echo "generate fingerprint..."
   echo "command: ${fpCmd}"
   # if [ "$APP_GROUPNAME" == "spec2017" ]; then
