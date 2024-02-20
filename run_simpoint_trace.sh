@@ -206,8 +206,32 @@ elif [ "$SIMPOINT" == "1" ]; then
       cd $APPHOME/traces/$clusterID
     fi
     segID=${clusterMap[$clusterID]}
-    start_inst=$(( $segID * $SEGSIZE ))
-    traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces/$clusterID -offline -trace_after_instrs $start_inst -trace_for_instrs $SEGSIZE -- ${BINCMD}"
+
+    # the simulation region, in the unit of chunks
+    roiStart=$(( $segID * $SEGSIZE ))
+    # seq is inclusive
+    roiEnd=$(( $segID * $SEGSIZE + $SEGSIZE ))
+
+    # what is the warm-up length?
+    if [ "$roiStart" -gt "$WARMUP" ]; then
+        # enough room for warmup, extend roi start to the left
+        roiStart=$(( $roiStart - $WARMUP ))
+    else
+        # no enough preceding instructions, can only warmup till segment start
+        # new roi start is the very first instruction of the trace
+        roiStart=0
+    fi
+
+    roiLength=$(( $roiEnd - $roiStart ))
+
+    # which dynamorio to use?
+    if [ $roiStart -eq 0 ]; then
+      # do not specify trace_after_instrs
+      traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces/$clusterID -offline -exit_after_tracing $roiLength -- ${BINCMD}"
+    else
+      traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces/$clusterID -offline -trace_after_instrs $roiStart -exit_after_tracing $roiLength -- ${BINCMD}"
+    fi
+
     echo "tracing cluster ${clusterID}, segment ${segID}..."
     echo "command: ${traceCmd}"
 
