@@ -210,35 +210,25 @@ elif [ "$SIMPOINT" == "1" ]; then
     traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces/$clusterID -offline -trace_after_instrs $start_inst -trace_for_instrs $SEGSIZE -- ${BINCMD}"
     echo "tracing cluster ${clusterID}, segment ${segID}..."
     echo "command: ${traceCmd}"
-    # if [ "$APP_GROUPNAME" == "spec2017" ]; then
-    #   # have to go to that dir for the spec app cmd to work
-    #   ogo $APPNAME run
-    #   cd run_base_train*
-    # fi
+
+    eval $traceCmd &
+    taskPids+=($!)
+
     # cannot invoke multiple spec apps at once
     if [ "$APP_GROUPNAME" == "spec2017" ]; then
-      eval $traceCmd
+      wait_for "tracing cluster $clusterID" ${taskPids[-1]}
     else
-      eval $traceCmd &
+      sleep 2
     fi
-    taskPids+=($!)
-    sleep 2
   done
 
-  echo "wait for all tracing to finish..."
-  # ref: https://stackoverflow.com/a/29535256
-  for taskPid in ${taskPids[@]}; do
-    if wait $taskPid; then
-      echo "tracing process $taskPid success"
-    else
-      echo "tracing process $taskPid fail"
-      # # ref: https://serverfault.com/questions/479460/find-command-from-pid
-      # cat /proc/${taskPid}/cmdline | xargs -0 echo
-      exit
-    fi
-  done
+  wait_for "cluster tracings" "${taskPids[@]}"
+  end=`date +%s`
+  report_time "cluster tracings" "$start" "$end"
 
   taskPids=()
+  start=`date +%s`
+
   # TODO: which dynamorio to use, release or scarab submodule?
   # this assumes that the app is single-thread
   # this flow would only work for single thread anyway
@@ -256,23 +246,9 @@ elif [ "$SIMPOINT" == "1" ]; then
     sleep 2
   done
 
-  echo "wait for all raw2trace to finish..."
-  for taskPid in ${taskPids[@]}; do
-    if wait $taskPid; then
-      echo "raw2trace process $taskPid success"
-    else
-      echo "raw2trace process $taskPid fail"
-      # # ref https://serverfault.com/questions/479460/find-command-from-pid
-      # cat /proc/${taskPid}/cmdline | xargs -0 echo
-      exit
-    fi
-  done
+  wait_for "cluster raw2trace" "${taskPids[@]}"
   end=`date +%s`
-  runtime=$((end-start))
-  hours=$((runtime / 3600));
-  minutes=$(( (runtime % 3600) / 60 ));
-  seconds=$(( (runtime % 3600) % 60 ));
-  echo "tracing Runtime: $hours:$minutes:$seconds (hh:mm:ss)"
+  report_time "cluster raw2trace" "$start" "$end"
 
   ################################################################
 else # non-simpoint
