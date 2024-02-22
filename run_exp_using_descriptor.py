@@ -53,9 +53,9 @@ def run_experiment():
         for config_key in descriptor_data["configurations"].keys():
             exp_path = str(os.getenv('HOME')) + '/simpoint_flow/simulations/' + workload + '/' + experiment + '/' + config_key
             print(exp_path)
-            if os.path.exists(exp_path):
+            if os.path.exists(exp_path+'/ipc.csv'):
               print(f"The experiment already exists! Change the experiment name.")
-              return None
+              continue
             config_value = descriptor_data["configurations"][config_key]
             if args.application_name == "allbench":
                 command = 'run_scarab_allbench.sh "' + workload + '" "allbench_traces" "" "' + experiment + '/' + config_key + '" "' + config_value + '" "' + args.scarab_mode + '" "' + architecture + '"'
