@@ -16,6 +16,11 @@ def read_descriptor_from_json(filename="experiment.json"):
         return None
 
 def run_experiment():
+    # run_exp_using_descriptor.py
+    # -d $EXPERIMENT.json
+    # -a $APPNAME -g $APP_GROUPNAME : pt_traces
+    # -c $BINCMD
+    # -m $SCARABMODE &
     # Create a parser for command-line arguments
     parser = argparse.ArgumentParser(description='Read descriptor file name')
     parser.add_argument('-d','--descriptor_name', required=True, help='Experiment descriptor name. Usage: -d exp2.json')
@@ -26,6 +31,8 @@ def run_experiment():
 
     # Parse the command-line arguments
     args = parser.parse_args()
+
+    assert args.scarab_mode in ["0", "1", "2", "3", "4", "5"]
 
     # Specify the filename of the JSON descriptor file
     descriptor_filename = args.descriptor_name
@@ -51,7 +58,7 @@ def run_experiment():
               return None
             config_value = descriptor_data["configurations"][config_key]
             if args.application_name == "allbench":
-                command = 'run_scarab_allbench.sh "' + workload + '" "allbench_traces" "" "' + experiment + '/' + config_key + '" "' + config_value + '" "4" "' + architecture + '"'
+                command = 'run_scarab_allbench.sh "' + workload + '" "allbench_traces" "" "' + experiment + '/' + config_key + '" "' + config_value + '" "' + args.scarab_mode + '" "' + architecture + '"'
             else:
                 command = 'run_scarab.sh "' + args.application_name + '" "' + args.application_group_name + '" "' + args.binary_command + '" "' + experiment + '/' + config_key + '" "' + config_value + '" "' + args.scarab_mode + '" "' + architecture + '"'
             os.system(command)

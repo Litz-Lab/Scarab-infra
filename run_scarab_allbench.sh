@@ -210,7 +210,7 @@ elif [ "$SCARABMODE" == "3" ]; then
   echo "simulation Runtime: $hours:$minutes:$seconds (hh:mm:ss)"
 
   ################################################################
-elif [ "$SCARABMODE" == "1" ] || [ "$SCARABMODE" == "2" ]; then
+elif [ "$SCARABMODE" == "1" ] || [ "$SCARABMODE" == "2" ] || [ "$SCARABMODE" == "5" ]; then
   SIMHOME=$HOME/nonsimpoint_flow/simultaions/$APPNAME
   EVALHOME=$HOME/nonsimpoint_flow/evaluations/$APPNAME
   mkdir -p $SIMHOME
@@ -219,6 +219,8 @@ elif [ "$SCARABMODE" == "1" ] || [ "$SCARABMODE" == "2" ]; then
 
   if [ "$SCARABMODE" == "2" ]; then
     traceMap=$(ls $TRACEHOME/traces/whole/)
+  elif [ "$SCARABMODE" == "5" ]; then
+    traceMap="trace.gz"
   fi
   ################################################################
   # trace-based or exec-driven simulations
@@ -229,6 +231,8 @@ elif [ "$SCARABMODE" == "1" ] || [ "$SCARABMODE" == "2" ]; then
   cd $SIMHOME/$SCENARIONUM
   if [ "$SCARABMODE" == "2" ]; then
     scarabCmd="$SCARABHOME/src/scarab --frontend memtrace --cbp_trace_r0=$TRACEHOME/traces/whole/${traceMap} --memtrace_modules_log=$TRACEHOME/traces/raw/ $SCARABPARAMS &> sim.log"
+  elif [ "$SCARABMODE" == "5" ]; then
+    scarabCmd="$SCARABHOME/src/scarab --frontend pt --cbp_trace_r0=$TRACEHOME/${traceMap} $SCARABPARAMS &> sim.log"
   else
     start_inst=100000000
     scarabCmd="
