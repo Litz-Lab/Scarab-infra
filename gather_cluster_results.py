@@ -65,9 +65,9 @@ def read_simpoints(sp_dir, sim_root_dir, use_old_weights, whole_sim = False):
             else:
                 simpoints.append(Simpoint(seg_id, weight, sim_root_dir, c_id))
 
-    if total_weight - 1 > 1e-5:
+    if use_old_weights and abs(total_weight - 1) > 1e-5:
         print("total weight of SimPoint does not add up to 1? {}".format(total_weight))
-        exit
+        exit()
     
     return simpoints
 
