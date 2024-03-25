@@ -202,7 +202,7 @@ def customized_report(stat_groups, simpoints, sim_root_dir, use_old_weights):
     with open(sim_root_dir + "/sftq.csv" + csv_old_suffix, "w") as outfile:
         writer = csv.writer(outfile)
         writer.writerow(["fdip_seniority_ftq_accumulated", "cycles", "SFTQ"])
-        writer.writerow([blocks, c, float(sen_ftqs)/float(c)])
+        writer.writerow([sen_ftqs, c, float(sen_ftqs)/float(c)])
 
  
     unuseful_cl_cyc = 0
@@ -222,7 +222,10 @@ def customized_report(stat_groups, simpoints, sim_root_dir, use_old_weights):
     with open(sim_root_dir + "/unuseful_cl.csv" + csv_old_suffix, "w") as outfile:
         writer = csv.writer(outfile)
         writer.writerow(["icache_unuseful_cl_cyc", "icache_unuseful_cl", "UUCL"])
-        writer.writerow([unuseful_cl_cyc, unuseful_cls, float(unuseful_cl_cyc)/float(unuseful_cls)])
+        if float(unuseful_cls) == 0:
+          writer.writerow([unuseful_cl_cyc, unuseful_cls, 0.0])
+        else:
+          writer.writerow([unuseful_cl_cyc, unuseful_cls, float(unuseful_cl_cyc)/float(unuseful_cls)])
 
 stat_groups = [
     # use the "periodic" column when defining stats ("1" for most of the stats)
@@ -392,6 +395,11 @@ stat_groups = [
             Stat("FDIP_PREFETCH_HIT_MLC", 1),
             Stat("FDIP_PREFETCH_HIT_L1", 1),
             Stat("FDIP_PREFETCH_HIT_DRAM", 1)
+            ]),
+    StatGroup("fdip_bloom_hit", "pref.stat.0.out",
+            [
+            Stat("FDIP_BLOOM_HIT", 1),
+            Stat("FDIP_BLOOM_MISS", 1)
             ]),
     StatGroup("cbr", "bp.stat.0.out",
             [

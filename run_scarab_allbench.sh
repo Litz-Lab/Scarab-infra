@@ -232,7 +232,7 @@ elif [ "$SCARABMODE" == "1" ] || [ "$SCARABMODE" == "2" ] || [ "$SCARABMODE" == 
   if [ "$SCARABMODE" == "2" ]; then
     scarabCmd="$SCARABHOME/src/scarab --frontend memtrace --cbp_trace_r0=$TRACEHOME/traces/whole/${traceMap} --memtrace_modules_log=$TRACEHOME/traces/raw/ $SCARABPARAMS &> sim.log"
   elif [ "$SCARABMODE" == "5" ]; then
-    scarabCmd="$SCARABHOME/src/scarab --frontend pt --cbp_trace_r0=$TRACEHOME/${traceMap} $SCARABPARAMS &> sim.log"
+    scarabCmd="$SCARABHOME/src/scarab --full_warmup 49999999 --frontend pt --cbp_trace_r0=$TRACEHOME/${traceMap} $SCARABPARAMS &> sim.log"
   else
     start_inst=100000000
     scarabCmd="
