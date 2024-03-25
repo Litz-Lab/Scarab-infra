@@ -227,12 +227,86 @@ def customized_report(stat_groups, simpoints, sim_root_dir, use_old_weights):
         else:
           writer.writerow([unuseful_cl_cyc, unuseful_cls, float(unuseful_cl_cyc)/float(unuseful_cls)])
 
+    ftq_recover = 0
+    for g in stat_groups:
+      if g.g_name == "ftq_recover":
+        for s in g.s_list:
+          if s.s_name == "FTQ_RECOVER_EXEC":
+            ftq_recover += s.weighted_average
+          elif s.s_name == "FTQ_RECOVER_DECODE":
+            ftq_recover += s.weighted_average
+
+    found_mps = 0
+    found_second_mps = 0
+    for g in stat_groups:
+      if g.g_name == "mergepoints":
+        for s in g.s_list:
+          if s.s_name == "FOUND_MERGE_POINTS":
+            found_mps = s.weighted_average
+          elif s.s_name == "FOUND_SECOND_MERGE_POINTS":
+            found_second_mps = s.weighted_average
+
+    mp_dist_offpath = 0
+    runahead_dist_from_mp_after_merge = 0
+    runahead_dist_from_mp_at_resteer = 0
+    overlapped_dist = 0
+    second_mp_dist_offpath = 0
+    runahead_dist_from_second_mp_after_merge = 0
+    for g in stat_groups:
+      if g.g_name == "dist_mergepoint":
+        for s in g.s_list:
+          print(s.s_name)
+          print(s.weighted_average)
+          if s.s_name == "MERGE_POINT_DIST_OFFPATH":
+            mp_dist_offpath = s.weighted_average
+          elif s.s_name == "RUNAHEAD_DIST_FROM_MERGE_POINT_AFTER_MERGE":
+            runahead_dist_from_mp_after_merge = s.weighted_average
+          elif s.s_name == "RUNAHEAD_DIST_FROM_MERGE_POINT_AT_RESTEER":
+            runahead_dist_from_mp_at_resteer = s.weighted_average
+          elif s.s_name == "OVERLAPPED_DIST":
+            overlapped_dist = s.weighted_average
+          elif s.s_name == "SECOND_MERGE_POINT_DIST_OFFPATH":
+            second_mp_dist_offpath = s.weighted_average
+          elif s.s_name == "RUNAHEAD_DIST_FROM_SECOND_MERGE_AFTER_MERGE":
+            runahead_dist_from_second_mp_after_merge = s.weighted_average
+
+
+    with open(sim_root_dir + "/avg_mergepoint.csv" + csv_old_suffix, "w") as outfile:
+        writer = csv.writer(outfile)
+        writer.writerow(["mp_per_rec", "second_mp_per_rec", "avg_mp_dist_offpath", "avg_runahead_dist_from_mp_after_merge", "avg_runahead_dist_from_mp_at_resteer", "avg_overlapped_dist", "avg_second_mp_dist_offpath", "avg_runahead_dist_from_second_mp_after_merge"])
+        if found_mps == 0:
+          writer.writerow([0.0, 0.0, "NA", "NA", "NA", "NA", "NA", "NA"])
+        elif found_second_mps == 0:
+          writer.writerow([float(found_mps)/float(ftq_recover), 0.0, float(mp_dist_offpath)/float(found_mps), float(runahead_dist_from_mp_after_merge)/float(found_mps), float(runahead_dist_from_mp_at_resteer)/float(found_mps), float(overlapped_dist)/float(found_mps), "NA", "NA"])
+        else:
+          writer.writerow([float(found_mps)/float(ftq_recover), float(mp_dist_offpath)/float(found_mps), float(runahead_dist_from_mp_after_merge)/float(found_mps), float(runahead_dist_from_mp_at_resteer)/float(found_mps), float(overlapped_dist)/float(found_mps), float(second_mp_dist_offpath)/float(found_second_mps), float(runahead_dist_from_second_mp_after_merge)/float(found_second_mps)])
+
+
 stat_groups = [
     # use the "periodic" column when defining stats ("1" for most of the stats)
     # make sure "instructions" is the first group
     StatGroup("instructions", "core.stat.0.out",
             [
             Stat("NODE_INST_COUNT", 1)
+            ]),
+    StatGroup("mergepoints", "core.stat.0.out",
+            [
+            Stat("FOUND_MERGE_POINTS", 1),
+            Stat("FOUND_SECOND_MERGE_POINTS", 1)
+            ]),
+    StatGroup("dist_mergepoint", "core.stat.0.out",
+            [
+            Stat("MERGE_POINT_DIST_OFFPATH", 1),
+            Stat("RUNAHEAD_DIST_FROM_MERGE_POINT_AT_RESTEER", 1),
+            Stat("RUNAHEAD_DIST_FROM_MERGE_POINT_AFTER_MERGE", 1),
+            Stat("OVERLAPPED_DIST", 1),
+            Stat("SECOND_MERGE_POINT_DIST_OFFPATH", 1),
+            Stat("RUNAHEAD_DIST_FROM_SECOND_MERGE_POINT_AFTER_MERGE", 1)
+            ]),
+    StatGroup("ftq_recover", "core.stat.0.out",
+            [
+            Stat("FTQ_RECOVER_EXEC", 1),
+            Stat("FTQ_RECOVER_DECODE", 1)
             ]),
     StatGroup("dcache_access", "memory.stat.0.out",
             [
