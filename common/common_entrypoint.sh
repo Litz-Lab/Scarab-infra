@@ -6,7 +6,7 @@ cd /home/$username
 if [ ! -d "/home/$username/scarab" ]; then
   sudo -u $username touch /home/$username/.ssh/known_hosts
   sudo -u $username /bin/bash -c "ssh-keyscan github.com >> /home/$username/.ssh/known_hosts"
-  sudo -u $username git clone -b decoupled_fe git@github.com:hlitz/scarab_hlitz.git scarab
+  sudo -u $username git clone -b main_allhist git@github.com:Litz-Lab/scarab_ll.git scarab
 fi
 
 pip3 install -r /home/$username/scarab/bin/requirements.txt

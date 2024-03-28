@@ -5,10 +5,12 @@ Dockerfiles of docker images running data center workloads
 Install Docker based on the instructions from official [docker docs](https://docs.docker.com/get-docker/). You can find the commands to download and run a container [here](https://docs.docker.com/engine/reference/commandline/run/).
 
 ## Requirements
-To run scarab_hlitz in a docker container, the host machine should have ssh private key ~/.ssh/id_rsa permitted to clone 'scarab_hlitz' github repository.
+To run scarab_ll non-public branches in a docker container, the host machine should have ssh private key ~/.ssh/id_rsa permitted to clone 'scarab_ll' github repository.
 Only use this for images that are private and will always be! The private key will be visible in the container.
 
 To run the SPEC2017 benchmarks, the host machine should have the image `cpu2017-1_0_5.iso` under `SPEC2017/`.
+
+To access traces and simpoints already residing in UCSC LDAP (allbench_traces), you need a BSOE account.
 
 ## Build a Docker image and run a container of a built image
 
