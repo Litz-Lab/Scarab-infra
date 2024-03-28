@@ -15,7 +15,7 @@ SCARABARCH=$9
 
 # if TRACESSIMP is 1,
 # TRACEFILE is supposed to be traces_simp FOLDER
-TRACESSIMP=$9
+TRACESSIMP=${10}
 
 if [ "$TRACESSIMP" == "1" ]; then
     if [ ! -d $TRACEFILE ]; then
