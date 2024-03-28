@@ -84,6 +84,10 @@ case $APPNAME in
     echo "allbench"
     APP_GROUPNAME="allbench_traces"
     ;;
+  isca2024)
+    echo "isca2024"
+    APP_GROUPNAME="isca2024_udp"
+    ;;
   *)
     APP_GROUPNAME="unknown"
     echo "unknown application"
@@ -202,6 +206,9 @@ case $APPNAME in
     ;;
   allbench)
     echo "No BINCMD available for allbench"
+    ;;
+  isca2024)
+    echo "No BINCMD available for isca2024 trace runs"
     ;;
   *)
     echo "unknown application"

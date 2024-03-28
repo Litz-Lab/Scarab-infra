@@ -64,12 +64,12 @@ def run_experiment():
                 print(f"The experiment already exists! Change the experiment name.")
                 continue
             config_value = descriptor_data["configurations"][config_key]
-            if args.application_name == "allbench":
+            if args.application_name == "allbench" or args.application_name == "isca2024":
                 if workload in ["602.gcc_s", "clang", "gcc", "mongodb", "mysql", "postgres", "verilator", "xgboost"]:
                     use_traces_simp = "1"
                 else:
                     use_traces_simp = "0"
-                command = 'run_scarab_allbench.sh "' + workload + '" "allbench_traces" "" "' + experiment + '/' + config_key + '" "' + config_value + '" "' + args.scarab_mode + '" "' + architecture + '" "' + use_traces_simp + '"'
+                command = 'run_scarab_allbench.sh "' + workload + '" "' + args.application_group_name + '" "" "' + experiment + '/' + config_key + '" "' + config_value + '" "' + args.scarab_mode + '" "' + architecture + '" "' + use_traces_simp + '"'
             else:
                 command = 'run_scarab.sh "' + args.application_name + '" "' + args.application_group_name + '" "' + args.binary_command + '" "' + experiment + '/' + config_key + '" "' + config_value + '" "' + args.scarab_mode + '" "' + architecture + '"'
             os.system(command)
