@@ -166,7 +166,8 @@ def get_IPC(descriptor_data, baseline_name, sim_path):
       imiss_cycle[config_name] = imiss_cycle_config
 
     benchmarks.append('Avg')
-    plot_data(benchmarks, ipc_speedup, 'IPC Speedup (%)', 'Figure13.pdf')
+    plot_data(benchmarks, mpki, 'MPKI', 'Figure14.pdf')
+    plot_data(benchmarks, imiss_cycle, '# of Insts lost due to misses Per KI', 'Figure15.pdf')
 
   except Exception as e:
     print(e)

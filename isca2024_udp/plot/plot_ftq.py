@@ -25,7 +25,7 @@ def read_descriptor_from_json(descriptor_filename):
         print(f"Error decoding JSON in file '{descriptor_filename}': {e}")
         return None
 
-def get_IPC(descriptor_data, baseline_name, sim_path):
+def get_IPC(descriptor_data, sim_path):
   benchmarks_org = descriptor_data["workloads_list"].copy()
   benchmarks = []
   print("nrows: " + str(len(benchmarks_org)/3))
@@ -36,10 +36,23 @@ def get_IPC(descriptor_data, baseline_name, sim_path):
   try:
     for config_key in descriptor_data["configurations"].keys():
       print(config_key)
+      if config_key == "udp_bloom/FTQ16/pessimistic_bitmap":
+        config_name = "UDP + FTQ16"
+        baseline_name = "baseline/16"
+      elif config_key == "udp_bloom/btb8k/pessimistic_bitmap":
+        config_name = "UDP + FTQ32"
+        baseline_name = "baseline/32"
+      elif config_key == "udp_bloom/FTQ48/pessimistic_bitmap":
+        config_name = "UDP + FTQ48"
+        baseline_name = "baseline/48"
+      elif config_key == "udp_bloom/FTQ64/pessimistic_bitmap":
+        config_name = "UDP + FTQ64"
+        baseline_name = "baseline/64"
+
       ipc_speedups_config = []
       mpki_config = []
       imiss_cycle_config = []
-      avg_IPC_speedup_config = 1
+      avg_IPC_speedup_config = 1.0
       # avg_IPC_speedup_config_wo_outlier = 1
       avg_MPKI_config = 1
       # avg_MPKI_config_wo_outlier = 1
@@ -69,7 +82,7 @@ def get_IPC(descriptor_data, baseline_name, sim_path):
             for line in lines:
               if 'Periodic IPC' in line:
                 tokens = [x.strip() for x in line.split(',')]
-                IPC_baseline = tokens[1]
+                IPC_baseline = float(tokens[1])
                 break
         print(IPC_baseline)
 
@@ -93,19 +106,19 @@ def get_IPC(descriptor_data, baseline_name, sim_path):
             for line in lines:
               if 'Periodic Cycles' in line:
                 tokens = [x.strip() for x in line.split(',')]
-                cycles = tokens[1]
+                cycles = float(tokens[1])
                 continue
               if 'Periodic Instructions' in line:
                 tokens = [x.strip() for x in line.split(',')]
-                insts = tokens[1]
+                insts = float(tokens[1])
                 continue
               if 'Periodic IPC' in line:
                 tokens = [x.strip() for x in line.split(',')]
-                IPC = tokens[1]
+                IPC = float(tokens[1])
                 continue
               if 'ICACHE_MISS_count' in line:
                 tokens = [x.strip() for x in line.split(',')]
-                imiss = tokens[1]
+                imiss = float(tokens[1])
                 break
 
           with open(exp_path+config_key+'/fetch.stat.0.csv') as f:
@@ -113,11 +126,10 @@ def get_IPC(descriptor_data, baseline_name, sim_path):
             for line in lines:
               if 'INST_LOST_WAIT_FOR_ICACHE_MISS_count' in line:
                 tokens = [x.strip() for x in line.split(',')]
-                imiss_cyc = tokens[1]
+                imiss_cyc = float(tokens[1])
                 break
 
-        # IPC_speedup = IPC/IPC_baseline
-        IPC_speedup = 100.0*(float(IPC)/float(IPC_baseline)) - 100.0
+        IPC_speedup = float(IPC)/float(IPC_baseline)
         KI = float(insts)/1000.0
         MPKI = float(imiss)/KI
         cyc_imiss = float(imiss_cyc)/KI
@@ -130,48 +142,40 @@ def get_IPC(descriptor_data, baseline_name, sim_path):
           benchmarks.append(benchmark_name)
 
         imiss_cycle_config.append(cyc_imiss)
-        ipc_speedups_config.append(IPC_speedup)
+        ipc_speedups_config.append(100.0*IPC_speedup - 100.0)
         mpki_config.append(MPKI)
 
       num = len(benchmarks)
       if config_key != baseline_name:
-        # ipc_speedups_config.append(avg_IPC_speedup_config_wo_outlier**((num-2)**-1))
-        ipc_speedups_config.append(avg_IPC_speedup_config**(num**-1))
-      # mpki_config.append(avg_MPKI_config_wo_outlier**((num-2)**-1))
+        avg_IPC_speedup_config = avg_IPC_speedup_config**(num**-1)
+        ipc_speedups_config.append(100.0*avg_IPC_speedup_config - 100.0)
       mpki_config.append(avg_MPKI_config**(num**-1))
-      # imiss_cycle_config.append(avg_cyc_imiss_config_wo_outlier**((num-2)**-1))
       imiss_cycle_config.append(avg_cyc_imiss_config**(num**-1))
 
       print(benchmarks)
       if config_key != baseline_name:
-        print(config_key + " IPC speedups")
+        print(config_name + " IPC speedups")
         print(ipc_speedups_config)
-        ipc_speedup[config_key] = ipc_speedups_config
-      print(config_key + " MPKI")
+        ipc_speedup[config_name] = ipc_speedups_config
+      print(config_name + " MPKI")
       print(mpki_config)
-      mpki[config_key] = mpki_config
-      print(config_key + " imiss cyc")
+      mpki[config_name] = mpki_config
+      print(config_name + " imiss cyc")
       print(imiss_cycle_config)
-      imiss_cycle[config_key] = imiss_cycle_config
+      imiss_cycle[config_name] = imiss_cycle_config
 
-    # benchmarks.append('Avg no outliers')
     benchmarks.append('Avg')
-    # plot_data(benchmarks, ipc_speedup, 'IPC Speedup (%)', [0,10])
-    # plot_data(benchmarks, ipc_speedup, 'IPC Speedup (%)', [0,50])
-    plot_data(benchmarks, ipc_speedup, 'IPC Speedup (%)')
-    plot_data(benchmarks, mpki, 'MPKI')
-    plot_data(benchmarks, imiss_cycle, 'Icache Miss Cycles Per KI')
+    plot_data(benchmarks, ipc_speedup, 'IPC Speedup (%)', 'Figure17.pdf')
 
   except Exception as e:
     print(e)
 
-def plot_data(benchmarks, data, ylabel_name, ylim=None):
+def plot_data(benchmarks, data, ylabel_name, fig_name, ylim=None):
   print(data)
-  # colors = ['#800000', '#4363d8', '#f58231', '#3cb44b', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#e6beff', '#e6194b', '#000075', '#800000', '#9a6324', '#808080', '#ffffff', '#000000']
-  colors = ['#4363d8', '#800000', '#f58231', '#3cb44b', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#e6beff', '#e6194b', '#000075', '#800000', '#9a6324', '#808080', '#ffffff', '#000000']
+  colors = ['#800000', '#911eb4', '#4363d8', '#f58231', '#3cb44b', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#e6beff', '#e6194b', '#000075', '#800000', '#9a6324', '#808080', '#ffffff', '#000000']
   ind = np.arange(len(benchmarks))
-  width = 0.08
-  fig, ax = plt.subplots(figsize=(14, 5.4), dpi=80)
+  width = 0.12
+  fig, ax = plt.subplots(figsize=(14, 4.4), dpi=80)
   num_keys = len(data.keys())
 
   idx = 0
@@ -188,24 +192,25 @@ def plot_data(benchmarks, data, ylabel_name, ylim=None):
   ax.set_ylabel(ylabel_name)
   ax.set_xticks(ind)
   ax.set_xticklabels(benchmarks, rotation = 27, ha='right')
+  ax.grid('x');
   if ylim != None:
     ax.set_ylim(ylim)
-  # ax.legend(loc="upper left", ncols=2)
-  ax.legend()
+  ax.legend(loc="upper left", ncols=2)
+  fig.tight_layout()
+  plt.savefig(fig_name, format="pdf", bbox_inches="tight")
 
 
 if __name__ == "__main__":
     # Create a parser for command-line arguments
     parser = argparse.ArgumentParser(description='Read descriptor file name')
     parser.add_argument('-d','--descriptor_name', required=True, help='Experiment descriptor name. Usage: -d exp2.json')
-    parser.add_argument('-b','--baseline_name', required=True, help='Baseline config name. Usage: -b baseline')
     parser.add_argument('-s','--simulation_path', required=True, help='Simulation result path. Usage: -s /soe/$USER/allbench_home/')
 
     args = parser.parse_args()
     descriptor_filename = args.descriptor_name
 
     descriptor_data = read_descriptor_from_json(descriptor_filename)
-    get_IPC(descriptor_data, args.baseline_name, args.simulation_path)
+    get_IPC(descriptor_data, args.simulation_path)
     plt.grid('x')
     plt.tight_layout()
     plt.show()
