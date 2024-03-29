@@ -58,7 +58,7 @@ def run_experiment():
                 print(f"The experiment already exists! Change the experiment name.")
                 continue
             if args.scarab_mode == '5':
-              exp_path = str(os.getenv('HOME')) + '/nonsimpoint_flow/simultaions/' + workload + '/' + experiment + '/' +config_key
+              exp_path = str(os.getenv('HOME')) + '/nonsimpoint_flow/simulations/' + workload + '/' + experiment + '/' +config_key
               print(exp_path)
               if os.path.exists(exp_path+'/memory.stat.0.csv'):
                 print(f"The experiment already exists! Change the experiment name.")

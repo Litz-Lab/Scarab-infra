@@ -218,7 +218,7 @@ elif [ "$SCARABMODE" == "3" ]; then
 
   ################################################################
 elif [ "$SCARABMODE" == "1" ] || [ "$SCARABMODE" == "2" ] || [ "$SCARABMODE" == "5" ]; then
-  SIMHOME=$HOME/nonsimpoint_flow/simultaions/$APPNAME
+  SIMHOME=$HOME/nonsimpoint_flow/simulations/$APPNAME
   EVALHOME=$HOME/nonsimpoint_flow/evaluations/$APPNAME
   mkdir -p $SIMHOME
   mkdir -p $EVALHOME
