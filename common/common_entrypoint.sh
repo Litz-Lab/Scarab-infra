@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x #echo on
+#set -x #echo on
 
 useradd -u $user_id -o -m $username && groupmod -g $group_id $username
 cd /home/$username

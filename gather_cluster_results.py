@@ -90,7 +90,6 @@ def calculate_weighted_average(stat_groups, simpoints):
             simp.w_stat_vals.append([])
             for s_id, s in enumerate(g.s_list):
                 if simp.stat_vals[g_id][s_id] == None:
-                    print(s.s_name)
                     simp.w_stat_vals[-1].append(simp.weight * 0)
                 else:
                     simp.w_stat_vals[-1].append(simp.weight * float(simp.stat_vals[g_id][s_id]))
