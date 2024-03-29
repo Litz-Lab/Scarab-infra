@@ -52,15 +52,9 @@ do
     roiStart=$(( $segID * $SEGSIZE + 1 ))
     roiEnd=$(( $segID * $SEGSIZE + $SEGSIZE ))
 
-    if [ "$SPDIR" == "$HOME/simpoint_flow/verilator/simpoints/" ]; then
-        # hard-coded scenario for verilator
-        # warm-up within the segment, and only simulate 10M
-        # chances are that the trace end before warmup finish
-        # hope it does not happen
-        roiEnd=$(( $segID * $SEGSIZE + $WARMUP + 10000000 ))
     # now reset roi start based on warmup:
     # roiStart + WARMUP = original segment start
-    elif [ "$roiStart" -gt "$WARMUP" ]; then
+    if [ "$roiStart" -gt "$WARMUP" ]; then
         # enough room for warmup, extend roi start to the left
         roiStart=$(( $roiStart - $WARMUP ))
     else
