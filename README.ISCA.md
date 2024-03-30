@@ -30,5 +30,5 @@ Run a given script to generate Figure 13, 14, 15, 16, 17 in the paper (Figure13.
 
 ```
 cd ./isca2024_udp/plot
-./plot_figures.sh /home/$USER/isca2024_home
+./plot_figures.sh /home/$USER/isca2024_home/
 ```
