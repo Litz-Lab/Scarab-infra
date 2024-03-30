@@ -28,14 +28,12 @@ def read_descriptor_from_json(descriptor_filename):
 def get_IPC(descriptor_data, baseline_name, sim_path):
   benchmarks_org = descriptor_data["workloads_list"].copy()
   benchmarks = []
-  print("nrows: " + str(len(benchmarks_org)/3))
   ipc_speedup = {}
   mpki = {}
   imiss_cycle = {}
 
   try:
     for config_key in descriptor_data["configurations"].keys():
-      print(config_key)
       if config_key == "baseline/IncreasedIcache40K":
         config_name = "IncreasedIcache (40K)"
       elif config_key == "baseline/EIP":
@@ -61,7 +59,6 @@ def get_IPC(descriptor_data, baseline_name, sim_path):
       avg_cyc_imiss_config = 1
       cnt_benchmarks = 0
       for benchmark in benchmarks_org:
-        print(benchmark)
         simp,simu,benchmark_name = benchmark.split("/")
         if benchmark_name == "602.gcc_s":
           benchmark_name = "gcc"
@@ -74,7 +71,6 @@ def get_IPC(descriptor_data, baseline_name, sim_path):
         exp_path = sim_path+benchmark+'/'+descriptor_data["experiment"]+'/'
         IPC_baseline = 0
         if simp == 'simpoint_flow':
-          print(exp_path+baseline_name+'/ipc.csv')
           df_ipc = pd.read_csv(exp_path+baseline_name+'/ipc.csv')
           IPC_baseline = df_ipc['IPC'][0]
         elif simp == 'nonsimpoint_flow':
@@ -85,7 +81,6 @@ def get_IPC(descriptor_data, baseline_name, sim_path):
                 tokens = [x.strip() for x in line.split(',')]
                 IPC_baseline = float(tokens[1])
                 break
-        print(IPC_baseline)
 
         cycles = 0
         insts = 0
@@ -153,16 +148,9 @@ def get_IPC(descriptor_data, baseline_name, sim_path):
       mpki_config.append(avg_MPKI_config**(num**-1))
       imiss_cycle_config.append(avg_cyc_imiss_config**(num**-1))
 
-      print(benchmarks)
       if config_key != baseline_name:
-        print(config_name + " IPC speedups")
-        print(ipc_speedups_config)
         ipc_speedup[config_name] = ipc_speedups_config
-      print(config_name + " MPKI")
-      print(mpki_config)
       mpki[config_name] = mpki_config
-      print(config_name + " imiss cyc")
-      print(imiss_cycle_config)
       imiss_cycle[config_name] = imiss_cycle_config
 
     benchmarks.append('Avg')
