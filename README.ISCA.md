@@ -15,7 +15,7 @@ For example,
 
 ## 2. Run Scarab simulations by using a descriptor file
 The file descriptor for all the simulation scenarios for Artifact Evaluation is already in isca2024_udp/isca.json and isca2024_udp/isca.pt.json
-The simulations using memtrace or pt traces should be launched separately with different simulation mode (4 : memtrace, 5 : PT trace)
+The simulations using memtrace or pt traces should be launched separately with different simulation mode (4 : memtrace, 5 : PT trace). Still the two executions can be parallelized (by launching on different terminals).
 Run the following command with <experiment> name for -e.
 ```
 ./run.sh -o /home/$USER/isca2024_home -s 4 -e isca
@@ -30,5 +30,5 @@ Run a given script to generate Figure 13, 14, 15, 16, 17 in the paper (Figure13.
 
 ```
 cd ./isca2024_udp/plot
-./plot_figures.sh
+./plot_figures.sh /home/$USER/isca2024_home
 ```
