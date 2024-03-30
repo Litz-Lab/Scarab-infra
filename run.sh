@@ -161,6 +161,15 @@ if [ $SCARABMODE ]; then
           taskPids+=($PID)
         fi
       done < <(docker top $APP_GROUPNAME\_$USER -eo pid,cmd)
+    elif [ "$APP_GROUPNAME" == "isca2024_udp" ]; then
+      cp ${APP_GROUPNAME}/${EXPERIMENT}.json $OUTDIR
+      docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -m $SCARABMODE &
+      while read -r line; do
+        IFS=" " read PID CMD <<< $line
+        if [ "$CMD" == "python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -m $SCARABMODE" ]; then
+          taskPids+=($PID)
+        fi
+      done < <(docker top $APP_GROUPNAME\_$USER -eo pid,cmd)
     else
       cp ${EXPERIMENT}.json $OUTDIR
       docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -c $BINCMD -m $SCARABMODE &

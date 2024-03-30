@@ -1,8 +1,8 @@
-# dcworkloads-dockerfiles
-Dockerfiles of docker images running data center workloads
+# Scarab-infra
+Dockerfiles of docker images running data center workloads and run Scarab simulation
 
 ## Docker setup
-Install Docker based on the instructions from official [docker docs](https://docs.docker.com/get-docker/). You can find the commands to download and run a container [here](https://docs.docker.com/engine/reference/commandline/run/).
+Install Docker based on the instructions from official [docker docs](https://docs.docker.com/engine/install/).
 
 ## Requirements
 To run scarab_ll non-public branches in a docker container, the host machine should have ssh private key ~/.ssh/id_rsa permitted to clone 'scarab_ll' github repository.
