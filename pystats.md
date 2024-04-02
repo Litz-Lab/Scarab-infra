@@ -144,7 +144,7 @@ Using Experiment(path) will automatically load an experiment from a saved csv fi
 
 - path: path of saved file
 
-#### get_stats
+#### derive_stats
 Arguments: (experiment: str, config: List[str], stats: List[str], workload: List[str], 
             aggregation_level:str = "Workload", simpoints: List[str] = None)
 
@@ -177,14 +177,19 @@ Saves experiment as csv file
 #### get_experiments
 Arguments: None
 
-Returns a set of all the names of all the experiments contained in the experiment object
+Returns a list of all the names of all the experiments contained in the experiment object
 
 #### get_configurations
 Arguments: None
 
-Returns a set of all the names of all the configurations contained in the experiment object
+Returns a list of all the names of all the configurations contained in the experiment object
 
 #### get_workloads
 Arguments: None
 
-Returns a set of all the names of all the workloads contained in the experiment object
+Returns a list of all the names of all the workloads contained in the experiment object
+
+#### get_stats
+Arguments: None
+
+Returns a list of all the names of all the stats contained in the experiment object
