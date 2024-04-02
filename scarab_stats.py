@@ -40,14 +40,13 @@ class Experiment:
 
         self.data[f"{experiment} {config} {workload} {c_id}"] = column
 
-    def get_stats(self, experiment: str, config: List[str], stats: List[str], workload: List[str], 
+    def retrieve_stats(self, experiment: str, config: List[str], stats: List[str], workload: List[str], 
                   aggregation_level:str = "Workload", simpoints: List[str] = None):
         results = {}
 
         if aggregation_level == "Workload":
             for c in config:
                 for w in workload:
-                    print(self.data.columns)
                     selected_simpoints = [col for col in self.data.columns if f"{experiment} {c} {w}" in col]
 
                     for stat in stats:
@@ -114,7 +113,7 @@ class Experiment:
         values = []
         panda_fy = lambda name: f'lookup["{name}"]'
 
-        lookup_cols = {old:new for old, new in zip(self.data.T.columns, self.data.T.iloc[1])}
+        lookup_cols = {old:new for old, new in zip(self.data.T.columns, self.data.T.iloc[0])}
         str_rows = [list(self.data["stats"]).index(row) for row in ["Experiment","Architecture","Configuration","Workload"]]
 
         lookup = self.data.T.rename(columns=lookup_cols).drop("stats")
@@ -154,23 +153,26 @@ class Experiment:
         # TODO: Unsafe!
         eval(to_eval)
 
-        row = [total_cols, values[0]] + values[1][1:]
+        row = [values[0]] + values[1]
         self.data.loc[total_cols] = row
         return
     
     def to_csv(self, path:str):
         '''Turns selected stats from selected workloads/configs into a pandas dataframe'''
 
-        self.data.to_csv(path)
+        self.data.to_csv(path, index=False)
 
     def get_experiments(self):
-        return set(list(self.data[self.data["stats"] == "Experiment"].iloc[0])[2:])
+        return list(set(list(self.data[self.data["stats"] == "Experiment"].iloc[0])[2:]))
 
     def get_configurations(self):
-        return set(list(self.data[self.data["stats"] == "Configuration"].iloc[0])[2:])
+        return list(set(list(self.data[self.data["stats"] == "Configuration"].iloc[0])[2:]))
 
     def get_workloads(self):
-        return set(list(self.data[self.data["stats"] == "Workload"].iloc[0])[2:])
+        return list(set(list(self.data[self.data["stats"] == "Workload"].iloc[0])[2:]))
+
+    def get_stats(self):
+        return list(set(self.data["stats"]))
 
     def __repr__(self):
         return str(self)
@@ -301,9 +303,9 @@ class stat_aggregator:
         
         # Get all data with structure all_data[f"{config} {wl} {stat}"]
         configs_to_load = configs + [speedup_baseline]
-        all_data = experiment.get_stats(experiment_name, configs_to_load, stats, workloads)
+        all_data = experiment.retrieve_stats(experiment_name, configs_to_load, stats, workloads)
 
-        num_workloads = len(workloads)
+        num_workloads = len(workloads) * len(configs)
         if average: num_workloads += 1
         workload_locations = np.arange(num_workloads) * ((bar_width * len(stats) + bar_spacing * (len(stats) - 1)) + workload_spacing)
         
@@ -321,8 +323,6 @@ class stat_aggregator:
             if average:
                 data.append(reduce(lambda x,y: x*y, data) ** (1/len(data)))
 
-            print(workload_locations, data)
-
             if colors == None:
                 color_map = plt.get_cmap("Paired")
                 color = color_map((x_offset*(1/12))%1)
@@ -333,8 +333,10 @@ class stat_aggregator:
                         color=color)
             b.set_label(stat)
         
-        if average: workloads.append("Average")
-        plt.xticks(workload_locations, workloads)
+        x_ticks = [f"{wl} - {config}" for wl in workloads for config in configs]
+        if len(configs) == 1: x_ticks = workloads
+        if average: x_ticks.append("Average")
+        plt.xticks(workload_locations, x_ticks)
 
         plt.legend(loc="center left", bbox_to_anchor=(1,0.5))
 
@@ -357,7 +359,7 @@ class stat_aggregator:
         
         # Get all data with structure all_data[f"{config} {wl} {simpoint} {stat}"]
         configs_to_load = configs + [speedup_baseline]
-        all_data = experiment.get_stats(experiment_name, configs_to_load, stats, workloads, aggregation_level="Simpoint", simpoints=simpoints)
+        all_data = experiment.retrieve_stats(experiment_name, configs_to_load, stats, workloads, aggregation_level="Simpoint", simpoints=simpoints)
         
         plt.figure(figsize=(6,8))
 
@@ -417,8 +419,8 @@ class stat_aggregator:
                         logscale: bool = False, bar_width:float = 0.35, bar_spacing:float = 0.05, workload_spacing:float = 0.3, 
                         average: bool = False, colors = None):
         
-        all_data = experiment.get_stats(experiment_name, configs, stats, workloads, aggregation_level="Config")
-        if speedup_baseline != None: baseline_data = experiment.get_stats(experiment_name, [speedup_baseline], stats, workloads, aggregation_level="Config")
+        all_data = experiment.retrieve_stats(experiment_name, configs, stats, workloads, aggregation_level="Config")
+        if speedup_baseline != None: baseline_data = experiment.retrieve_stats(experiment_name, [speedup_baseline], stats, workloads, aggregation_level="Config")
         print("Dat", all_data)
 
         plt.figure(figsize=(6,8))
@@ -483,7 +485,7 @@ class stat_aggregator:
                       bar_width:float = 0.35, bar_spacing:float = 0.05, workload_spacing:float = 0.3, colors = None):
         
         # Get all data with structure all_data[stat][config][workload]
-        all_data = experiment.get_stats(experiment_name, configs, stats, workloads)
+        all_data = experiment.retrieve_stats(experiment_name, configs, stats, workloads)
         #all_data = {stat:experiment.get_stat(stat, aggregate = True) for stat in stats}
 
         num_workloads = len(workloads)
@@ -495,15 +497,12 @@ class stat_aggregator:
         for x_offset, config in enumerate(configs):
 
             offsets = np.array([0.0] * len(workloads))
-            print(stats)
             totals = {wl: sum([all_data[f"{config} {wl} {stat}"] for stat in stats]) for wl in workloads}
 
             for i, stat in enumerate(stats):
                 # Plot each workload's stat as bar graph
                 #data = np.array([all_data[stat][config][wl]/totals[wl] for wl in workloads])
                 data = np.array([all_data[f"{config} {wl} {stat}"]/totals[wl] for wl in workloads])
-
-                print(workload_locations, data)
 
                 if colors == None:
                     color_map = plt.get_cmap("Paired")
@@ -534,16 +533,19 @@ if __name__ == "__main__":
 
     da = stat_aggregator()
     #E = da.load_experiment_json(args.descriptor_name, args.sim_path, args.trace_path)
-    #E.to_csv("panda2.csv")
-    E = Experiment("panda2.csv")
+    E = Experiment("panda3.csv")
+    #print(E.data)
+    #print(E.data)
+    #E = Experiment("panda.csv")
     # ipc = instruction / cycles => surrount all column names with df[%s] and then eval()
     #da.plot_stacked(E, "exp2", ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8", "fe_ftq_block_num.16"])
-    #da.plot_workloads(E, "exp2", ["BTB_ON_PATH_MISS_count", "BTB_ON_PATH_HIT_count", "BTB_OFF_PATH_MISS_count", "BTB_ON_PATH_WRITE_count", "BTB_OFF_PATH_WRITE_count"], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8"], speedup_baseline="fe_ftq_block_num.16", logscale=False, average=True)
-    #print(E.get_stats("exp2", ["fe_ftq_block_num.16"], ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql"], "Simpoint"))
+    #a.plot_workloads(E, "exp2", ["BTB_ON_PATH_MISS_count", "BTB_ON_PATH_HIT_count", "BTB_OFF_PATH_MISS_count", "BTB_ON_PATH_WRITE_count", "BTB_OFF_PATH_WRITE_count"], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8"], speedup_baseline="fe_ftq_block_num.16", logscale=False, average=True)
+    #print(E.retrieve_stats("exp2", ["fe_ftq_block_num.16"], ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql"], "Simpoint"))
     k = 1
     E.derive_stat(f"test=(BTB_OFF_PATH_MISS_count + {k})") 
-    print(E.get_workloads())
+    da.plot_workloads(E, "exp2", ["test"], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8"], speedup_baseline="fe_ftq_block_num.16", logscale=False, average=True)
+    #print(E.get_stats())
     #E.to_csv("test.csv")
-    #print(E.get_stats("exp2", ["fe_ftq_block_num.16"], ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql", "xgboost"], aggregation_level="Config"))
+    #print(E.retrieve_stats("exp2", ["fe_ftq_block_num.16"], ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql", "xgboost"], aggregation_level="Config"))
     #da.plot_simpoints(E, "exp2", ["BTB_ON_PATH_MISS_total_count"], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8"], speedup_baseline="fe_ftq_block_num.16", title="Simpoint")
-    da.plot_configs(E, "exp2", ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql", "xgboost"], ["fe_ftq_block_num.16", "fe_ftq_block_num.8"])
+    #da.plot_configs(E, "exp2", ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql", "xgboost"], ["fe_ftq_block_num.16", "fe_ftq_block_num.8"])
