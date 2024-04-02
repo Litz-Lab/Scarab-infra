@@ -17,16 +17,12 @@ And finally load your experiment using the `load_experiment_json` function. It r
 Ex:
 `experiment = aggregator.load_experiment_json("allbench_home/exp2.json", "allbench_home/simpoint_flow/simulations", "/soe/hlitz/lab/traces/")`
 
-NOTE: There is a bug where the representation of a freshly loaded experiment is different from a saved one. Please use `experiment.to_csv(path)` on the resulting experiment and then reload with `experiment = Experiment(path)`
-
 Then you can use any of the `stat_aggregator` class's plotting functions, or retreive data directly from the experiment
 
 ## Documentation
 ### stat_aggregator
 #### load_experiment_json
 Arguments: (experiment_file: str, simulations_path: str, simpoints_path: str)
-
-NOTE: There is a bug where the representation of a freshly loaded experiment is different from a saved one. Please use `experiment.to_csv(path)` on the resulting experiment and then reload with `experiment = Experiment(path)`
 
 This function returns an experiment object loaded from the path provided. 
 
