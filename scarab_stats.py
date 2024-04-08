@@ -13,7 +13,7 @@ class Experiment:
     def __init__(self, stats):
         '''Stats is either a path to saved experiment or list of stats'''
         if type(stats) == str:
-            self.data = pd.read_csv(stats)
+            self.data = pd.read_csv(stats, low_memory=False)
 
         else:
             self.data = pd.DataFrame()
@@ -38,16 +38,16 @@ class Experiment:
         column.append(c_id)
         column.append(weight)
 
-        self.data[f"{experiment} {config} {workload} {c_id}"] = column
+        self.data[f"{config} {workload} {c_id}"] = column
 
-    def retrieve_stats(self, experiment: str, config: List[str], stats: List[str], workload: List[str], 
-                  aggregation_level:str = "Workload", simpoints: List[str] = None):
+    def retrieve_stats(self, config: List[str], stats: List[str], workload: List[str], 
+        aggregation_level:str = "Workload", simpoints: List[str] = None):
         results = {}
 
         if aggregation_level == "Workload":
             for c in config:
                 for w in workload:
-                    selected_simpoints = [col for col in self.data.columns if f"{experiment} {c} {w}" in col]
+                    selected_simpoints = [col for col in self.data.columns if f"{c} {w}" in col]
 
                     for stat in stats:
                         values = list(self.data[selected_simpoints][self.data["stats"] == stat].iloc[0])
@@ -62,19 +62,19 @@ class Experiment:
 
                     # Set selected simpoints to all possible if not provided
                     if simpoints == None:
-                        selected_simpoints = [col.split(" ")[-1] for col in self.data.columns if f"{experiment} {c} {w}" in col]
+                        selected_simpoints = [col.split(" ")[-1] for col in self.data.columns if f"{c} {w}" in col]
                     else: selected_simpoints = simpoints
                     
                     for sp in selected_simpoints:
                         for stat in stats:
-                            col = f"{experiment} {c} {w} {sp}"
+                            col = f"{c} {w} {sp}"
                             results[f"{c} {w} {sp} {stat}"] = self.data[col][self.data["stats"] == stat].iloc[0]
         
         elif aggregation_level == "Config":
             for c in config:
                 config_data = {stat:[] for stat in stats}
                 for w in workload:
-                    selected_simpoints = [col for col in self.data.columns if f"{experiment} {c} {w}" in col]
+                    selected_simpoints = [col for col in self.data.columns if f"{c} {w}" in col]
 
                     for stat in stats:
                         values = list(self.data[selected_simpoints][self.data["stats"] == stat].iloc[0])
@@ -163,13 +163,13 @@ class Experiment:
         self.data.to_csv(path, index=False)
 
     def get_experiments(self):
-        return list(set(list(self.data[self.data["stats"] == "Experiment"].iloc[0])[2:]))
+        return list(set(list(self.data[self.data["stats"] == "Experiment"].iloc[0])[1:]))
 
     def get_configurations(self):
-        return list(set(list(self.data[self.data["stats"] == "Configuration"].iloc[0])[2:]))
+        return list(set(list(self.data[self.data["stats"] == "Configuration"].iloc[0])[1:]))
 
     def get_workloads(self):
-        return list(set(list(self.data[self.data["stats"] == "Workload"].iloc[0])[2:]))
+        return list(set(list(self.data[self.data["stats"] == "Workload"].iloc[0])[1:]))
 
     def get_stats(self):
         return list(set(self.data["stats"]))
@@ -296,47 +296,72 @@ class stat_aggregator:
     # Plot on logarithmic scale
 
     # Plot multiple stats across multiple workloads
-    def plot_workloads (self, experiment: Experiment, experiment_name: str, stats: List[str], workloads: List[str], 
+    def plot_workloads (self, experiment: Experiment, stats: List[str], workloads: List[str], 
                         configs: List[str], speedup_baseline: str = None, title: str = "Default Title", x_label: str = "", 
                         y_label: str = "", logscale: bool = False, bar_width:float = 0.35, 
-                        bar_spacing:float = 0.05, workload_spacing:float = 0.3, average: bool = False, colors = None):
+                        bar_spacing:float = 0.05, workload_spacing:float = 0.3, average: bool = False, 
+                        colors = None, plot_name = None, label_method = 0):
         
         # Get all data with structure all_data[f"{config} {wl} {stat}"]
         configs_to_load = configs + [speedup_baseline]
-        all_data = experiment.retrieve_stats(experiment_name, configs_to_load, stats, workloads)
+        all_data = experiment.retrieve_stats(configs_to_load, stats, workloads)
 
         num_workloads = len(workloads) * len(configs)
         if average: num_workloads += 1
         workload_locations = np.arange(num_workloads) * ((bar_width * len(stats) + bar_spacing * (len(stats) - 1)) + workload_spacing)
         
-        plt.figure(figsize=(6,8))
+        plt.figure(figsize=(6+num_workloads, 8))
+        ax = plt.axes()
+
+        total_offset = 0
+
+        hatches = ['/', '\\', '|', '-', '+', 'x', 'o', 'O', '.', '*']
 
         # For each stat
         for x_offset, stat in enumerate(stats):
-            # Plot each workload's stat as bar graph
-            data = [all_data[f"{config} {wl} {stat}"] for wl in workloads for config in configs]
-            
-            if speedup_baseline != None:
-                baseline_data = [all_data[f"{speedup_baseline} {wl} {stat}"] for wl in workloads]
-                data = [test/baseline for test, baseline in zip(data, baseline_data)]
+            for conf_number, config in enumerate(configs):
+                # Plot each workload's stat as bar graph
+                data = [all_data[f"{config} {wl} {stat}"] for wl in workloads]
+                lbls = [f"{config} - {wl}" for wl in workloads]
 
-            if average:
-                data.append(reduce(lambda x,y: x*y, data) ** (1/len(data)))
+                if speedup_baseline != None:
+                    baseline_data = [all_data[f"{speedup_baseline} {wl} {stat}"] for wl in workloads]
+                    data = [test/baseline for test, baseline in zip(data, baseline_data)]
 
-            if colors == None:
-                color_map = plt.get_cmap("Paired")
-                color = color_map((x_offset*(1/12))%1)
-            else:
-                color = colors[x_offset%len(colors)]
+                if average:
+                    data.append(reduce(lambda x,y: x*y, data) ** (1/len(data)))
 
-            b = plt.bar(workload_locations + x_offset*(bar_width + bar_spacing), data, [bar_width] * num_workloads, 
-                        color=color)
-            b.set_label(stat)
-        
+                if colors == None:
+                    color_map = plt.get_cmap("Paired")
+                    color = color_map((x_offset*(1/12))%1)
+                else:
+                    color = colors[x_offset%len(colors)]
+
+                if label_method == 0:
+                    b = ax.bar(workload_locations + total_offset, data, [bar_width] * num_workloads, 
+                                color=color, hatch=hatches[conf_number])
+                    if x_offset == 0: 
+                        plt.text(num_workloads, conf_number*0.05, f"{config}: {hatches[conf_number]}")
+
+                elif label_method == 1:
+                    b = ax.bar(workload_locations + total_offset, data, [bar_width] * num_workloads, 
+                                color=color)
+                
+                if conf_number == 0: b.set_label(stat)
+
+                total_offset += bar_width + bar_spacing
+
+        if label_method == 1:
+            for loc in workload_locations:
+                plt.text(loc + x_offset*(bar_width + bar_spacing)-bar_width/8, 0.02, config, rotation="vertical")
+
         x_ticks = [f"{wl} - {config}" for wl in workloads for config in configs]
         if len(configs) == 1: x_ticks = workloads
         if average: x_ticks.append("Average")
-        plt.xticks(workload_locations, x_ticks)
+        ax.set_xticks(workload_locations, x_ticks)
+
+        for label in ax.xaxis.get_ticklabels():
+            label.set_rotation(45)
 
         plt.legend(loc="center left", bbox_to_anchor=(1,0.5))
 
@@ -348,20 +373,23 @@ class stat_aggregator:
         plt.title(title)
         plt.xlabel(x_label)
         plt.ylabel(y_label)
-        plt.savefig("b.jpeg")
+
+        if plot_name == None:
+            plt.show()
+        else: plt.savefig(plot_name)
 
     # Plot multiple stats across simpoints
-    def plot_simpoints (self, experiment: Experiment, experiment_name: str, stats: List[str], workloads: List[str], 
+    def plot_simpoints (self, experiment: Experiment, str, stats: List[str], workloads: List[str], 
                         configs: List[str], simpoints: List[str] = None, speedup_baseline: str = None, 
                         title: str = "Default Title", x_label: str = "", y_label: str = "", 
                         logscale: bool = False, bar_width:float = 0.35, bar_spacing:float = 0.05, workload_spacing:float = 0.3, 
-                        average: bool = False, colors = None):
+                        average: bool = False, colors = None, plot_name = None):
         
         # Get all data with structure all_data[f"{config} {wl} {simpoint} {stat}"]
         configs_to_load = configs + [speedup_baseline]
-        all_data = experiment.retrieve_stats(experiment_name, configs_to_load, stats, workloads, aggregation_level="Simpoint", simpoints=simpoints)
+        all_data = experiment.retrieve_stats(configs_to_load, stats, workloads, aggregation_level="Simpoint", simpoints=simpoints)
         
-        plt.figure(figsize=(6,8))
+        plt.figure(figsize=(6+num_workloads,8))
 
         # For each stat
         for x_offset, stat in enumerate(stats):
@@ -410,20 +438,22 @@ class stat_aggregator:
         plt.title(title)
         plt.xlabel(x_label)
         plt.ylabel(y_label)
-        plt.savefig("b.jpeg")
+
+        if plot_name == None:
+            plt.show()
+        else: plt.savefig(plot_name)
 
     # Plot multiple stats across simpoints
-    def plot_configs (self, experiment: Experiment, experiment_name: str, stats: List[str], workloads: List[str], 
+    def plot_configs (self, experiment: Experiment, stats: List[str], workloads: List[str], 
                         configs: List[str], speedup_baseline: str = None, 
                         title: str = "Default Title", x_label: str = "", y_label: str = "", 
                         logscale: bool = False, bar_width:float = 0.35, bar_spacing:float = 0.05, workload_spacing:float = 0.3, 
-                        average: bool = False, colors = None):
+                        average: bool = False, colors = None, plot_name = None):
         
-        all_data = experiment.retrieve_stats(experiment_name, configs, stats, workloads, aggregation_level="Config")
-        if speedup_baseline != None: baseline_data = experiment.retrieve_stats(experiment_name, [speedup_baseline], stats, workloads, aggregation_level="Config")
-        print("Dat", all_data)
+        all_data = experiment.retrieve_stats(configs, stats, workloads, aggregation_level="Config")
+        if speedup_baseline != None: baseline_data = experiment.retrieve_stats([speedup_baseline], stats, workloads, aggregation_level="Config")
 
-        plt.figure(figsize=(6,8))
+        plt.figure(figsize=(6+num_workloads,8))
 
         # For each stat
         for x_offset, stat in enumerate(stats):
@@ -471,7 +501,10 @@ class stat_aggregator:
         plt.title(title)
         plt.xlabel(x_label)
         plt.ylabel(y_label)
-        plt.savefig("b.jpeg")
+
+        if plot_name == None:
+            plt.show()
+        else: plt.savefig(plot_name)
 
 
     # Plot simpoints within workload
@@ -480,18 +513,21 @@ class stat_aggregator:
         
 
     # Plot stacked bars. List of 
-    def plot_stacked (self, experiment: Experiment, experiment_name: str, stats: List[str], workloads: List[str], 
+    def plot_stacked (self, experiment: Experiment, stats: List[str], workloads: List[str], 
                       configs: List[str], title: str = "Default Title",
-                      bar_width:float = 0.35, bar_spacing:float = 0.05, workload_spacing:float = 0.3, colors = None):
+                      bar_width:float = 0.35, bar_spacing:float = 0.05, workload_spacing:float = 0.3, 
+                      colors = None, plot_name = None, label_method = 0):
         
         # Get all data with structure all_data[stat][config][workload]
-        all_data = experiment.retrieve_stats(experiment_name, configs, stats, workloads)
+        all_data = experiment.retrieve_stats(configs, stats, workloads)
         #all_data = {stat:experiment.get_stat(stat, aggregate = True) for stat in stats}
 
         num_workloads = len(workloads)
         workload_locations = np.arange(num_workloads) * ((bar_width * len(configs) + bar_spacing * (len(configs) - 1)) + workload_spacing)
         
-        plt.figure(figsize=(6,8))
+        plt.figure(figsize=(6+num_workloads,8))
+
+        hatches = ['/', '\\', '|', '-', '+', 'x', 'o', 'O', '.', '*']
 
         # For each stat
         for x_offset, config in enumerate(configs):
@@ -510,17 +546,136 @@ class stat_aggregator:
                 else:
                     color = colors[i%len(colors)]
 
-                b = plt.bar(workload_locations + x_offset*(bar_width + bar_spacing), data, [bar_width] * num_workloads, 
+                if label_method == 0:
+                    if x_offset > len(hatches):
+                        print("WARN: Too many configs for unique configuration labels")
+                    b = plt.bar(workload_locations + x_offset*(bar_width + bar_spacing), data, [bar_width] * num_workloads, 
+                            bottom=offsets, color = color, hatch=hatches[x_offset % len(hatches)], fill=False, edgecolor = color)
+
+                elif label_method == 1:
+                    b = plt.bar(workload_locations + x_offset*(bar_width + bar_spacing), data, [bar_width] * num_workloads, 
                             bottom=offsets, color = color)
-                b.set_label(f"{config} {stat}")
+                
+                if x_offset == 0: b.set_label(f"{stat}")
+                
                 offsets += data
+            
+            if label_method == 1:
+                for loc in workload_locations:
+                    plt.text(loc + x_offset*(bar_width + bar_spacing)-bar_width/8, 0.02, config, rotation="vertical")
+            
+            elif label_method == 0: 
+                plt.text(num_workloads, x_offset*0.05, f"{config}: {hatches[x_offset]}")
 
         plt.title(title)
         plt.ylabel("Fraction of total")
-        plt.xlabel("Stat")
+        plt.xlabel("Workload")
         plt.xticks(workload_locations, workloads)
+        plt.legend(bbox_to_anchor=(1,1))
+
+
+        if plot_name == None:
+            plt.show()
+        else: plt.savefig(plot_name)
+
+    def calculate_speedups(self, experiment: Experiment, experiment_baseline: Experiment):
+        
+        print("AA")
+
+        for conf in configs:
+            for wl in worklaods:
+                new_stats = experiment.retrieve_stats([conf], list(stats), wl)
+                baseline_stats = experiment_baseline.retrieve_stats([conf], list(stats), wl)
+                print(new_stats)
+                return
+            
+        
+    # Plot multiple stats across simpoints
+    def plot_speedups (self, experiment: Experiment, experiment_baseline: Experiment, speedup_metric: str, 
+                        title: str = "Default Title", x_label: str = "", y_label: str = "", 
+                        logscale: bool = False, bar_width:float = 0.35, bar_spacing:float = 0.05, workload_spacing:float = 0.3, 
+                        average: bool = False, colors = None, plot_name = None):
+        
+        # Check experiments are similar
+        configs = set(experiment.get_configurations())
+        workloads = set(experiment.get_workloads())
+        stats = set(experiment.get_stats())
+
+        baseline_configs = set(experiment_baseline.get_configurations())
+        baseline_worklaods = set(experiment_baseline.get_workloads())
+        baseline_stats = set(experiment_baseline.get_stats())
+
+        if configs != baseline_configs:
+            print("ERR: Configs not the same")
+            return
+
+        if workloads != baseline_worklaods:
+            print("ERR: Workloads not the same")
+            return
+
+        if not speedup_metric in stats or not speedup_metric in baseline_stats:
+            print("ERR: Stats not the same")
+            return
+        
+        num_workloads = len(workloads)
+        workload_locations = np.arange(num_workloads) * ((bar_width * len(configs) + bar_spacing * (len(configs) - 1)) + workload_spacing)  
+        
+        all_data = experiment.retrieve_stats(configs, [speedup_metric], workloads)
+        baseline_data = experiment_baseline.retrieve_stats(configs, [speedup_metric], workloads)
+
+        if all_data.keys() != baseline_data.keys():
+            print("ERR: Keys don't match")
+            return
+
+        plt.figure(figsize=(6+num_workloads,8))
+
+        key_order = None
+
+        # For each Config
+        for x_offset, config in enumerate(configs):
+            # Plot each workload's stat as bar graph      
+
+            # Determine keys (all workloads for this config) ordering consistently
+            selected_keys = [key for key in all_data.keys() if config in key] 
+            selected_keys = sorted(selected_keys)
+
+            # Verify consistent ordering
+            if key_order == None: key_order = list(map(lambda x:x.split(" ")[1], selected_keys))
+            else:
+                for i in range(len(key_order)):
+                    if key_order[i] != selected_keys[i].split(" ")[1]:
+                        print("ERR: Ordering")
+                        return
+                    
+            # Find speedup of all data
+            data = [all_data[key]/baseline_data[key] if baseline_data[key] != 0 else 0 for key in selected_keys]
+
+            if colors == None:
+                color_map = plt.get_cmap("Paired")
+                color = color_map((x_offset*(1/12))%1)
+            else:
+                color = colors[x_offset%len(colors)]
+
+            # Graph
+            b = plt.bar(workload_locations + x_offset*(bar_width + bar_spacing), data, [bar_width] * num_workloads, 
+                        color=color)
+            b.set_label(config)
+
         plt.legend(loc="center left", bbox_to_anchor=(1,0.5))
-        plt.savefig("b.jpeg")
+
+        if y_label == "":
+            y_label = f"Speedup as measured by {speedup_metric}"
+
+        # Use saved order to label workloads
+        plt.xticks(workload_locations, key_order)
+        
+        plt.title(title)
+        plt.xlabel(x_label)
+        plt.ylabel(y_label)
+
+        if plot_name == None:
+            plt.show()
+        else: plt.savefig(plot_name)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -534,16 +689,18 @@ if __name__ == "__main__":
     da = stat_aggregator()
     #E = da.load_experiment_json(args.descriptor_name, args.sim_path, args.trace_path)
     E = Experiment("panda3.csv")
+    E2 = Experiment("panda3.csv")
+    da.plot_speedups(E, E2, "Cumulative Cycles", plot_name="a.png")
     #print(E.data)
     #print(E.data)
     #E = Experiment("panda.csv")
     # ipc = instruction / cycles => surrount all column names with df[%s] and then eval()
-    #da.plot_stacked(E, "exp2", ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8", "fe_ftq_block_num.16"])
-    #a.plot_workloads(E, "exp2", ["BTB_ON_PATH_MISS_count", "BTB_ON_PATH_HIT_count", "BTB_OFF_PATH_MISS_count", "BTB_ON_PATH_WRITE_count", "BTB_OFF_PATH_WRITE_count"], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8"], speedup_baseline="fe_ftq_block_num.16", logscale=False, average=True)
+    #da.plot_stacked(E, ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8", "fe_ftq_block_num.16"], plot_name="output.png")
+    #da.plot_workloads(E, ["BTB_ON_PATH_MISS_count", "BTB_ON_PATH_HIT_count", "BTB_OFF_PATH_MISS_count", "BTB_ON_PATH_WRITE_count", "BTB_OFF_PATH_WRITE_count"], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8"], speedup_baseline="fe_ftq_block_num.16", logscale=False, average=True, plot_name="output.png")
     #print(E.retrieve_stats("exp2", ["fe_ftq_block_num.16"], ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql"], "Simpoint"))
-    k = 1
-    E.derive_stat(f"test=(BTB_OFF_PATH_MISS_count + {k})") 
-    da.plot_workloads(E, "exp2", ["test"], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8"], speedup_baseline="fe_ftq_block_num.16", logscale=False, average=True)
+    #k = 1
+    #E.derive_stat(f"test=(BTB_OFF_PATH_MISS_count + {k})") 
+    #da.plot_workloads(E, "exp2", ["test"], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8"], speedup_baseline="fe_ftq_block_num.16", logscale=False, average=True)
     #print(E.get_stats())
     #E.to_csv("test.csv")
     #print(E.retrieve_stats("exp2", ["fe_ftq_block_num.16"], ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql", "xgboost"], aggregation_level="Config"))
