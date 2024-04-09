@@ -4,6 +4,17 @@ Dockerfiles of docker images running data center workloads and run Scarab simula
 ## Docker setup
 Install Docker based on the instructions from official [docker docs](https://docs.docker.com/engine/install/).
 
+## Requirements
+To run scarab in a docker container, the host machine should use non-root user and the user has a proper GitHub setup to access https://github.com/Litz-Lab/scarab.
+
+## Clean up any cached docker container/image/builds
+```
+docker stop isca2024_udp_$USER
+docker rm isca2024_udp_$USER
+docker rmi isca2024_udp:latest
+docker system prune
+```
+
 ## 1. Build a Docker image and run a container of a built image where all the traces/simpoints are available and ready to run Scarab
 ```
 ./run.sh -o <path_to_mount_docker_home> -b 2

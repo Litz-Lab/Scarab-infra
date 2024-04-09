@@ -1,7 +1,7 @@
 #!/bin/bash
 #set -x #echo on
 
-useradd -u $user_id -o -m $username || echo "User already exists."
+useradd -u $user_id -o -m $username || true
 groupmod -g $group_id $username
 cd /home/$username
 if [ ! -d "/home/$username/scarab" ]; then
