@@ -121,3 +121,16 @@ An example commit for adding mongo-perf : https://github.com/5surim/dcworkloads-
 * HHVM OSS (drupal7, mediawiki, wordpress) - Scarab complilation failed.
 * SPEC2017 - only 502.gcc_r has been added. The SimPoint flow fixes the input size to `train` and the segment size to `100000000`.
 * Verilator - setup based on https://github.com/efeslab/ispy-ripple. Clustering aborted due to out of memory.
+
+# Publications
+
+```
+@inproceedings{oh2024udp,
+  author = {Oh, Surim and Xu, Mingsheng and Khan, Tanvir Ahmed and Kasikci, Baris and Litz, Heiner},
+  title = {UDP: Utility-Driven Fetch Directed Instruction Prefetching},
+  booktitle = {Proceedings of the 51st International Symposium on Computer Architecture (ISCA)},
+  series = {ISCA 2024},
+  year = {2024},
+  month = jun,
+}
+```
