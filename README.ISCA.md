@@ -43,3 +43,16 @@ Run a given script to generate Figure 13, 14, 15, 16, 17 in the paper (Figure13.
 cd ./isca2024_udp/plot
 ./plot_figures.sh /home/$USER/isca2024_home/
 ```
+
+# Publications
+
+```
+@inproceedings{oh2024udp,
+  author = {Oh, Surim and Xu, Mingsheng and Khan, Tanvir Ahmed and Kasikci, Baris and Litz, Heiner},
+  title = {UDP: Utility-Driven Fetch Directed Instruction Prefetching},
+  booktitle = {Proceedings of the 51st International Symposium on Computer Architecture (ISCA)},
+  series = {ISCA 2024},
+  year = {2024},
+  month = jun,
+}
+```
