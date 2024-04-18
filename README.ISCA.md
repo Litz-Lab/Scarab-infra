@@ -6,6 +6,9 @@ Install Docker based on the instructions from official [docker docs](https://doc
 
 ## Requirements
 To run scarab in a docker container, the host machine should use non-root user and the user has a proper GitHub setup to access https://github.com/Litz-Lab/scarab.
+To run docker as a non-root user, run: "sudo chmod 666 /var/run/docker.sock" (ref: https://stackoverflow.com/questions/48957195/how-to-fix-docker-got-permission-denied-issue)
+To generate a new SSH key and it to the machine's SSH agent: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent?platform=linux
+Add a new SSH key to your GitHub account: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account?platform=linux
 
 ## Clean up any cached docker container/image/builds
 ```
