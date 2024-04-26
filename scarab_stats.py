@@ -419,7 +419,7 @@ class stat_aggregator:
 
                     if colors == None:
                         color_map = plt.get_cmap("Paired")
-                        color = color_map((stat_number*(1/12))%1)
+                        color = color_map((stat_number*(1/11))%1)
                     else:
                         color = colors[stat_number%len(colors)]
 
@@ -659,7 +659,7 @@ class stat_aggregator:
                     if x_offset > len(hatches):
                         print("WARN: Too many configs for unique configuration labels")
                     b = plt.bar(workload_locations + x_offset*(bar_width + bar_spacing), data, [bar_width] * num_workloads, 
-                            bottom=offsets, color = color, hatch=hatches[x_offset % len(hatches)], fill=False, edgecolor = color)
+                            bottom=offsets, color = color, hatch=hatches[x_offset % len(hatches)])#, fill=False, edgecolor = color)
 
                 elif label_method == 1:
                     b = plt.bar(workload_locations + x_offset*(bar_width + bar_spacing), data, [bar_width] * num_workloads, 
@@ -1018,3 +1018,9 @@ if __name__ == "__main__":
     #print(E.retrieve_stats("exp2", ["fe_ftq_block_num.16"], ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql", "xgboost"], aggregation_level="Config"))
     #da.plot_simpoints(E, "exp2", ["BTB_ON_PATH_MISS_total_count"], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8"], speedup_baseline="fe_ftq_block_num.16", title="Simpoint")
     #da.plot_configs(E, "exp2", ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql", "xgboost"], ["fe_ftq_block_num.16", "fe_ftq_block_num.8"])
+
+# TODO: launch jupyter server and use it there
+# Open to tutorial
+# Multiple users
+# Sandboxing, per user
+# Sharing?
