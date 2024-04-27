@@ -68,5 +68,5 @@ echo "When you are done run the following on Bohr:"
 echo "./stop_jupyter.sh"
 echo 
 echo "To close the ssh tunnel on your local (unix) machine, use the following to get pid to kill:"
-echo "ps -a -o pid,cmd | grep ssh"
+echo "ps -axo pid,user,cmd | grep 'ssh -NfL localhost:$port:localhost:$port'"
 echo "(Above not requied if using vscode with Remote - SSH extension)"
