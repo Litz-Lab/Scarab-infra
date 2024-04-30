@@ -1,0 +1,11 @@
+name: statslib
+channels:
+- conda-forge
+dependencies:
+- python=3.8.10
+- pip
+- pip:
+  - notebook==7.1.3
+  - pandas==1.4.1
+  - matplotlib==3.5.1
+  - numpy==1.22.2
