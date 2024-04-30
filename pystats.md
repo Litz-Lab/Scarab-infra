@@ -9,11 +9,14 @@ I use vscode with the jupyter extention and the Remote - SSH extention to get a 
 ## Quickstart
 ### Using the quick start guide with jupyter notebooks
 Prerequisites:
-1) Install the jupyter notebook server with `pip3 install notebook`
+1) Install the jupyter notebook server with `pip3 install notebook` OR use the provided conda envronment
 1) Have serve_jupyter.sh in the directory you want to create the server
 1) Have scarab_stats_quick_start.ipynb in the directory you want to create the server
 1) Have scarab_stats.py in the directory you want to create the server
 **You need the quick start guide and serve_jupyter.sh in the same directory**
+
+Using conda:
+Please run `conda env create --file quickstart_env.yaml` on bohr using the provided quickstart_env.yaml file. This will provide you with all the notebooks pip library required for running the server
 
 Running the guide:
 Then you can run ./serve_jupyter.sh on bohr3 to start the server. It will take around 4 seconds to get a port, start the server, and generate the kill script.
