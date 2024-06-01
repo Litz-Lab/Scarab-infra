@@ -21,7 +21,7 @@ class Experiment:
 
         else:
             self.data = pd.DataFrame()
-            rows = stats
+            rows = stats.copy()
             rows.append("Experiment")
             rows.append("Architecture")
             rows.append("Configuration")
@@ -260,9 +260,10 @@ class stat_aggregator:
         
 
     # Load simpoint from csv file as pandas dataframe
-    def load_simpoint(self, path, load_ramulator=True, ignore_duplicates = True):
-        data = []
+    def load_simpoint(self, path, load_ramulator=True, ignore_duplicates = True, return_stats = False, order = None):
+        data = pd.Series(dtype=pd.Float64Dtype)
         all_stats = []
+        
         for file in stat_files:
             filename = f"{path}{file}"
             df = pd.read_csv(filename).T
@@ -270,26 +271,74 @@ class stat_aggregator:
             df = df.drop(df.index[0])
 
             if ignore_duplicates:
-                to_add = list(df.columns)
-                duplicates = set(to_add) & set(all_stats)
-                df = df.drop(columns=duplicates)
-                all_stats += to_add
+                duplicates = set(df.columns) & set(data.index)
+                
+                if duplicates != set():
+                    df = df.drop(columns=list(duplicates))
+            
+            # Check duplicates in df.columns
+            if True in df.columns.duplicated():
+                print("WARN: CSV file contains duplicates")
+                print("Duplicates are:", set(df.columns[df.columns.duplicated(False)]))
+                print("Checking if issue is resolvable...")
 
+                duplicated = set(df.columns[df.columns.duplicated(False)])
+                equals = [(df[lbl].iloc[0] == df[lbl].iloc[0][0]).all() for lbl in duplicated]
+                if not all(equals):
+                    print(f"ERR: Unable to resolve duplicates. Duplicate columns have unique values. File:{filename}")
+                    exit(1)
+                
+                print("Duplicates equivalent! Resolved")
+                df = df.drop_duplicates()
+            
+            # Check for elements in both
+            if set(df.columns) & set(all_stats) != set():
+                print("ERR: Duplication prevention logic failed")
+                exit(1)
 
-            data += list(map(float, list(df.iloc[0])))
+            all_stats += list(df.columns)
+            data = pd.concat([data, df.iloc[0]])
+
 
         if load_ramulator:
             f = open(f"{path}ramulator.stat.out")
             lines = f.readlines()
 
+            tmp = []
+            tmp_lbl = []
             for line in lines:
                 if not "ramulator." in line:
                     continue
-                data.append(line.split()[1])
+
+                all_stats.append(line.split()[0])
+                tmp_lbl.append(line.split()[0])
+                tmp.append(line.split()[1])
+
+            data = pd.concat([data, pd.Series(tmp, index=tmp_lbl)])
 
             f.close()
+
+
+        #if order != None:
+        #    tmp = []
+        #    for lbl in order:
+        #        if lbl in list(data.index):
+        #            tmp.append(data[lbl])
+        #        else: tmp.append("nan")
+        
+        # TODO: REmove duplicates. Ramulator duplicated??
+
+        if order != None: 
+            data.drop_duplicates()
+
+        if order != None:
+            data = data.reindex(order, fill_value="nan")
+
+        data = list(map(float, list(data)))
+        if order != None: print(len(data), len(order))
             
-        return data
+        if not return_stats: return data
+        else: return all_stats
 
     # Load experiment from saved file
     def load_experiment_csv(self, path):
@@ -308,6 +357,51 @@ class stat_aggregator:
 
         experiment_name = json_data["experiment"]
         architecture = json_data["architecture"]
+
+        known_stats = None
+
+        # Set set of all stats. Should only differ by config
+        for config in json_data["configurations"]:
+            # Use first workload
+            workload = json_data["workloads_list"][0]
+
+            # Get path to the simpoint metadata
+            metadata_path = f"{simpoints_path}{workload}/simpoints/"
+
+            # Get path to the simpoint metadata
+            with open(f"{metadata_path}opt.p.lpt0.99", "r") as cluster_ids, open(f"{metadata_path}opt.w.lpt0.99", "r") as weights:
+
+                cluster_id, weight = (cluster_ids.readlines()[0], weights.readlines()[0])
+                cluster_id, seg_id_1 = [int(i) for i in cluster_id.split()]
+                weight, seg_id_2 = float(weight.split()[0]), int(weight.split()[1])
+
+                if seg_id_1 != seg_id_2:
+                    print(f"ERROR: Simpoints listed out of order in {metadata_path}opt.p.lpt0.99 and opt.w.lpt0.99.")
+                    print(f"       Encountered {seg_id_1} in .p and {seg_id_2} in .w")
+                    exit(1)
+
+                directory = f"{simulations_path}{workload}/{experiment_name}/{config}/{str(cluster_id)}/"
+                print("CHECK", directory)
+
+                a = self.load_simpoint(directory, return_stats=True)
+                if known_stats == None: known_stats = a
+                else:
+                    if set(a) != set(known_stats):
+                        print("WARN: Stats differ across configs")
+
+                        # Difference contains new (unseen) stats, and stats which were previously seen but are not present in this config
+                        difference = set(a) - set(known_stats) | set(known_stats) - set(a)
+                        print("Differing stats:", difference)
+                        print("WARN: Differing stats will be resolved by adding empty (nan) values for configs where they don't exist")
+
+                        # Only add those which are new
+                        known_stats += list(set(a) - set(known_stats))
+
+        if len(known_stats) != len(set(known_stats)):
+            print("ERR: After finding superset, known_stats contains duplicates")
+            duplicates = [a for a in known_stats if known_stats.count(a) > 1]
+            print(f"Duplicates ({len(duplicates)}):", duplicates)
+            exit(1)
 
         # Create initial experiment object
         experiment = None
@@ -334,11 +428,10 @@ class stat_aggregator:
                         directory = f"{simulations_path}{workload}/{experiment_name}/{config}/{str(cluster_id)}/"
 
                         if experiment == None:
-                            all_stats = self.get_all_stats(directory)
-                            experiment = Experiment(all_stats)
+                            experiment = Experiment(known_stats)
                         
                         print(f"LOAD {directory}")
-                        data = self.load_simpoint(directory)
+                        data = self.load_simpoint(directory, order=known_stats)
                         experiment.add_simpoint(data, experiment_name, architecture, config, workload, seg_id_1, cluster_id, weight)
                         print(f"LOADED")
         
@@ -998,11 +1091,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     da = stat_aggregator()
-    #E = da.load_experiment_json(args.descriptor_name, args.sim_path, args.trace_path)
-    E = Experiment("panda3.csv")
-    E2 = Experiment("panda3.csv")
+    E = da.load_experiment_json(args.descriptor_name, args.sim_path, args.trace_path)
+    #E = Experiment("panda3.csv")
+    #E2 = Experiment("panda3.csv")
     #da.plot_speedups(E, E2, "Cumulative Cycles", plot_name="a.png")
-    da.diff_stats(E, E2)
+    #da.diff_stats(E, E2)
     #print(E.data)
     #print(E.data)
     #E = Experiment("panda.csv")
@@ -1014,7 +1107,7 @@ if __name__ == "__main__":
     #E.derive_stat(f"test=(BTB_OFF_PATH_MISS_count + {k})") 
     #da.plot_workloads(E, "exp2", ["test"], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8"], speedup_baseline="fe_ftq_block_num.16", logscale=False, average=True)
     #print(E.get_stats())
-    #E.to_csv("test.csv")
+    E.to_csv("test.csv")
     #print(E.retrieve_stats("exp2", ["fe_ftq_block_num.16"], ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql", "xgboost"], aggregation_level="Config"))
     #da.plot_simpoints(E, "exp2", ["BTB_ON_PATH_MISS_total_count"], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8"], speedup_baseline="fe_ftq_block_num.16", title="Simpoint")
     #da.plot_configs(E, "exp2", ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql", "xgboost"], ["fe_ftq_block_num.16", "fe_ftq_block_num.8"])
