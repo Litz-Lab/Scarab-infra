@@ -488,7 +488,7 @@ class stat_aggregator:
 
         # TODO: Refactor to remove a loop, and ask how average should work
         if average and speedup_baseline != None:
-            print("WARN: Average and a spedup baseline is currently unsupported.")
+            print("WARN: Average and a speedup baseline is currently unsupported.")
             print("INFO: Ignoring average parameter")
 
         # For each stat
