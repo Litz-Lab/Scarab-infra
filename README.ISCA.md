@@ -4,6 +4,20 @@ Dockerfiles of docker images running data center workloads and run Scarab simula
 ## Docker setup
 Install Docker based on the instructions from official [docker docs](https://docs.docker.com/engine/install/).
 
+## Requirements
+To run scarab in a docker container, the host machine should use non-root user and the user has a proper GitHub setup to access https://github.com/Litz-Lab/scarab.
+To run docker as a non-root user, run: "sudo chmod 666 /var/run/docker.sock" (ref: https://stackoverflow.com/questions/48957195/how-to-fix-docker-got-permission-denied-issue)
+To generate a new SSH key and it to the machine's SSH agent: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent?platform=linux
+Add a new SSH key to your GitHub account: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account?platform=linux
+
+## Clean up any cached docker container/image/builds
+```
+docker stop isca2024_udp_$USER
+docker rm isca2024_udp_$USER
+docker rmi isca2024_udp:latest
+docker system prune
+```
+
 ## 1. Build a Docker image and run a container of a built image where all the traces/simpoints are available and ready to run Scarab
 ```
 ./run.sh -o <path_to_mount_docker_home> -b 2
@@ -31,4 +45,17 @@ Run a given script to generate Figure 13, 14, 15, 16, 17 in the paper (Figure13.
 ```
 cd ./isca2024_udp/plot
 ./plot_figures.sh /home/$USER/isca2024_home/
+```
+
+# Publications
+
+```
+@inproceedings{oh2024udp,
+  author = {Oh, Surim and Xu, Mingsheng and Khan, Tanvir Ahmed and Kasikci, Baris and Litz, Heiner},
+  title = {UDP: Utility-Driven Fetch Directed Instruction Prefetching},
+  booktitle = {Proceedings of the 51st International Symposium on Computer Architecture (ISCA)},
+  series = {ISCA 2024},
+  year = {2024},
+  month = jun,
+}
 ```
