@@ -1,0 +1,18 @@
+{
+    "architecture": "sunny_cove",
+    "workloads_list": [
+        "clang",
+        "gcc",
+        "mongodb",
+        "mysql",
+        "postgres",
+        "verilator",
+        "xgboost"
+    ],
+    "experiment": "isca",
+    "configurations": {
+        "baseline/32": "--bp_mech tage64k --fdip_enable 1 --btb_entries 8192 --perfect_crs 1 --uop_cache_enable 0 --wp_collect_stats 1 --mem_req_buffer_entries 64 --ramulator_readq_entries 64 --fetch_across_cache_line 1 --fe_ftq_block_num 32",
+        "udp/btb8k/pessimistic_bitmap": "--bp_mech tage64k --fdip_enable 1 --btb_entries 8192 --perfect_crs 1 --uop_cache_enable 0 --wp_collect_stats 1 --mem_req_buffer_entries 64 --ramulator_readq_entries 64 --fetch_across_cache_line 1 --fdip_utility_hash_enable 1 --fdip_bloom_filter 0 --fdip_bp_confidence 1 --fdip_bp_perfect_confidence 0 --fdip_utility_only_train_off_path 1 --fdip_off_path_threshold 300 --fdip_off_path_conf_inc 1 --fdip_btb_miss_rate_weight 2000 --fdip_ghist_bits 10 --fdip_utility_learn_policy 0 --fdip_btb_miss_bp_taken_conf 1",
+        "udp_bloom/btb8k/pessimistic_bitmap": "--bp_mech tage64k --fdip_enable 1 --btb_entries 8192 --perfect_crs 1 --uop_cache_enable 0 --wp_collect_stats 1 --mem_req_buffer_entries 64 --ramulator_readq_entries 64 --fetch_across_cache_line 1 --fdip_utility_hash_enable 0 --fdip_bloom_filter 1 --fdip_bp_confidence 1 --fdip_bp_perfect_confidence 0 --fdip_utility_only_train_off_path 1 --fdip_off_path_threshold 300 --fdip_off_path_conf_inc 1 --fdip_btb_miss_rate_weight 2000 --fdip_ghist_bits 10 --fdip_utility_learn_policy 0 --fdip_btb_miss_bp_taken_conf 1"
+  }
+}

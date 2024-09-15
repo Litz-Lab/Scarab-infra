@@ -1,16 +1,16 @@
 # Scarab-infra
 Dockerfiles of docker images running data center workloads and run Scarab simulation
 
-For UCSC LitzLab users, please refer to README.LitzLab.md to avoid downloading the traces and to use shared traces in UCSC NFS.
-
 ## Docker setup
 Install Docker based on the instructions from official [docker docs](https://docs.docker.com/engine/install/).
 
 ## Requirements
-To run scarab in a docker container, the host machine should use non-root user and the user has a proper GitHub setup to access https://github.com/Litz-Lab/scarab.
-To run docker as a non-root user, run: "sudo chmod 666 /var/run/docker.sock" (ref: https://stackoverflow.com/questions/48957195/how-to-fix-docker-got-permission-denied-issue)
-To generate a new SSH key and it to the machine's SSH agent: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent?platform=linux
-Add a new SSH key to your GitHub account: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account?platform=linux
+To run scarab_ll non-public branches in a docker container, the host machine should have ssh private key ~/.ssh/id_rsa permitted to clone 'scarab_ll' github repository.
+Only use this for images that are private and will always be! The private key will be visible in the container.
+
+To run the SPEC2017 benchmarks, the host machine should have the image `cpu2017-1_0_5.iso` under `SPEC2017/`.
+
+To access traces and simpoints already residing in UCSC LDAP (allbench_traces), you need a BSOE account.
 
 ## Build a Docker image and run a container of a built image
 
@@ -43,46 +43,23 @@ c     Clean up all the containers/volumes after run. 0: No clean up 2: Clean up 
 There are four ways to run Scarab: 1) execution-driven w/o SimPoint (-s 1) 2) trace-based w/o SimPoint (-s 2) 3) execution-driven w/ SimPoint (-s 3) 4) trace-based w/ SimPoint (-s 4). The execution-driven simulation runs the application binary directly without using traces while the trace-based simulation needs collected traces to run the application. SimPoints are used for fast-forwarding on the execution-driven run and for collecting traces/simulating on the trace-based run.
 You need to provide the list of the applications you want to build images for them in 'apps.list' file, and the list of the Scarab parameters to generate parameter descriptor file in '<experiment_name>.json'. Please refer to the 'apps.list' and 'exp2.json' files for the examples.
 
-The following steps are for the fourth running scenario (trace-based w/ SimPoint) with the traces of datacenter workloads we already collected.
-#### 1. Build a Docker image and run a container of a built image where all the traces/simpoints are available and ready to run Scarab
+1. Run a container to run Scarab simulations with already-collected traces with simpoints (Should have access to UCSC NFS)
+#### Build the image where all the traces/simpoints are available and ready to run Scarab)
 ```
-./run.sh -o <path_to_mount_docker_home> -b 2
+./run.sh -o /soe/$USER/allbench_home -b 2
 ```
-For example,
-```
-./run.sh -o /home/$USER/docker_home -b 2
-```
-
-#### 2. Run Scarab simulations by using a descriptor file
-The example file descriptor for all the simulation scenarios is in docker_traces/desc.json and docker_traces/desc.pt.json
-The simulations using memtrace or pt traces should be launched separately with different simulation mode (4 : memtrace, 5 : PT trace). Still the two executions can be parallelized (by launching on different terminals).
+#### Run Scarab simulations by using a descriptor file
+First, modify <experiment>.json file to provide all the simulationscenarios to run Scarab
 Run the following command with <experiment> name for -e.
 ```
-./run.sh -o /home/$USER/docker_home -s 4 -e desc
-./run.sh -o /home/$USER/docker_home -s 5 -e desc.pt
-```
-The script will launch Scarab simulations in background until it runs all the different scenarios x workloads. You can check if all the simulations are over by checking if there is any 'scarab' process running (UNIX 'top' command).
-
-#### 3. Update and rebuild Scarab
-A user can update scarab and rebuild for further simulation. Scarab can be updated 'outside' of the container because scarab visible inside the docker container is read only. To exploit already-set simulation/building environment, scarab build itself should be done 'inside' the container.
-##### To update Scarab, cd to scarab directory in the absolute path you used for building the docker container.
-```
-cd /home/$USER/docker_traces/scarab
-(update scarab)
-```
-##### To build scarab again with the updated scarab, go inside the container and build.
-```
-docker exec --user=$USER --privileged docker_traces_$USER /bin/bash -c "cd /home/$USER/scarab/src && make"
+./run.sh -o /soe/$USER/allbench_home -s 4 -e exp2
 ```
 
-#### 4. Clean up any cached docker container/image/builds
+2. Run containers to set up applications for running/tracing/simulating
+#### Build the image from the beginning and run the application with trace-base mode by collecting the traces without simpoint methodology. Copy the collected traces and the simulation results to host after the run.
 ```
-docker stop docker_traces_$USER
-docker rm docker_traces_$USER
-docker rmi docker_traces:latest
-docker system prune
+./run.sh -o /soe/$USER/example_home -b 2 -s 0 -t 1 -s 2
 ```
-
 ### Step-by-step on an interactive attachment
 #### Build an image
 ```

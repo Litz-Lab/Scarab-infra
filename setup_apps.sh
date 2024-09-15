@@ -88,6 +88,10 @@ case $APPNAME in
     echo "isca2024"
     APP_GROUPNAME="isca2024_udp"
     ;;
+  docker_traces)
+    echo "docker_traces"
+    APP_GROUPNAME="docker_traces"
+    ;;
   *)
     APP_GROUPNAME="unknown"
     echo "unknown application"
@@ -209,6 +213,9 @@ case $APPNAME in
     ;;
   isca2024)
     echo "No BINCMD available for isca2024 trace runs"
+    ;;
+  docker_traces)
+    echo "No BINCMD available for docker_traces trace runs"
     ;;
   *)
     echo "unknown application"

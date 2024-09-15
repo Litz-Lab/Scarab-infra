@@ -36,7 +36,7 @@ Run the following command with <experiment> name for -e.
 ./run.sh -o /home/$USER/isca2024_home -s 5 -e isca.pt
 ```
 
-The script will launch Scarab simulations background until it run all the different scenarios x workloads. It will take approximately 24 hours. You can check if all the simulations are over by checking if there is any 'scarab' process running (UNIX 'top' command).
+The script will launch Scarab simulations in background until it runs all the different scenarios x workloads. It will take approximately 24 hours. You can check if all the simulations are over by checking if there is any 'scarab' process running (UNIX 'top' command).
 
 ## 3. Plot the results
 If you don't see any 'scarab' runs, you are now ready to generate the figures.
