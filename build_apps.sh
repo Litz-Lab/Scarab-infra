@@ -5,9 +5,9 @@ GROUP_ID=${LOCAL_GID:-9001}
 
 # build from the beginning and overwrite whatever image with the same name
 if [ $BUILD == 2 ]; then
-  DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build . -f ./$APP_GROUPNAME/Dockerfile --no-cache -t $APP_GROUPNAME:latest
+  docker build . -f ./$APP_GROUPNAME/Dockerfile --no-cache -t $APP_GROUPNAME:latest
 elif [ $BUILD == 1 ]; then # find the existing cache/image and start from there
-  DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build . -f ./$APP_GROUPNAME/Dockerfile -t $APP_GROUPNAME:latest
+  docker build . -f ./$APP_GROUPNAME/Dockerfile -t $APP_GROUPNAME:latest
 fi
 
 # create volume for the app group
