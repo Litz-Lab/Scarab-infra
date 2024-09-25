@@ -76,6 +76,10 @@ case $APPNAME in
     echo "tailbench"
     APP_GROUPNAME="tailbench"
     ;;
+  taobench | feedsim | django| video_transcode_bench)
+    echo "DCPerf"
+    APP_GROUPNAME="dcperf"
+    ;;
   example)
     echo "example"
     APP_GROUPNAME="example"
@@ -204,6 +208,18 @@ case $APPNAME in
     ;;
   tailbench)
     #TODO
+    ;;
+  taobench)
+    BINCMD="\$tmpdir/DCPerf/benchpress_cli.py run tao_bench_autoscale"
+    ;;
+  feedsim)
+    BINCMD="\$tmpdir/DCPerf/benchpress_cli.py run feedsim_autoscale"
+    ;;
+  django)
+    BINCMD="\$tmpdir/DCPerf/benchpress_cli.py run django_workload_default"
+    ;;
+  video_transcode_bench)
+    BINCMD="\$tmpdir/DCPerf/benchpress_cli.py run video_transcode_bench_svt"
     ;;
   example)
     BINCMD="/home/$USER/scarab/utils/qsort/test_qsort"
