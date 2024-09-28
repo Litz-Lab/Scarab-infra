@@ -94,7 +94,7 @@ if [ "$SIMPOINT" == "2" ]; then
     cp raw/modules.log raw/modules.log.bak
     python2 $HOME/scarab/utils/memtrace/portabilize_trace.py .
     cp bin/modules.log raw/modules.log
-    $DYNAMORIO_HOME/clients/bin64/drraw2trace -jobs 40 -indir ./raw/ -chunk_instr_count $CHUNKSIZE &
+    $DYNAMORIO_HOME/tools/bin64/drraw2trace -jobs 40 -indir ./raw/ -chunk_instr_count $CHUNKSIZE &
     taskPids+=($!)
     cd -
   done
@@ -265,7 +265,7 @@ elif [ "$SIMPOINT" == "1" ]; then
     cp raw/modules.log raw/modules.log.bak
     python2 $HOME/scarab/utils/memtrace/portabilize_trace.py .
     cp bin/modules.log raw/modules.log
-    $DYNAMORIO_HOME/clients/bin64/drraw2trace -jobs 40 -indir ./raw/ -chunk_instr_count $CHUNKSIZE &
+    $DYNAMORIO_HOME/tools/bin64/drraw2trace -jobs 40 -indir ./raw/ -chunk_instr_count $CHUNKSIZE &
     taskPids+=($!)
     sleep 2
   done
@@ -341,7 +341,7 @@ else # non-simpoint
   cp raw/modules.log raw/modules.log.bak
   python2 $HOME/scarab/utils/memtrace/portabilize_trace.py .
   cp bin/modules.log raw/modules.log
-  $DYNAMORIO_HOME/clients/bin64/drraw2trace -indir ./raw/ &
+  $DYNAMORIO_HOME/tools/bin64/drraw2trace -indir ./raw/ &
   taskPids+=($!)
   sleep 2
 

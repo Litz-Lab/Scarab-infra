@@ -49,15 +49,9 @@ ENV tmpdir="/tmp_home"
 RUN mkdir -p $tmpdir && chmod -R 755 $tmpdir
 WORKDIR $tmpdir
 
-# DynamoRIO build from source
-RUN cd $tmpdir && git clone --recursive https://github.com/DynamoRIO/dynamorio.git && cd dynamorio && git reset --hard release_10.0.0 && mkdir build && cd build && cmake .. && make -j 40
-
-# Build DynamoRIO package for fingerprint client
-# TODO: Known issue. The package fails to build on Ubuntu version >= 22.04 due to glibc version is too recent (2.17 supported in DynamoRIO).
-RUN mkdir $tmpdir/dynamorio/package && \
-    cd $tmpdir/dynamorio/package && \
-    ctest -V -S ../make/package.cmake,build=1\;no32
-ENV DYNAMORIO_HOME=$tmpdir/dynamorio/package/build_release-64/
+# DynamoRIO package
+RUN cd $tmpdir && wget https://github.com/DynamoRIO/dynamorio/releases/download/release_10.0.0/DynamoRIO-Linux-10.0.0.tar.gz && tar -xzvf DynamoRIO-Linux-10.0.0.tar.gz
+ENV DYNAMORIO_HOME=$tmpdir/DynamoRIO-Linux-10.0.0/
 
 # Build fingerprint client
 COPY fingerprint_src $tmpdir/fingerprint_src/
