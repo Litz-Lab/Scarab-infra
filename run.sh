@@ -151,7 +151,11 @@ if [ $SCARABMODE ]; then
   while read APPNAME; do
     source setup_apps.sh
     # update the script
-    docker cp ./run_exp_using_descriptor.py $APP_GROUPNAME\_$USER:/usr/local/bin
+    if [ "$APP_GROUPNAME" == "cse220" ]; then
+      docker cp ./$APP_GROUPNAME/run_exp_using_descriptor.py $APP_GROUPNAME\_$USER:/usr/local/bin
+    else
+      docker cp ./run_exp_using_descriptor.py $APP_GROUPNAME\_$USER:/usr/local/bin
+    fi
     if [ "$APP_GROUPNAME" == "allbench_traces" ]; then
       cp ${EXPERIMENT}.json $OUTDIR
       docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -m $SCARABMODE &
@@ -161,7 +165,7 @@ if [ $SCARABMODE ]; then
           taskPids+=($PID)
         fi
       done < <(docker top $APP_GROUPNAME\_$USER -eo pid,cmd)
-    elif [ "$APP_GROUPNAME" == "isca2024_udp" ] || [ "$APP_GROUPNAME" == "docker_traces" ]; then
+    elif [ "$APP_GROUPNAME" == "isca2024_udp" ] || [ "$APP_GROUPNAME" == "docker_traces" ] || [ "$APP_GROUPNAME" == "cse220" ]; then
       cp ${APP_GROUPNAME}/${EXPERIMENT}.json $OUTDIR
       docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -m $SCARABMODE &
       while read -r line; do
