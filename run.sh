@@ -13,6 +13,7 @@ help()
                 [ -t | --trace]
                 [ -s | --scarab ]
                 [ -e | --experiment ]
+                [ -p | --plot ]
                 [ -c | --cleanup]"
   echo
   echo "!! Modify 'apps.list' and '<experiment_name>.json' to specify the apps to build and Scarab parameters before run !!"
@@ -29,11 +30,12 @@ help()
   echo "t     Collect traces with different SimPoint workflows. 0: Do not collect traces, 1: Only collect traces without simpoint clustering, 2: Collect traces based on SimPoint workflow - post-processing (trace, collect fingerprints, do simpoint clustering). e.g) -t 2"
   echo "s     Scarab simulation mode. 0: No simulation 1: execution-driven simulation w/o SimPoint 2: trace-based simulation w/o SimPoint (-t should be 1 if no traces exist already in the container). 3: execution-driven simulation w/ SimPoint 4: trace-based simulation w/ SimPoint. 5: trace-based simulation w/o SimPoint with pt e.g) -s 4"
   echo "e     Experiment name. e.g.) -e exp2"
+  echo "p     Plot figures by using <exp>.json. e.g.) -p 1"
   echo "c     Clean up all the containers/volumes after run. 0: No clean up 2: Clean up e.g) -c 1"
 }
 
-SHORT=h:,o:,b:,t:,s:,e:,c:
-LONG=help:,outdir:,build:,trace:,scarab:,experiment:,cleanup:
+SHORT=h:,o:,b:,t:,s:,e:,p:,c:
+LONG=help:,outdir:,build:,trace:,scarab:,experiment:,plot:,cleanup:
 OPTS=$(getopt -a -n run.sh --options $SHORT --longoptions $LONG -- "$@")
 
 VALID_ARGUMENTS=$# # Returns the count of arguments that are in short or long options
@@ -71,6 +73,10 @@ do
       ;;
     -e | --experiment) # experiment name
       EXPERIMENT=$2
+      shift 2
+      ;;
+    -p | --plot) # plot figures
+      PLOT=$2
       shift 2
       ;;
     -c | --cleanup) # clean up the containers
@@ -153,6 +159,7 @@ if [ $SCARABMODE ]; then
     # update the script
     if [ "$APP_GROUPNAME" == "cse220" ]; then
       docker cp ./$APP_GROUPNAME/run_exp_using_descriptor.py $APP_GROUPNAME\_$USER:/usr/local/bin
+      docker cp ./$APP_GROUPNAME/run_cse220.sh $APP_GROUPNAME\_$USER:/usr/local/bin
     else
       docker cp ./run_exp_using_descriptor.py $APP_GROUPNAME\_$USER:/usr/local/bin
     fi
@@ -189,6 +196,25 @@ if [ $SCARABMODE ]; then
   wait_for_non_child "Scarab-simulation" "${taskPids[@]}"
   end=`date +%s`
   report_time "Scarab-simulation" "$start" "$end"
+fi
+
+if [ $PLOT ]; then
+  # plot figures by using json exp descriptor
+  echo "plot figures.."
+  taskPids=()
+  start=`date +%s`
+
+  while read APPNAME; do
+    source setup_apps.sh
+    # update the script
+    if [ "$APP_GROUPNAME" == "cse220" ]; then
+      docker cp ./$APP_GROUPNAME/plot/. $APP_GROUPNAME\_$USER:/usr/local/bin/plot
+    else
+      docker cp ./plot/. $APP_GROUPNAME\_$USER:/usr/local/bin/plot
+    fi
+    cp ${EXPERIMENT}.json $OUTDIR
+    docker exec --user $USER --env USER=$USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER /bin/bash /usr/local/bin/plot/plot_figures.sh
+  done < apps.list
 fi
 
 if [ $CLEANUP ]; then

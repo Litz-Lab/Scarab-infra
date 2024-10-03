@@ -25,6 +25,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
 
 RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 1
 
+RUN pip install matplotlib
 
 # Copy workflow simpoint/no_simpoint script
 COPY utilities.sh /usr/local/bin/utilities.sh

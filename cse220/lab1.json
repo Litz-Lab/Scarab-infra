@@ -13,7 +13,7 @@
         "520.omnetpp_r",
         "521.wrf_r",
         "523.xalancbmk_r",
-        "525.x254_r",
+        "525.x264_r",
         "526.blender_r",
         "527.cam4_r",
         "531.deepsjeng_r",
@@ -28,7 +28,7 @@
     "experiment": "lab1",
     "configurations": {
         "baseline": "--map_cycles 5 --issue_width 4",
-        "map_10": "--map_cycles 10",
-        "issue_width_10": "--issue_width 10"
+      - "map_10": "--map_cycles 10",
+      - "issue_width_10": "--issue_width 10 --node_ret_width 10"
   }
 }

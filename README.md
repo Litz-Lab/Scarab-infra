@@ -49,6 +49,13 @@ You can find the simulation results at `/home/$USER/cse220_home/exp/simulations`
 cd /home/$USER/cse220_home/exp/simulations
 ls
 ```
+If the simulation has been successfully completed, you should see `fetch.stat.0.csv` and `memory.stat.0.csv` inside each machine configuration where the entire path you can find them is `/home/$USER/cse220_home/exp/simulations/500.perlbench_r/lab1/<config_name>/fetch.stat.0.csv`.
+
+## 4. Plot the figures
+```
+./run.sh -o /home/$USER/cse220_home -e lab1 -p 1
+```
+You will find `/home/$USER/cse220_home/plot/FigureA.png` generated.
 
 # Publications
 

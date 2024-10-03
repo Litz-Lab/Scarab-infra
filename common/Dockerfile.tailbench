@@ -16,6 +16,9 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     doxygen \
     libconfig++-dev \
     vim
+
+RUN pip install matplotlib
+
 # Authorize SSH Host
 RUN mkdir -p /root/.ssh && \
     chmod 700 /root/.ssh

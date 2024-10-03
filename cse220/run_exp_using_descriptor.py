@@ -62,10 +62,19 @@ def run_experiment():
                     continue
                 config_value = descriptor_data["configurations"][config_key]
                 command = 'run_cse220.sh "' + workload + '" "' + args.application_group_name + '" "" "' + experiment + '/' + config_key + '" "' + config_value + '" "' + args.scarab_mode + '" "' + architecture + '"'
-                processes.add(subprocess.Popen("exec " + command, stdout=subprocess.PIPE, shell=True))
-                if len(processes) > max_processes:
-                    os.wait()
-                    processes.difference_update([p for p in processes if p.poll() is not None])
+                process = subprocess.Popen("exec " + command, stdout=subprocess.PIPE, shell=True)
+                processes.add(process)
+                if len(processes) >= max_processes:
+                    print("Wait processes > max_processes...")
+                    for p in processes:
+                        p.wait()
+                        processes.remove(p)
+                        break
+        print("Wait processes...")
+        for p in processes:
+            p.wait()
+        print("Simulation done!")
+
     except KeyboardInterrupt:
         print("Terminating processes...")
         for p in processes:
