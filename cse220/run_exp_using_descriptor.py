@@ -64,12 +64,14 @@ def run_experiment():
                 command = 'run_cse220.sh "' + workload + '" "' + args.application_group_name + '" "" "' + experiment + '/' + config_key + '" "' + config_value + '" "' + args.scarab_mode + '" "' + architecture + '"'
                 process = subprocess.Popen("exec " + command, stdout=subprocess.PIPE, shell=True)
                 processes.add(process)
-                if len(processes) >= max_processes:
-                    print("Wait processes > max_processes...")
-                    for p in processes:
-                        p.wait()
-                        processes.remove(p)
-                        break
+                while len(processes) >= max_processes:
+                    # Loop through the processes and wait for one to finish
+                    for p in processes.copy():
+                        if p.poll() is not None:  # This process has finished
+                            p.wait()  # Make sure it's really finished
+                            processes.remove(p)  # Remove from set of active processes
+                            break  # Exit the loop after handling one process
+
         print("Wait processes...")
         for p in processes:
             p.wait()
