@@ -31,7 +31,7 @@ def get_IPC(descriptor_data, sim_path, output_dir):
   try:
     for config_key in descriptor_data["configurations"].keys():
       ipc_config = []
-      avg_IPC_config = 1
+      avg_IPC_config = 0.0
       cnt_benchmarks = 0
       for benchmark in benchmarks_org:
         benchmark_name = benchmark.split("/")
@@ -45,7 +45,7 @@ def get_IPC(descriptor_data, sim_path, output_dir):
               IPC = float(tokens[1])
               break
 
-        avg_IPC_config *= IPC
+        avg_IPC_config += IPC
 
         cnt_benchmarks = cnt_benchmarks + 1
         if len(benchmarks_org) > len(benchmarks):
@@ -55,7 +55,7 @@ def get_IPC(descriptor_data, sim_path, output_dir):
 
       num = len(benchmarks)
       print(benchmarks)
-      ipc_config.append(avg_IPC_config**(num**-1))
+      ipc_config.append(avg_IPC_config/num)
       ipc[config_key] = ipc_config
 
     benchmarks.append('Avg')
