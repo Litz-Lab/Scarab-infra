@@ -154,10 +154,10 @@ if [ $SCARABMODE ]; then
     docker cp ./run_exp_using_descriptor.py $APP_GROUPNAME\_$USER:/usr/local/bin
     if [ "$APP_GROUPNAME" == "allbench_traces" ]; then
       cp ${EXPERIMENT}.json $OUTDIR
-      docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -m $SCARABMODE &
+      docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -m $SCARABMODE -s $HOME/scarab/ &
       while read -r line; do
         IFS=" " read PID CMD <<< $line
-        if [ "$CMD" == "python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -m $SCARABMODE" ]; then
+        if [ "$CMD" == "python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -m $SCARABMODE -s $HOME/scarab/" ]; then
           taskPids+=($PID)
         fi
       done < <(docker top $APP_GROUPNAME\_$USER -eo pid,cmd)

@@ -28,6 +28,7 @@ def run_experiment():
     parser.add_argument('-g','--application_group_name', required=True, help='Application group name. Usage: -g mongodb')
     parser.add_argument('-c','--binary_command', required=False, help='Binary command. Usage -c /usr/bin/mongd --config /etc/mongod.conf')
     parser.add_argument('-m','--scarab_mode', required=True, help='Scarab mode. Usage -m 2')
+    parser.add_argument('-s','--scarab_dir', required=False, help='Scarab directory. $HOME/scarab/')
 
     # Parse the command-line arguments
     args = parser.parse_args()
@@ -69,9 +70,15 @@ def run_experiment():
                     use_traces_simp = "1"
                 else:
                     use_traces_simp = "0"
-                command = 'run_scarab_allbench.sh "' + workload + '" "' + args.application_group_name + '" "" "' + experiment + '/' + config_key + '" "' + config_value + '" "' + args.scarab_mode + '" "' + architecture + '" "' + use_traces_simp + '"'
+
+
+                command = 'run_scarab_allbench.sh "' + workload + '" "' + args.application_group_name + '" "" "' + experiment + '/' + config_key + '" "' + config_value + '" "' + args.scarab_mode + '" "' + architecture + '" "' + use_traces_simp + '" ' + args.scarab_dir
             else:
                 command = 'run_scarab.sh "' + args.application_name + '" "' + args.application_group_name + '" "' + args.binary_command + '" "' + experiment + '/' + config_key + '" "' + config_value + '" "' + args.scarab_mode + '" "' + architecture + '"'
+            
+            
+            a = open(command, "r")
+
             os.system(command)
 
 if __name__ == "__main__":
