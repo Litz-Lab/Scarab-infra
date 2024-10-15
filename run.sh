@@ -213,7 +213,7 @@ if [ $PLOT ]; then
       docker cp ./plot/. $APP_GROUPNAME\_$USER:/usr/local/bin/plot
     fi
     cp ${APP_GROUPNAME}/${EXPERIMENT}.json $OUTDIR
-    docker exec --user $USER --env USER=$USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER /bin/bash /usr/local/bin/plot/plot_figures.sh
+    docker exec --user $USER --env USER=$USER --env EXPERIMENT=$EXPERIMENT --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER /bin/bash /usr/local/bin/plot/plot_figures.sh
   done < apps.list
 fi
 
