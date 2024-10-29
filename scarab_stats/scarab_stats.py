@@ -101,8 +101,9 @@ class Experiment:
     def defragment(self):
         self.data = self.data.copy()
 
-    def derive_stat(self, equation:str):
+    def derive_stat(self, equation:str, overwrite:bool=False):
         # TODO: Doesn't work for stats with spaces in the names
+
         # Make sure tokens have space padding
         single_char_tokens = ["+", "-", "*", "/", "(", ")", "="]
         equation = "".join([f" {c} " if c in single_char_tokens else c for c in equation])
@@ -110,8 +111,7 @@ class Experiment:
         # Tokenize
         tokens = list(filter(None, equation.split(" ")))
 
-        total_cols = len(self.data)
-        total_setups = len(self.data.iloc[0])
+        insert_index = len(self.data)
 
         #self.data.loc[total_cols] = list(self.data.loc[self.data["stats"] == "Weight"])
         
@@ -150,11 +150,22 @@ class Experiment:
         tokens.append("))")
         to_eval = " ".join(tokens)
 
+        stat_name = values[0]
+
+        print(stat_name, stat_name in set(self.data["stats"]))
+        if stat_name in set(self.data["stats"]):
+            if not overwrite:
+                print(f"ERR: Tried to overwrite stat '{stat_name}' with optional argument overwrite set to False")
+                return
+            else:
+                print(f"INFO: Overwriting value(s) of stat '{stat_name}'")
+                insert_index = self.data[self.data["stats"] == stat_name].index[0]
+
         # TODO: Unsafe!
         eval(to_eval)
 
-        row = [values[0]] + values[1]
-        self.data.loc[total_cols] = row
+        row = [stat_name] + values[1]
+        self.data.loc[insert_index] = row
         return
     
     def to_csv(self, path:str):
@@ -1091,20 +1102,23 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     da = stat_aggregator()
-    E = da.load_experiment_json(args.descriptor_name, args.sim_path, args.trace_path)
+    # E = da.load_experiment_json(args.descriptor_name, args.sim_path, args.trace_path)
     #E = Experiment("panda3.csv")
     #E2 = Experiment("panda3.csv")
     #da.plot_speedups(E, E2, "Cumulative Cycles", plot_name="a.png")
     #da.diff_stats(E, E2)
     #print(E.data)
     #print(E.data)
-    #E = Experiment("panda.csv")
+    # E.to_csv("panda.csv")
+    E = Experiment("panda.csv")
     # ipc = instruction / cycles => surrount all column names with df[%s] and then eval()
     #da.plot_stacked(E, ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8", "fe_ftq_block_num.16"], plot_name="output.png")
     #da.plot_workloads(E, ["BTB_ON_PATH_MISS_count", "BTB_ON_PATH_HIT_count", "BTB_OFF_PATH_MISS_count", "BTB_ON_PATH_WRITE_count", "BTB_OFF_PATH_WRITE_count"], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8"], speedup_baseline="fe_ftq_block_num.16", logscale=False, average=True, plot_name="output.png")
     #print(E.retrieve_stats("exp2", ["fe_ftq_block_num.16"], ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql"], "Simpoint"))
-    #k = 1
-    #E.derive_stat(f"test=(BTB_OFF_PATH_MISS_count + {k})") 
+    k = 1
+    E.derive_stat(f"test=(BTB_OFF_PATH_MISS_count + {k})") 
+    k = 100
+    E.derive_stat(f"test=(BTB_OFF_PATH_MISS_count * 0)", overwrite=True) 
     #da.plot_workloads(E, "exp2", ["test"], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8"], speedup_baseline="fe_ftq_block_num.16", logscale=False, average=True)
     #print(E.get_stats())
     E.to_csv("test.csv")
