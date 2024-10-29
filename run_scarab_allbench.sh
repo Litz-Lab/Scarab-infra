@@ -13,8 +13,6 @@ SEGSIZE=100000000
 SCARABMODE="$6"
 SCARABARCH="$7"
 TRACESSIMP="$8"
-SCARABHOME="$9"
-
 # 10M warmup by default
 WARMUP=10000000
 
@@ -126,11 +124,9 @@ if [ "$APP_GROUPNAME" == "spec2017" ]; then
   done
 fi
 
-#/home/aesymons/scarab/
-# SCARABHOME=$HOME/scarab/
+SCARABHOME=$HOME/scarab/
 
 if [ "$SCARABMODE" == "4" ]; then
-
   # overwriting
   if [ "$TRACESSIMP" == "1" ]; then
     MODULESDIR=/simpoint_traces/$APPNAME/traces_simp/bin
@@ -160,9 +156,6 @@ if [ "$SCARABMODE" == "4" ]; then
   echo "SEGSIZE read from $segmentSizeFile is $SEGSIZE"
   bash run_scarab_mode_4_allbench.sh "$SCARABHOME" "$MODULESDIR" "$TRACEFILE" "$SCARABPARAMS" "$SPDIR" "$SEGSIZE" "$OUTDIR" "$WARMUP" "$SCARABARCH" "$TRACESSIMP"
 elif [ "$SCARABMODE" == "3" ]; then
-  # echo "DEBUG: SLURM UNIMPLEMENTED"
-  # exit 42
-
   SIMHOME=$HOME/simpoint_flow/simulations/$APPNAME
   EVALHOME=$HOME/simpoint_flow/evaluations/$APPNAME
   mkdir -p $SIMHOME
@@ -225,9 +218,6 @@ elif [ "$SCARABMODE" == "3" ]; then
 
   ################################################################
 elif [ "$SCARABMODE" == "1" ] || [ "$SCARABMODE" == "2" ] || [ "$SCARABMODE" == "5" ]; then
-  # echo "DEBUG: SLURM UNIMPLEMENTED"
-  # exit 42
-
   SIMHOME=$HOME/nonsimpoint_flow/simulations/$APPNAME
   EVALHOME=$HOME/nonsimpoint_flow/evaluations/$APPNAME
   mkdir -p $SIMHOME
