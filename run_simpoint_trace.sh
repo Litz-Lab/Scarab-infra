@@ -9,6 +9,11 @@ SEGSIZE=10000000
 CHUNKSIZE=10000000
 SIMPOINT="$4"
 DRIO_ARGS="$5"
+# if specified, maxk will use the user provided value;
+# if not specified, maxk will be calculated as the square root of the number of segments
+CLUSTERING_USERK=${6:-0}
+# used by simpoint flow 1 to manually re-trace a simpoint (when the previous one does not have enough instrs)
+SIMPOINT_1_MANUAL_TRACE=${7:-NA}
 
 source utilities.sh
 
@@ -122,13 +127,13 @@ if [ "$SIMPOINT" == "2" ]; then
   fi
 
   # clustering
-  bash run_clustering.sh $APPHOME/fingerprint/bbfp $APPHOME
+  bash run_clustering.sh $APPHOME/fingerprint/bbfp $APPHOME $CLUSTERING_USERK
 
 elif [ "$SIMPOINT" == "1" ]; then
   # dir for all relevant data: fingerprint, traces, log, sim stats...
   mkdir -p $HOME/simpoint_flow/$APPNAME
   cd $HOME/simpoint_flow/$APPNAME
-  mkdir -p fingerprint traces
+  mkdir -p fingerprint traces_simp
   APPHOME=$HOME/simpoint_flow/$APPNAME
 
 
@@ -144,7 +149,7 @@ elif [ "$SIMPOINT" == "1" ]; then
 
   # collect fingerprint
   # TODO: add parameter: size and warm-up
-  fpCmd="$DYNAMORIO_HOME/bin64/drrun -max_bb_instrs 100000000 -opt_cleancall 2 -c $tmpdir/libfpg.so -no_use_bb_pc -segment_size $SEGSIZE -output $APPHOME/fingerprint/bbfp -- $BINCMD"
+  fpCmd="$DYNAMORIO_HOME/bin64/drrun -max_bb_instrs 4096 -opt_cleancall 2 -c $tmpdir/libfpg.so -no_use_bb_pc -no_use_fetched_count -segment_size $SEGSIZE -output $APPHOME/fingerprint/bbfp -pcmap_output $APPHOME/fingerprint/pcmap -- $BINCMD"
   echo "generate fingerprint..."
   echo "command: ${fpCmd}"
   # if [ "$APP_GROUPNAME" == "spec2017" ]; then
@@ -156,12 +161,19 @@ elif [ "$SIMPOINT" == "1" ]; then
   taskPids=()
   start=`date +%s`
 
-  eval $fpCmd &
-  taskPids+=($!)
+  if [ "$SIMPOINT_1_MANUAL_TRACE" == "NA" ]; then
+    eval $fpCmd &
+    taskPids+=($!)
+  fi
 
   wait_for "online fingerprint" "${taskPids[@]}"
   end=`date +%s`
   report_time "online fingerprint" "$start" "$end"
+
+  if [ "$SIMPOINT_1_MANUAL_TRACE" == "NA" ]; then
+    echo "final SEGSIZE is $SEGSIZE, written to $APPHOME/fingerprint/segment_size"
+    echo "$SEGSIZE" > $APPHOME/fingerprint/segment_size
+  fi
 
   # continue if only one bbfp file
   cd $APPHOME/fingerprint
@@ -170,10 +182,12 @@ elif [ "$SIMPOINT" == "1" ]; then
     bbfpFile=$(ls $APPHOME/fingerprint/bbfp.*)
     echo "bbfpFile: $bbfpFile"
     # run SimPoint clustering
-    bash run_clustering.sh $bbfpFile $APPHOME
+    if [ "$SIMPOINT_1_MANUAL_TRACE" == "NA" ]; then
+      bash run_clustering.sh $bbfpFile $APPHOME $CLUSTERING_USERK
+    fi
   else
   # otherwise ask the user to run manually
-    echo -e "There are multiple bbfp files. This simpoint flow would not work."
+    echo -e "There are multiple or no bbfp files. This simpoint flow would not work."
     exit
   fi
 
@@ -186,7 +200,11 @@ elif [ "$SIMPOINT" == "1" ]; then
   # map of cluster - segment
   declare -A clusterMap
   while IFS=" " read -r segID clusterID; do
-    clusterMap[$clusterID]=$segID 
+    if [ "$SIMPOINT_1_MANUAL_TRACE" == "NA" ]; then
+      clusterMap[$clusterID]=$segID
+    elif [ "$segID" == "$SIMPOINT_1_MANUAL_TRACE" ]; then
+      clusterMap[$clusterID]=$segID
+    fi
   done < $APPHOME/simpoints/opt.p.lpt0.99
 
   ################################################################
@@ -197,22 +215,24 @@ elif [ "$SIMPOINT" == "1" ]; then
   start=`date +%s`
   for clusterID in "${!clusterMap[@]}"
   do
-    mkdir -p $APPHOME/traces/$clusterID
+    segID=${clusterMap[$clusterID]}
+    mkdir -p $APPHOME/traces_simp/$segID
     # spec needs to run in its run dir
     if [ "$APP_GROUPNAME" == "spec2017" ] && [ "$APPNAME" != "clang" ] && [ "$APPNAME" != "gcc" ]; then
       ogo $APPNAME run
       cd run_base_ref*
     else
-      cd $APPHOME/traces/$clusterID
+      cd $APPHOME/traces_simp/$segID
     fi
-    segID=${clusterMap[$clusterID]}
 
     # the simulation region, in the unit of chunks
     roiStart=$(( $segID * $SEGSIZE ))
     # seq is inclusive
     roiEnd=$(( $segID * $SEGSIZE + $SEGSIZE ))
 
-    # what is the warm-up length?
+    # assume warm-up length is the segsize
+    # this will limit the amount of warmup that can be done during the simulation
+    WARMUP=$SEGSIZE
     if [ "$roiStart" -gt "$WARMUP" ]; then
         # enough room for warmup, extend roi start to the left
         roiStart=$(( $roiStart - $WARMUP ))
@@ -224,12 +244,21 @@ elif [ "$SIMPOINT" == "1" ]; then
 
     roiLength=$(( $roiEnd - $roiStart ))
 
+    if [ "$SIMPOINT_1_MANUAL_TRACE" == "NA" ]; then
+      # because we are using exit_after_tracing,
+      # want to to pad saome extra so we can likely have enough instrs
+      roiLength=$(( $roiLength + 2 * $SEGSIZE ))
+    else
+      # pad even more
+      roiLength=$(( $roiLength + 8 * $SEGSIZE ))
+    fi
+
     # which dynamorio to use?
     if [ $roiStart -eq 0 ]; then
       # do not specify trace_after_instrs
-      traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces/$clusterID -offline -exit_after_tracing $roiLength -- ${BINCMD}"
+      traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces_simp/$segID -offline -exit_after_tracing $roiLength -- ${BINCMD}"
     else
-      traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces/$clusterID -offline -trace_after_instrs $roiStart -exit_after_tracing $roiLength -- ${BINCMD}"
+      traceCmd="$DYNAMORIO_HOME/bin64/drrun -t drcachesim -jobs 40 -outdir $APPHOME/traces_simp/$segID -offline -trace_after_instrs $roiStart -exit_after_tracing $roiLength -- ${BINCMD}"
     fi
 
     echo "tracing cluster ${clusterID}, segment ${segID}..."
@@ -258,7 +287,14 @@ elif [ "$SIMPOINT" == "1" ]; then
   # this flow would only work for single thread anyway
   for clusterID in "${!clusterMap[@]}"
   do
-    cd $APPHOME/traces/$clusterID
+    segID=${clusterMap[$clusterID]}
+    cd $APPHOME/traces_simp/$segID
+    numDrFolder=$(find -type d -name "drmemtrace.*.dir" | grep "drmemtrace.*.dir" | wc -l)
+    if [ "$numDrFolder" != "1" ]; then
+      echo "the number of dr folder $numDrFolder is not one, location: $APPHOME/traces_simp/$segID"
+      exit
+    fi
+
     mv dr*/raw/ ./raw
     mkdir -p bin
     cp raw/modules.log bin/modules.log
@@ -273,6 +309,32 @@ elif [ "$SIMPOINT" == "1" ]; then
   wait_for "cluster raw2trace" "${taskPids[@]}"
   end=`date +%s`
   report_time "cluster raw2trace" "$start" "$end"
+
+  ################################################################
+  # minimize traces, rename traces
+  # it is possible that SimPoint picks interval zero,
+  # in that case the simulation would only need one chunk,
+  # but we always keep two regardlessly
+  for clusterID in "${!clusterMap[@]}"
+  do
+    segID=${clusterMap[$clusterID]}
+    cd $APPHOME/traces_simp/$segID
+    numTrace=$(find -name "dr*.trace.zip" | grep "drmemtrace.*.trace.zip" | wc -l)
+    if [ "$numTrace" != "1" ]; then
+      echo "the number of trace file $numTrace is not one, location: $APPHOME/traces_simp/$segID"
+      exit
+    fi
+    mv ./trace/dr*.trace.zip ./trace/$segID.big.zip
+
+    numChunk=$(unzip -l ./trace/$segID.big.zip | grep "chunk." | wc -l)
+    if [ "$numChunk" -lt 2 ]; then
+      echo "WARN: the big trace $segID contains less than 2 chunks: $numChunk !"
+    fi
+
+    # copy chunk 0 and chunk 1
+    zip ./trace/$segID.big.zip --copy chunk.0000 chunk.0001 --out ./trace/$segID.zip
+    rm ./trace/$segID.big.zip
+  done
 
   ################################################################
 else # non-simpoint
