@@ -78,5 +78,8 @@ RUN cd $tmpdir/ && \
     make -C SimPoint.3.2 && \
     ln -s SimPoint.3.2/bin/simpoint ./simpoint
 
+# disable ASLR
+RUN echo 0 | sudo tee /proc/sys/kernel/randomize_va_space
+
 ENV DOCKER_BUILDKIT 1
 ENV COMPOSE_DOCKER_CLI_BUILD 1
