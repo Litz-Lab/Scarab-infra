@@ -67,6 +67,8 @@ def run_experiment():
             if args.application_name == "allbench" or args.application_name == "isca2024":
                 if workload in ["602.gcc_s", "clang", "gcc", "mongodb", "mysql", "postgres", "verilator", "xgboost"]:
                     use_traces_simp = "1"
+                elif workload in ["MPC"]:
+                    use_traces_simp = "3"
                 else:
                     use_traces_simp = "0"
                 command = 'run_scarab_allbench.sh "' + workload + '" "' + args.application_group_name + '" "" "' + experiment + '/' + config_key + '" "' + config_value + '" "' + args.scarab_mode + '" "' + architecture + '" "' + use_traces_simp + '"'

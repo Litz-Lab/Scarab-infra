@@ -1,0 +1,10 @@
+{
+    "architecture": "sunny_cove",
+    "workloads_list": [
+    "MPC"
+    ],
+    "experiment": "explore_stats",
+    "configurations": {
+        "baseline": " "
+    }
+}

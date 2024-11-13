@@ -13,13 +13,13 @@ OUTDIR=$7
 WARMUPORG=$8
 SCARABARCH=$9
 
-# if TRACESSIMP is 1,
+# if TRACESSIMP is 1 or 3,
 # TRACEFILE is supposed to be traces_simp FOLDER
 TRACESSIMP=${10}
 
-if [ "$TRACESSIMP" == "1" ]; then
+if [ "$TRACESSIMP" == "1" ] || [ "$TRACESSIMP" == "3" ]; then
     if [ ! -d $TRACEFILE ]; then
-        echo "TRACEFILE is supposed to be traces_simp FOLDER"
+        echo "TRACEFILE is supposed to be a FOLDER"
         exit
     fi
 fi
@@ -65,7 +65,7 @@ do
 
     instLimit=$(( $roiEnd - $roiStart + 1 ))
 
-    if [ "$TRACESSIMP" != "1" ]; then
+    if [ "$TRACESSIMP" == "0" ]; then
         scarabCmd="$SCARABHOME/src/scarab \
         --frontend memtrace \
         --cbp_trace_r0=$TRACEFILE \
@@ -78,7 +78,7 @@ do
         $SCARABPARAMS \
         &> sim.log"
     elif [ "$TRACESSIMP" == "1" ]; then
-        # with TRACESSIMP
+        # with TRACESSIMP == 1
         # simultion uses the specific trace file
         # the roiStart is the second chunk, which is assumed to be segment size
         #### if chunk zero chunk is part of the simulation, the roiStart is the first chunk
@@ -111,7 +111,18 @@ do
             $SCARABPARAMS \
             &> sim.log"
         fi
+    elif [ "$TRACESSIMP" == "3" ]; then
+        # with TRACESSIMP == 3
+        # simultion always simulate the whole trace file with no skip
+        modulesDir=$(dirname $(ls $MODULESDIR/Timestep_$segID/drmemtrace.*.dir/bin/modules.log))
+        wholeTrace=$(ls $TRACEFILE/Timestep_$segID/drmemtrace.*.dir/trace/dr*.zip)
 
+        scarabCmd="$SCARABHOME/src/scarab \
+        --frontend memtrace \
+        --cbp_trace_r0=$wholeTrace \
+        --memtrace_modules_log=$modulesDir \
+        $SCARABPARAMS \
+        &> sim.log"
     fi
 
     echo "simulating clusterID ${clusterID}, segment $segID..."
@@ -127,4 +138,4 @@ report_time "simpoint simiulations" "$start" "$end"
 
 # aggregate the simulation results
 cd $OUTDIR
-python3 /usr/local/bin/gather_cluster_results.py $SPDIR $OUTDIR
+# python3 /usr/local/bin/gather_cluster_results.py $SPDIR $OUTDIR

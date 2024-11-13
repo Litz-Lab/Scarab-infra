@@ -96,6 +96,10 @@ case $APPNAME in
     echo "docker_traces"
     APP_GROUPNAME="docker_traces"
     ;;
+  MPC)
+    echo "frontier"
+    APP_GROUPNAME="frontier"
+    ;;
   *)
     APP_GROUPNAME="unknown"
     echo "unknown application"
@@ -232,6 +236,9 @@ case $APPNAME in
     ;;
   docker_traces)
     echo "No BINCMD available for docker_traces trace runs"
+    ;;
+  MPC)
+    BINCMD="placeholder"
     ;;
   *)
     echo "unknown application"
