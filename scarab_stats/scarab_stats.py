@@ -32,6 +32,9 @@ class Experiment:
 
             self.data["stats"] = rows
 
+            # Enable write protect for all base stats
+            self.data["write_protect"] = [True for _ in rows]
+
     def add_simpoint(self, simpoint_data, experiment, arch, config, workload, seg_id, c_id, weight):
         column = simpoint_data
         column.append(experiment)
@@ -101,8 +104,9 @@ class Experiment:
     def defragment(self):
         self.data = self.data.copy()
 
-    def derive_stat(self, equation:str):
+    def derive_stat(self, equation:str, overwrite:bool=True):
         # TODO: Doesn't work for stats with spaces in the names
+
         # Make sure tokens have space padding
         single_char_tokens = ["+", "-", "*", "/", "(", ")", "="]
         equation = "".join([f" {c} " if c in single_char_tokens else c for c in equation])
@@ -110,8 +114,7 @@ class Experiment:
         # Tokenize
         tokens = list(filter(None, equation.split(" ")))
 
-        total_cols = len(self.data)
-        total_setups = len(self.data.iloc[0])
+        insert_index = len(self.data)
 
         #self.data.loc[total_cols] = list(self.data.loc[self.data["stats"] == "Weight"])
         
@@ -121,7 +124,7 @@ class Experiment:
         lookup_cols = {old:new for old, new in zip(self.data.T.columns, self.data.T.iloc[0])}
         str_rows = [list(self.data["stats"]).index(row) for row in ["Experiment","Architecture","Configuration","Workload"]]
 
-        lookup = self.data.T.rename(columns=lookup_cols).drop("stats")
+        lookup = self.data.T.rename(columns=lookup_cols).drop("stats").drop("write_protect")
         str_rows = [lookup.columns[i] for i in str_rows]
         lookup = lookup.drop(columns=str_rows).astype("float")
         
@@ -150,11 +153,26 @@ class Experiment:
         tokens.append("))")
         to_eval = " ".join(tokens)
 
+        stat_name = values[0]
+
+        print(stat_name, stat_name in set(self.data["stats"]))
+        if stat_name in set(self.data["stats"]):
+            wr_prot = self.data[self.data["stats"] == stat_name]["write_protect"].item()
+            if wr_prot:
+                print(f"ERR: Tried to overwrite stat '{stat_name}' with write protect set. Cannot overwrite scarab generated stats.")
+                return
+            elif not overwrite:
+                print(f"ERR: Tried to overwrite stat '{stat_name}' with overwrite set to False.")
+                return
+            else:
+                print(f"INFO: Overwriting value(s) of stat '{stat_name}'")
+                insert_index = self.data[self.data["stats"] == stat_name].index[0]
+
         # TODO: Unsafe!
         eval(to_eval)
 
-        row = [values[0]] + values[1]
-        self.data.loc[total_cols] = row
+        row = [stat_name, False] + values[1]
+        self.data.loc[insert_index] = row
         return
     
     def to_csv(self, path:str):
@@ -261,7 +279,7 @@ class stat_aggregator:
 
     # Load simpoint from csv file as pandas dataframe
     def load_simpoint(self, path, load_ramulator=True, ignore_duplicates = True, return_stats = False, order = None):
-        data = pd.Series(dtype=pd.Float64Dtype)
+        data = pd.Series()
         all_stats = []
         
         for file in stat_files:
@@ -1126,13 +1144,16 @@ if __name__ == "__main__":
     #da.diff_stats(E, E2)
     #print(E.data)
     #print(E.data)
-    #E = Experiment("panda.csv")
+    E.to_csv("panda.csv")
+    # E = Experiment("panda.csv")
     # ipc = instruction / cycles => surrount all column names with df[%s] and then eval()
     #da.plot_stacked(E, ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8", "fe_ftq_block_num.16"], plot_name="output.png")
     #da.plot_workloads(E, ["BTB_ON_PATH_MISS_count", "BTB_ON_PATH_HIT_count", "BTB_OFF_PATH_MISS_count", "BTB_ON_PATH_WRITE_count", "BTB_OFF_PATH_WRITE_count"], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8"], speedup_baseline="fe_ftq_block_num.16", logscale=False, average=True, plot_name="output.png")
     #print(E.retrieve_stats("exp2", ["fe_ftq_block_num.16"], ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql"], "Simpoint"))
-    #k = 1
-    #E.derive_stat(f"test=(BTB_OFF_PATH_MISS_count + {k})") 
+    k = 1
+    E.derive_stat(f"test=(BTB_OFF_PATH_MISS_count + {k})") 
+    k = 100
+    E.derive_stat(f"test=(test * 2)") 
     #da.plot_workloads(E, "exp2", ["test"], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8"], speedup_baseline="fe_ftq_block_num.16", logscale=False, average=True)
     #print(E.get_stats())
     E.to_csv("test.csv")

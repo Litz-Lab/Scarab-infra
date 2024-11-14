@@ -246,11 +246,12 @@ aggregation_level = "Config": f"{config} {statistic}"
 - simpoints: For aggregation level "Simpoint", optionally provide which simpoints you want data from. Default is all
 
 #### derive_stat
-Arguments: (equation:str)
+Arguments: (equation:str, overwrite:bool=True)
 
 Creates a new stat column using the given equation. Format should be similar to `new_stat_name = stat_name + stat_name_2 * 42`. Format strings can be used to insert variables
 
 - equation: The equation to be used to derive a new statistic. + - * / all work, with column names or number literals.
+- overwrite: If set to false, will error if user attempts to overwrite the value of an existing stat. When enabled (default), it will replace the value of the stat if it exists. Cannot be used on stats collected directly from scarab.
 
 #### to_csv
 Arguments: (path: str)
