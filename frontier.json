@@ -5,6 +5,11 @@
     ],
     "experiment": "explore_stats",
     "configurations": {
-        "baseline": " "
+        "dcache_assoc_4": "--dcache_assoc 4",
+        "dcache_assoc_8": "--dcache_assoc 8",
+        "dcache_assoc_12": "--dcache_assoc 12",
+        "dcache_48K": "--dcache_size 49152",
+        "dcache_64K": "--dcache_size 65536",
+        "dcache_80K": "--dcache_size 81920"
     }
 }
