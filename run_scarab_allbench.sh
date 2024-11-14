@@ -131,6 +131,9 @@ if [ "$SCARABMODE" == "4" ]; then
   if [ "$TRACESSIMP" == "1" ]; then
     MODULESDIR=/simpoint_traces/$APPNAME/traces_simp/bin
     TRACEFILE=/simpoint_traces/$APPNAME/traces_simp/trace
+  elif [ "$TRACESSIMP" == "2" ]; then
+    MODULESDIR=/simpoint_traces/$APPNAME/traces_simp/
+    TRACEFILE=/simpoint_traces/$APPNAME/traces_simp/
   fi
 
   SIMHOME=$HOME/simpoint_flow/simulations/$APPNAME

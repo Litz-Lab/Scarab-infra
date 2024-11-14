@@ -13,13 +13,13 @@ OUTDIR=$7
 WARMUPORG=$8
 SCARABARCH=$9
 
-# if TRACESSIMP is 1,
+# if TRACESSIMP is 1 or 2,
 # TRACEFILE is supposed to be traces_simp FOLDER
 TRACESSIMP=${10}
 
-if [ "$TRACESSIMP" == "1" ]; then
+if [ "$TRACESSIMP" == "1" ] || [ "$TRACESSIMP" == "2" ]; then
     if [ ! -d $TRACEFILE ]; then
-        echo "TRACEFILE is supposed to be traces_simp FOLDER"
+        echo "TRACEFILE is supposed to be a FOLDER"
         exit
     fi
 fi
@@ -65,7 +65,7 @@ do
 
     instLimit=$(( $roiEnd - $roiStart + 1 ))
 
-    if [ "$TRACESSIMP" != "1" ]; then
+    if [ "$TRACESSIMP" == "0" ]; then
         scarabCmd="$SCARABHOME/src/scarab \
         --frontend memtrace \
         --cbp_trace_r0=$TRACEFILE \
@@ -78,7 +78,7 @@ do
         $SCARABPARAMS \
         &> sim.log"
     elif [ "$TRACESSIMP" == "1" ]; then
-        # with TRACESSIMP
+        # with TRACESSIMP == 1
         # simultion uses the specific trace file
         # the roiStart is the second chunk, which is assumed to be segment size
         #### if chunk zero chunk is part of the simulation, the roiStart is the first chunk
@@ -111,7 +111,19 @@ do
             $SCARABPARAMS \
             &> sim.log"
         fi
-
+    elif [ "$TRACESSIMP" == "2" ]; then
+        # with TRACESSIMP == 2
+        # simultion always uses the specific trace file with no skip
+        # do not use fetch count
+        scarabCmd="$SCARABHOME/src/scarab \
+        --frontend memtrace \
+        --cbp_trace_r0=$TRACEFILE/$segID/trace/$segID.zip \
+        --memtrace_modules_log=$MODULESDIR/$segID/raw \
+        --inst_limit=$instLimit \
+        --full_warmup=$WARMUP \
+        --use_fetched_count=0 \
+        $SCARABPARAMS \
+        &> sim.log"
     fi
 
     echo "simulating clusterID ${clusterID}, segment $segID..."
