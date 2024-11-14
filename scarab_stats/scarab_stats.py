@@ -203,13 +203,13 @@ class Experiment:
         return self.data.drop(rows_to_drop)
 
     def get_experiments(self):
-        return list(set(list(self.data[self.data["stats"] == "Experiment"].iloc[0])[1:]))
+        return list(set(list(self.data[self.data["stats"] == "Experiment"].iloc[0])[2:]))
 
     def get_configurations(self):
-        return list(set(list(self.data[self.data["stats"] == "Configuration"].iloc[0])[1:]))
+        return list(set(list(self.data[self.data["stats"] == "Configuration"].iloc[0])[2:]))
 
     def get_workloads(self):
-        return list(set(list(self.data[self.data["stats"] == "Workload"].iloc[0])[1:]))
+        return list(set(list(self.data[self.data["stats"] == "Workload"].iloc[0])[2:]))
 
     def get_stats(self):
         return list(set(self.data["stats"]))
@@ -1110,6 +1110,7 @@ if __name__ == "__main__":
 
     da = stat_aggregator()
     E = da.load_experiment_json(args.descriptor_name, args.sim_path, args.trace_path)
+    print(E.get_experiments())
     #E = Experiment("panda3.csv")
     #E2 = Experiment("panda3.csv")
     #da.plot_speedups(E, E2, "Cumulative Cycles", plot_name="a.png")
