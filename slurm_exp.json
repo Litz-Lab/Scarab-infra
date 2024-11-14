@@ -1,0 +1,14 @@
+{
+    "architecture": "sunny_cove",
+    "workloads_list": [
+        "mysql",
+        "postgres"
+    ],
+    "experiment": "slurm_experiment",
+    "docker_home": "/soe/aesymons/allbench_home",
+    "configurations": {
+        "baseline": "--fdip_enable 1",
+        "fe_ftq_block_num.8": "--fdip_enable 1 --fe_ftq_block_num 8",
+        "fe_ftq_block_num.16": "--fdip_enable 1 --fe_ftq_block_num 16"
+    }
+}
