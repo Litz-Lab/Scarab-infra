@@ -462,6 +462,34 @@ class stat_aggregator:
         configs_to_load = configs + [speedup_baseline]
         all_data = experiment.retrieve_stats(configs_to_load, stats, workloads)
 
+        # expression captures the essence of a calculation e.g., "{} / {}"
+        # variable_stats will fill up the expression in order
+        def overwrite_rate_stat(rate_stat, expression, variable_stats):
+            data = experiment.retrieve_stats(configs_to_load, variable_stats, workloads)
+            for c in configs_to_load:
+                if c == None:
+                    continue
+                for w in workloads:
+                    variable_values = [data[f"{c} {w} {var}"] for var in variable_stats]
+                    # unroll the variable list and use them as format parameters, then evaluate the string
+                    original_val = all_data[f"{c} {w} {rate_stat}"]
+                    all_data[f"{c} {w} {rate_stat}"] = eval(expression.format(*variable_values))
+                    print(f"overwrite {rate_stat}",
+                            f" = {expression.format(*variable_stats)}",
+                            f" = {expression.format(*variable_values)}",
+                            f" = {all_data[f"{c} {w} {rate_stat}"]}, originally {original_val}")
+
+        overwrite_dict = {
+            # key: (string of expression, list of varaibles)
+            "Periodic IPC": ("{} / {}", ["NODE_INST_COUNT_count", "NODE_CYCLE_count"]),
+            "DCACHE_MISS_pct": ("{} / ({} + {} + {})" , ["DCACHE_MISS_count", "DCACHE_MISS_count", "DCACHE_ST_BUFFER_HIT_count", "DCACHE_HIT_count"]),
+            # add more as needed
+        }
+
+        for stat in stats:
+            if stat in overwrite_dict.keys():
+                overwrite_rate_stat(stat, overwrite_dict[stat][0], overwrite_dict[stat][1])
+
         workloads_to_plot = workloads.copy()
 
         averages = {}
