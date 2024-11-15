@@ -470,7 +470,116 @@ class stat_aggregator:
     # Plot on logarithmic scale
 
     # Plot multiple stats across multiple workloads
-    def plot_workloads (self, experiment: Experiment, stats: List[str], workloads: List[str], 
+    def plot_workloads (self, experiment: Experiment, stats: List[str], workloads: List[str],
+                            configs: List[str], title: str = "Default Title", x_label: str = "",
+                            y_label: str= "", logscale: bool = False, bar_width:float = 0.35,
+                            bar_spacing:float = 0.05, workload_spacing:float = 0.3, average: bool = False,
+                            colors = None, plot_name = None, ylim = None):
+        if len(stats) > 1:
+            print("WARN: This API is for only one stats.")
+            print("INFO: Only plot the first stat, ignoring the rest from the provided list")
+
+        stat = stats[0]
+        # Get all data with structure all_data[f"{config} {wl} {stat}"]
+        configs_to_load = configs + [None]
+        all_data = experiment.retrieve_stats(configs_to_load, stats, workloads)
+
+        # expression captures the essence of a calculation e.g., "{} / {}"
+        # variable_stats will fill up the expression in order
+        def overwrite_rate_stat(rate_stat, expression, variable_stats):
+            data = experiment.retrieve_stats(configs_to_load, variable_stats, workloads)
+            for c in configs_to_load:
+                if c == None:
+                    continue
+                for w in workloads:
+                    variable_values = [data[f"{c} {w} {var}"] for var in variable_stats]
+                    # unroll the variable list and use them as format parameters, then evaluate the string
+                    original_val = all_data[f"{c} {w} {rate_stat}"]
+                    all_data[f"{c} {w} {rate_stat}"] = eval(expression.format(*variable_values))
+                    # print(f"overwrite {rate_stat}",
+                            # f" = {expression.format(*variable_stats)}",
+                            # f" = {expression.format(*variable_values)}",
+                            # f" = {all_data[f"{c} {w} {rate_stat}"]}, originally {original_val}")
+
+        overwrite_dict = {
+            # key: (string of expression, list of varaibles)
+            "Periodic IPC": ("{} / {}", ["NODE_INST_COUNT_count", "NODE_CYCLE_count"]),
+            "DCACHE_MISS_pct": ("{} / ({} + {} + {})" , ["DCACHE_MISS_count", "DCACHE_MISS_count", "DCACHE_ST_BUFFER_HIT_count", "DCACHE_HIT_count"]),
+            "ICACHE_MISS_pct": ("{} / ({} + {})" , ["ICACHE_MISS_count", "ICACHE_MISS_count", "ICACHE_HIT_count"]),
+            # add more as needed
+        }
+
+        for stat in stats:
+            if stat in overwrite_dict.keys():
+                overwrite_rate_stat(stat, overwrite_dict[stat][0], overwrite_dict[stat][1])
+
+        workloads_to_plot = workloads.copy()
+
+        mean_type = 1 # geomean
+        stat_tokens = stat.split('_')
+        if stat_tokens[-1] != 'pct':
+            mean_type = 0 # arithmetic mean
+
+        data_to_plot = {}
+        for conf in configs:
+            if mean_type == 1:
+                avg_config = 1.0
+            else:
+                avg_config = 0.0
+            data_config = []
+            for wl_number, wl in enumerate(workloads_to_plot):
+                data = all_data[f"{conf} {wl} {stat}"]
+                data_config.append(data)
+                if mean_type == 1:
+                    avg_config *= data
+                else:
+                    avg_config += data
+
+            num_workloads = len(workloads_to_plot)
+            if mean_type == 1:
+                avg_config = avg_config**(num_workloads**-1)
+            else:
+                avg_config = avg_config/num_workloads
+            if average:
+                data_config.append(avg_config)
+            data_to_plot[conf] = data_config
+
+        if average:
+            benchmarks_to_plot = workloads_to_plot + ["Avg"]
+        else:
+            benchmarks_to_plot = workloads_to_plot
+
+        fig, ax = plt.subplots(figsize=(6+len(benchmarks_to_plot)*((bar_spacing+bar_width)*len(configs)), 5))
+
+        if colors == None:
+            colors = ['#800000', '#911eb4', '#4363d8', '#f58231', '#3cb44b', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#e6beff', '#e6194b', '#000075', '#800000', '#9a6324', '#808080', '#ffffff', '#000000']
+
+        num_configs = len(configs_to_load)
+        ind = np.arange(len(benchmarks_to_plot))
+        start_id = -int(num_configs/2)
+        for conf_number, config in enumerate(configs):
+            if conf_number % 2:
+                hatch='\\\\'
+            else:
+                hatch='///'
+            ax.bar(ind + (start_id+conf_number)*bar_width, data_to_plot[config], width=bar_width, fill=False, hatch=hatch, color=colors[conf_number], edgecolor=colors[conf_number], label=config)
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+        ax.set_xticks(ind)
+        ax.set_xticklabels(benchmarks_to_plot, rotation = 27, ha='right')
+        ax.grid('x');
+        ax.grid('y');
+        if ylim != None:
+            ax.set_ylim(ylim)
+        ax.legend(loc="center left", bbox_to_anchor=(1,0.5))
+        plt.tight_layout()
+
+        if plot_name == None:
+            plt.show()
+        else: plt.savefig(plot_name)
+
+
+    def plot_workloads_multi_stats (self, experiment: Experiment, stats: List[str], workloads: List[str], 
                         configs: List[str], speedup_baseline: str = None, title: str = "Default Title", x_label: str = "", 
                         y_label: str = "", logscale: bool = False, bar_width:float = 0.35, 
                         bar_spacing:float = 0.05, workload_spacing:float = 0.3, average: bool = False, 
