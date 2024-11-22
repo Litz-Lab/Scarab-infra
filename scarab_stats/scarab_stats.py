@@ -104,7 +104,7 @@ class Experiment:
     def defragment(self):
         self.data = self.data.copy()
 
-    def derive_stat(self, equation:str, overwrite:bool=True):
+    def derive_stat(self, equation:str, overwrite:bool=True, agg_first:bool=True):
         # TODO: Doesn't work for stats with spaces in the names
 
         # Make sure tokens have space padding
@@ -117,6 +117,7 @@ class Experiment:
         insert_index = len(self.data)
 
         #self.data.loc[total_cols] = list(self.data.loc[self.data["stats"] == "Weight"])
+
         
         values = []
         panda_fy = lambda name: f'lookup["{name}"]'
@@ -125,8 +126,37 @@ class Experiment:
         str_rows = [list(self.data["stats"]).index(row) for row in ["Experiment","Architecture","Configuration","Workload"]]
 
         lookup = self.data.T.rename(columns=lookup_cols).drop("stats").drop("write_protect")
+
+        # Aggregates before returning row
+        # Takes in a stat name, returns a Pandas series
+        def panda_fy_agg(name):
+            # Get the stat, pre-weight values
+            data = lookup[name]*lookup["Weight"]
+            data_weighted = {}
+            columns = list(data.index)
+            
+            # Sum the weighted values
+            for setup in set(map(lambda x:" ".join(x.split(" ")[:-1]), columns)):
+                data_weighted[setup] = sum([data[lbl] for lbl in columns if setup in lbl])
+
+            # Duplicate values to fill out all simpoints in the dataframe
+            # Ex: mysql baseline 4, mysql baseline 10 should both have values (the same value)
+            data_weighted_duplicated = {}
+            for col in columns:
+                prefix = " ".join(col.split(" ")[:-1])
+                data_weighted_duplicated[col] = data_weighted[prefix]
+
+            # Make a sereies so equaation works
+            return pd.Series(data_weighted_duplicated.values(), data_weighted_duplicated.keys())
+
+        # If agg_first, then aggregate *while* retrieving stat
+        if agg_first:
+            panda_fy = lambda name: f'panda_fy_agg("{name}")'
+        
         str_rows = [lookup.columns[i] for i in str_rows]
         lookup = lookup.drop(columns=str_rows).astype("float")
+
+        dependant_stats = []
         
         for i, tok in enumerate(tokens):
             if i == 0:
@@ -146,6 +176,7 @@ class Experiment:
 
             if not tok.isnumeric() and not tok in single_char_tokens:
                 tokens[i] = panda_fy(tok)
+                dependant_stats.append(tok)
 
             if tok.isnumeric():
                 tokens[i] = str(tok)
@@ -155,7 +186,16 @@ class Experiment:
 
         stat_name = values[0]
 
-        print(stat_name, stat_name in set(self.data["stats"]))
+        # dependant_stats = list(set(dependant_stats))
+        # print("Dependencies:", list(set(dependant_stats)))
+
+        # print(lookup)
+
+        # print(to_eval)
+
+        # print("agg test",panda_fy_agg("ICACHE_EVICT_HIT_ONPATH_BY_FDIP_count"))
+
+        # print(stat_name, stat_name in set(self.data["stats"]))
         if stat_name in set(self.data["stats"]):
             wr_prot = self.data[self.data["stats"] == stat_name]["write_protect"].item()
             if wr_prot:
@@ -1111,25 +1151,52 @@ if __name__ == "__main__":
     da = stat_aggregator()
     E = da.load_experiment_json(args.descriptor_name, args.sim_path, args.trace_path)
     print(E.get_experiments())
+
+    # Create equation that sums all of the stats
+    stats_to_plot = ['ICACHE_EVICT_MISS_ONPATH_BY_FDIP_count','ICACHE_EVICT_HIT_ONPATH_BY_FDIP_count']
+    equation = f"UNUSEFUL_pct = ICACHE_EVICT_MISS_ONPATH_BY_FDIP_count / (ICACHE_EVICT_MISS_ONPATH_BY_FDIP_count + ICACHE_EVICT_HIT_ONPATH_BY_FDIP_count)"
+    equation2 = f"UNUSEFUL_agg_pct = ICACHE_EVICT_MISS_ONPATH_BY_FDIP_count / (ICACHE_EVICT_MISS_ONPATH_BY_FDIP_count + ICACHE_EVICT_HIT_ONPATH_BY_FDIP_count)"
+    print("Equation:", equation)
+
+    # Add stat as new entry
+    E.derive_stat(equation)
+    E.derive_stat(equation2, agg_first=True)
+
+    cfs = E.get_configurations()
+    wls = E.get_workloads()
+    stats_to_plot = ['UNUSEFUL_pct']
+
+    print(E.retrieve_stats(cfs, ["UNUSEFUL_pct", "UNUSEFUL_agg_pct"], wls))
+
+    alls = ["UNUSEFUL_pct","UNUSEFUL_agg_pct", "ICACHE_EVICT_MISS_ONPATH_BY_FDIP_count", "ICACHE_EVICT_MISS_ONPATH_BY_FDIP_count", "ICACHE_EVICT_HIT_ONPATH_BY_FDIP_count"]
+
+    a = E.retrieve_stats(cfs, alls, wls)
+    for k,v in a.items():
+        print(f"{k}: {v}")
+
+    # Call the plot function
+    E.to_csv("agg.csv")
+    da.plot_workloads(E, stats_to_plot, wls, cfs, title="", average=True, x_label="Benchmarks", y_label="UNUSEFUL_pct", bar_width=0.10, plot_name="a.png")
+
     #E = Experiment("panda3.csv")
     #E2 = Experiment("panda3.csv")
     #da.plot_speedups(E, E2, "Cumulative Cycles", plot_name="a.png")
     #da.diff_stats(E, E2)
     #print(E.data)
     #print(E.data)
-    E.to_csv("panda.csv")
+    # E.to_csv("panda.csv")
     # E = Experiment("panda.csv")
     # ipc = instruction / cycles => surrount all column names with df[%s] and then eval()
     #da.plot_stacked(E, ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8", "fe_ftq_block_num.16"], plot_name="output.png")
     #da.plot_workloads(E, ["BTB_ON_PATH_MISS_count", "BTB_ON_PATH_HIT_count", "BTB_OFF_PATH_MISS_count", "BTB_ON_PATH_WRITE_count", "BTB_OFF_PATH_WRITE_count"], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8"], speedup_baseline="fe_ftq_block_num.16", logscale=False, average=True, plot_name="output.png")
     #print(E.retrieve_stats("exp2", ["fe_ftq_block_num.16"], ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql"], "Simpoint"))
-    k = 1
-    E.derive_stat(f"test=(BTB_OFF_PATH_MISS_count + {k})") 
-    k = 100
-    E.derive_stat(f"test=(test * 2)") 
+    # k = 1
+    # E.derive_stat(f"test=(BTB_OFF_PATH_MISS_count + {k})") 
+    # k = 100
+    # E.derive_stat(f"test=(test * 2)") 
     #da.plot_workloads(E, "exp2", ["test"], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8"], speedup_baseline="fe_ftq_block_num.16", logscale=False, average=True)
     #print(E.get_stats())
-    E.to_csv("test.csv")
+    # E.to_csv("test.csv")
     #print(E.retrieve_stats("exp2", ["fe_ftq_block_num.16"], ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql", "xgboost"], aggregation_level="Config"))
     #da.plot_simpoints(E, "exp2", ["BTB_ON_PATH_MISS_total_count"], ["mysql", "verilator", "xgboost"], ["fe_ftq_block_num.8"], speedup_baseline="fe_ftq_block_num.16", title="Simpoint")
     #da.plot_configs(E, "exp2", ['BTB_OFF_PATH_MISS_count', 'BTB_OFF_PATH_HIT_count'], ["mysql", "xgboost"], ["fe_ftq_block_num.16", "fe_ftq_block_num.8"])
