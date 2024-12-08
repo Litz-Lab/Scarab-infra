@@ -134,7 +134,7 @@ class Experiment:
             data = lookup[name]*lookup["Weight"]
             data_weighted = {}
             columns = list(data.index)
-            
+
             # Sum the weighted values
             for setup in set(map(lambda x:" ".join(x.split(" ")[:-1]), columns)):
                 data_weighted[setup] = sum([data[lbl] for lbl in columns if setup in lbl])
@@ -152,7 +152,7 @@ class Experiment:
         # If agg_first, then aggregate *while* retrieving stat
         if agg_first:
             panda_fy = lambda name: f'panda_fy_agg("{name}")'
-        
+
         str_rows = [lookup.columns[i] for i in str_rows]
         lookup = lookup.drop(columns=str_rows).astype("float")
 

@@ -163,7 +163,7 @@ def generate_sbatch_command(excludes):
     return "sbatch -c 1 "
 
 # Launch a docker container on one of the available nodes
-def launch_docker(infra_dir, docker_home, available_nodes, dbg_lvl=1):
+def launch_docker(infra_dir, docker_home, available_nodes, node=None, dbg_lvl=1):
     
     # Get the path to the run script
     if infra_dir == ".": run_script = ""
@@ -176,8 +176,11 @@ def launch_docker(infra_dir, docker_home, available_nodes, dbg_lvl=1):
         exit(1)
 
     # Get name of slurm node to spin up
-    spin_up_index = random.randint(0, len(available_nodes)-1)
-    spin_up_node = available_nodes[spin_up_index]
+    if node == None:
+        spin_up_index = random.randint(0, len(available_nodes)-1)
+        spin_up_node = available_nodes[spin_up_index]
+    else:
+        spin_up_node = node
 
     # Spin up docker container on that node
     print(f"Spinning up node {spin_up_node}")
@@ -240,6 +243,8 @@ if __name__ == "__main__":
     # Add arguments
     parser.add_argument('-d','--descriptor_name', required=True, help='Experiment descriptor name. Usage: -d exp2.json')
     parser.add_argument('-k','--kill', required=False, default=False, action=argparse.BooleanOptionalAction, help='Don\'t launch jobs from descriptor, kill running jobs as described in descriptor')
+    parser.add_argument('-i','--info', required=False, default=False, action=argparse.BooleanOptionalAction, help='Get info about all nodes and if they have containers')
+    parser.add_argument('-l','--launch', required=False, default=None, help='Launch a docker container on a node. Use ? to pick a random node. Usage: -l bohr1')
     parser.add_argument('-dir','--home_dir', required=False, default=None, help='Home directory for the docker containers')
     parser.add_argument('-m','--scarab_mode', required=False, type=int, default=4, help='Scarab mode. Usage -m 2')
     parser.add_argument('-s','--scarab_bin', required=False, default=None, help='Scarab binary. Path to custom binary to be used')
@@ -282,7 +287,7 @@ if __name__ == "__main__":
     if args.kill:
         info(f"Killing all slurm jobs associated with {descriptor_path}", dbg_lvl)
         kill_jobs(user, experiment_name, dbg_lvl)
-        exit(1)
+        exit(0)
 
     # Get path to the docker contianers' home directory
     if docker_home == None: # Try to get from descriptor if not set manually
@@ -315,6 +320,41 @@ if __name__ == "__main__":
         # NOTE: Temporarily hardcoded to allbench
         docker_prefix = "allbench_traces"
 
+    if args.info:
+        info(f"Getting information about all nodes", dbg_lvl)    
+        available_slurm_nodes, all_nodes = check_available_nodes(dbg_lvl)
+        
+        print(f"Checking resource availability of slurm nodes:")
+        for node in all_nodes:
+            if node in available_slurm_nodes:
+                print(f"\033[92mAVAILABLE:   {node}\033[0m")
+            else:
+                print(f"\033[31mUNAVAILABLE: {node}\033[0m")
+
+        # Check what nodes have docker conatiners that map to same docker home
+        mount_path = docker_home[docker_home.rfind('/') + 1:]
+
+        print(f"\nChecking what nodes have a running container mounted at {mount_path} with name {docker_prefix}_{user}")
+        docker_running = check_docker_container_running(available_slurm_nodes, f"{docker_prefix}_{user}", mount_path, dbg_lvl)
+
+        for node in all_nodes:
+            if node in docker_running:
+                print(f"\033[92mRUNNING:     {node}\033[0m")
+            else:
+                print(f"\033[31mNOT RUNNING: {node}\033[0m")
+
+        exit(0)
+
+    if args.launch != None:
+        if args.launch == "?":
+            available_slurm_nodes, all_nodes = check_available_nodes(dbg_lvl)
+            launch_docker(infra_dir, docker_home, available_slurm_nodes, dbg_lvl=dbg_lvl)
+            exit(0)
+
+        print(f"Launching a docker container on {args.launch}")
+        # Available nodes is not important when launching a specific node
+        launch_docker(infra_dir, docker_home, None, args.launch, dbg_lvl) 
+        exit(0)
 #         try:
 #             with open(f"{infra_dir}/apps.list", "r") as f:
 #                 trim_nl = lambda x : x.split("\n")[0]
@@ -403,7 +443,7 @@ if __name__ == "__main__":
                 # TODO: Rewrite with sbatch arrays
 
                 # Create temp file with run command and run it
-                filename = f"{experiment_name}_{workload}_{config_key}_{simpoint}_tmp_run.sh"
+                filename = f"{experiment_name}_{workload}_{config_key.replace("/", "-")}_{simpoint}_tmp_run.sh"
                 tmp_files.append(filename)
                 with open(filename, "w") as f:
                     f.write("#!/bin/bash \n")
