@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x #echo on
+# set -x #echo on
 
 GUIDE_PATH="scarab_stats_quick_start.ipynb"
 
