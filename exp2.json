@@ -7,6 +7,9 @@
         "xgboost"
     ],
     "experiment": "exp2",
+    "scarab_path": "/soe/aesymons/scarab_bin",
+    "docker_home": "/soe/aesymons/allbench_home",
+    "docker_prefix": "docker_traces",
     "configurations": {
         "baseline": "--inst_limit 99900000 --fdip_enable 1",
         "fe_ftq_block_num.8": "--inst_limit 99900000 --fdip_enable 1 --fe_ftq_block_num 8",
