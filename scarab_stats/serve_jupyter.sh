@@ -66,7 +66,7 @@ echo "ssh -NfL localhost:$port:localhost:$port $me@$hostname.soe.ucsc.edu"
 echo "(Above not requied if using vscode with Remote - SSH extension)"
 echo
 echo "Visit the following url in the browser on your local machine to access the notebook:"
-echo "https://localhost:$port/ and log in with token = $token"
+echo "http://localhost:$port/ and log in with $token"
 echo "Open $GUIDE_PATH for an interactive quick start guide for the scarab stats library"
 echo
 echo "When you are done run the following on $hostname:"
