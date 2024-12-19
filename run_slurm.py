@@ -129,6 +129,8 @@ def copy_scarab(home_dir: str, arch: str, experiment_name: str, scarab_bin: str 
         print("Note that this script is hard coded to ")
         exit(1)
 
+    os.system(f"mkdir -p {experiment_dir}/logs/")
+
     # Copy binary and architectural params to scarab/src
     os.system(f"mkdir -p {experiment_dir}/scarab/src/")
     os.system(f"cp {scarab_bin} {experiment_dir}/scarab/src/scarab")
@@ -142,7 +144,9 @@ def copy_scarab(home_dir: str, arch: str, experiment_name: str, scarab_bin: str 
     os.system(f"cp {home_dir}/scarab/bin/scarab_globals/*  {experiment_dir}/scarab/bin/scarab_globals/ ")
 
 # Generate command to exec in the docker container for a user
-def generate_docker_command(user, docker_container_prefix):
+def generate_docker_command(user, docker_container_prefix, root=False):
+    if root:
+        return f"docker exec --user root --workdir /home/{user} --privileged {docker_container_prefix}_{user} "
     return f"docker exec --user {user} --workdir /home/{user} --privileged {docker_container_prefix}_{user} "
 
 # Generate command to do a single run of scarab
@@ -155,12 +159,12 @@ def generate_single_scarab_run_command(workload, group, experiment, config, conf
     return command
     
 # Get command to sbatch scarab runs. 1 core each, exclude nodes where container isn't running
-def generate_sbatch_command(excludes):
+def generate_sbatch_command(excludes, experiment_dir):
     # If all nodes are usable, no need to exclude
     if not excludes == set():
-        return f"sbatch --exclude {','.join(excludes)} -c 1 "
-
-    return "sbatch -c 1 "
+        return f"sbatch --exclude {','.join(excludes)} -c 1 -o {experiment_dir}/logs/job_%j.out "
+    
+    return f"sbatch -c 1 -o {experiment_dir}/logs/job_%j.out "
 
 # Launch a docker container on one of the available nodes
 def launch_docker(infra_dir, docker_home, available_nodes, node=None, dbg_lvl=1):
@@ -418,7 +422,8 @@ if __name__ == "__main__":
 
     # Generate commands for executing in users docker and sbatching to nodes with containers
     docker_cmd = generate_docker_command(user, f"{docker_prefix}")
-    sbatch_cmd = generate_sbatch_command(excludes)
+    chmod_docker_cmd = generate_docker_command(user, f"{docker_prefix}", root=True)
+    sbatch_cmd = generate_sbatch_command(excludes, experiment_dir)
 
     # Iterate over each workload and config combo
     tmp_files = []
@@ -447,6 +452,9 @@ if __name__ == "__main__":
                 tmp_files.append(filename)
                 with open(filename, "w") as f:
                     f.write("#!/bin/bash \n")
+                    f.write(f'echo "Running {config_key} {workload} {simpoint}" \n')
+                    f.write('echo "Running on $(uname -n)" \n')
+                    f.write(chmod_docker_cmd + "chmod +x /usr/local/bin/run_single_simpoint.sh \n")
                     f.write(docker_cmd + scarab_cmd)
 
                 os.system(sbatch_cmd + filename)

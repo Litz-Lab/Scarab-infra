@@ -19,4 +19,4 @@ docker cp ./gather_cluster_results_using_descriptor.py $CONTAINERID:/usr/local/b
 docker cp ./run_single_simpoint.sh $CONTAINERID:/usr/local/bin
 
 # This script doesn't work unless chmod +x is run
-docker exec --user $user --workdir /home/$user --privileged $CONTAINERID chmod +x /usr/local/bin/run_single_simpoint.sh
+docker exec --user root --workdir /home/$user --privileged $CONTAINERID chmod +x /usr/local/bin/run_single_simpoint.sh
