@@ -134,7 +134,7 @@ class Experiment:
             data = lookup[name]*lookup["Weight"]
             data_weighted = {}
             columns = list(data.index)
-            
+
             # Sum the weighted values
             for setup in set(map(lambda x:" ".join(x.split(" ")[:-1]), columns)):
                 data_weighted[setup] = sum([data[lbl] for lbl in columns if setup in lbl])
@@ -152,7 +152,7 @@ class Experiment:
         # If agg_first, then aggregate *while* retrieving stat
         if agg_first:
             panda_fy = lambda name: f'panda_fy_agg("{name}")'
-        
+
         str_rows = [lookup.columns[i] for i in str_rows]
         lookup = lookup.drop(columns=str_rows).astype("float")
 
@@ -402,7 +402,7 @@ class stat_aggregator:
         return Experiment(path)
 
     # Load experiment form json file, and the corresponding simulations directory
-    def load_experiment_json(self, experiment_file: str, simulations_path: str, simpoints_path: str):
+    def load_experiment_json(self, experiment_file: str, simulations_path: str, simpoints_path: str, slurm: bool = False):
         # Load json data from experiment file
         json_data = None
         with open(experiment_file, "r") as file:
@@ -414,6 +414,9 @@ class stat_aggregator:
 
         experiment_name = json_data["experiment"]
         architecture = json_data["architecture"]
+
+        if (experiment_name in simulations_path) and slurm:
+            print(f"WARN: simulations_path should only point to root of docker home. If this fails, please remove {experiment_name} from simulations_path")
 
         known_stats = None
 
@@ -437,7 +440,11 @@ class stat_aggregator:
                     print(f"       Encountered {seg_id_1} in .p and {seg_id_2} in .w")
                     exit(1)
 
-                directory = f"{simulations_path}{workload}/{experiment_name}/{config}/{str(cluster_id)}/"
+                if not slurm:
+                    directory = f"{simulations_path}{workload}/{experiment_name}/{config}/{str(cluster_id)}/"
+                else:
+                    directory = f"{simulations_path}{experiment_name}/{config}/{workload}/{str(cluster_id)}/"
+
                 print("CHECK", directory)
 
                 a = self.load_simpoint(directory, return_stats=True)
@@ -482,7 +489,10 @@ class stat_aggregator:
                             print(f"       Encountered {seg_id_1} in .p and {seg_id_2} in .w")
                             exit(1)
 
-                        directory = f"{simulations_path}{workload}/{experiment_name}/{config}/{str(cluster_id)}/"
+                        if not slurm:
+                            directory = f"{simulations_path}{workload}/{experiment_name}/{config}/{str(cluster_id)}/"
+                        else:
+                            directory = f"{simulations_path}{experiment_name}/{config}/{workload}/{str(cluster_id)}/"
 
                         if experiment == None:
                             experiment = Experiment(known_stats)
@@ -1348,7 +1358,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     da = stat_aggregator()
-    E = da.load_experiment_json(args.descriptor_name, args.sim_path, args.trace_path)
+    E = da.load_experiment_json(args.descriptor_name, args.sim_path, args.trace_path, True)
     print(E.get_experiments())
 
     # Create equation that sums all of the stats
