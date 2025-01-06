@@ -1,7 +1,7 @@
 # Scarab-infra
 Dockerfiles of docker images running data center workloads and run Scarab simulation
 
-For UCSC LitzLab users, please refer to README.LitzLab.md to avoid downloading the traces and to use shared traces in UCSC NFS.
+For UCSC LitzLab users, please refer to [README.LitzLab.md](README.LitzLab.md) to avoid downloading the traces and to use shared traces in UCSC NFS.
 
 ## Docker setup
 Install Docker based on the instructions from official [docker docs](https://docs.docker.com/engine/install/).
