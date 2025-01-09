@@ -1,0 +1,35 @@
+name: Build and Publish Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+    # Allows manual triggering of the workflow
+
+jobs:
+  build-and-publish:
+    name: Build and Publish Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker images
+        run: |
+          docker build . --file ./allbench_traces/Dockerfile --no-cache --tag ghcr.io/${{ github.repository }}/allbench_traces:$(date +%s)
+          docker build . --file ./docker_traces/Dockerfile --no-cache --tag ghcr.io/${{ github.repository }}/docker_traces:$(date +%s)
+
+      - name: Push Docker images to GitHub Packages
+        run: |
+          docker push ghcr.io/${{ github.repository }}/allbench_traces:$(date +%s)
+          docker push ghcr.io/${{ github.repository }}/docker_traces:$(date +%s)
