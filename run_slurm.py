@@ -427,6 +427,7 @@ if __name__ == "__main__":
 
     # Iterate over each workload and config combo
     tmp_files = []
+    cmd_queue = []
     for workload in workloads:
         # Only needed for modes 3 and 4
         simpoints = get_simpoints(user, workload, docker_running, docker_prefix, dbg_lvl)
@@ -457,9 +458,13 @@ if __name__ == "__main__":
                     f.write(chmod_docker_cmd + "chmod +x /usr/local/bin/run_single_simpoint.sh \n")
                     f.write(docker_cmd + scarab_cmd)
 
-                os.system(sbatch_cmd + filename)
-                info(f"Running sbatch command '{sbatch_cmd + filename}'", dbg_lvl)
+                cmd_queue.append(sbatch_cmd + filename)
+                
     
+    for cmd in cmd_queue:
+        os.system(cmd)
+        info(f"Running sbatch command '{cmd}'", dbg_lvl)
+
     # Clean up temp files
     for tmp in tmp_files:
         info(f"Removing temporary run script {tmp}", dbg_lvl)
