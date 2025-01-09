@@ -26,10 +26,10 @@ jobs:
 
       - name: Build Docker images
         run: |
-          docker build . --file ./allbench_traces/Dockerfile --no-cache --tag ghcr.io/${{ github.repository }}/allbench_traces:$(date +%s)
-          docker build . --file ./docker_traces/Dockerfile --no-cache --tag ghcr.io/${{ github.repository }}/docker_traces:$(date +%s)
+          docker build . --file ./allbench_traces/Dockerfile --no-cache --tag ghcr.io/scarab.docker_images/allbench_traces:$(date +%s)
+          docker build . --file ./docker_traces/Dockerfile --no-cache --tag ghcr.io/scarab.docker_images/docker_traces:$(date +%s)
 
       - name: Push Docker images to GitHub Packages
         run: |
-          docker push ghcr.io/${{ github.repository }}/allbench_traces:$(date +%s)
-          docker push ghcr.io/${{ github.repository }}/docker_traces:$(date +%s)
+          docker push ghcr.io/scarab.docker_images/allbench_traces:$(date +%s)
+          docker push ghcr.io/scarab.docker_images/docker_traces:$(date +%s)
