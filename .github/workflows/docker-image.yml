@@ -8,6 +8,10 @@ on:
   workflow_dispatch:
     # Allows manual triggering of the workflow
 
+permissions:
+    contents: write
+    packages: write
+
 jobs:
   build-and-publish:
     name: Build and Publish Docker Image
