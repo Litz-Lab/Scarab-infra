@@ -1,0 +1,48 @@
+name: Build and Publish Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+    # Allows manual triggering of the workflow
+
+permissions:
+    contents: write
+    packages: write
+
+jobs:
+  build-and-publish:
+    name: Build and Publish Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set timestamp
+        id: timestamp
+        run: echo "timestamp=$(date +%s)" >> $GITHUB_ENV
+
+      - name: Build Docker images
+        run: |
+          docker build . --file ./allbench_traces/Dockerfile --no-cache --tag ghcr.io/litz-lab/scarab-infra/allbench_traces:${{ env.timestamp }}
+          docker build . --file ./docker_traces/Dockerfile --no-cache --tag ghcr.io/litz-lab/scarab-infra/docker_traces:${{ env.timestamp }}
+
+      - name: Show Docker Image History
+        run: |
+          docker history --no-trunc ghcr.io/litz-lab/scarab-infra/allbench_traces:${{ env.timestamp }}
+          docker history --no-trunc ghcr.io/litz-lab/scarab-infra/docker_traces:${{ env.timestamp }}
+
+      - name: Push Docker images to GitHub Packages
+        run: |
+          docker push ghcr.io/litz-lab/scarab-infra/allbench_traces:${{ env.timestamp }}
+          docker push ghcr.io/litz-lab/scarab-infra/docker_traces:${{ env.timestamp }}
