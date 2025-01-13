@@ -34,10 +34,10 @@ jobs:
 
       - name: Build Docker images
         run: |
-          docker build . --file ./allbench_traces/Dockerfile --no-cache --tag ghcr.io/Litz-Lab/Scarab-infra/allbench_traces:${{ env.timestamp }}
-          docker build . --file ./docker_traces/Dockerfile --no-cache --tag ghcr.io/Litz-Lab/Scarab-infra/docker_traces:${{ env.timestamp }}
+          docker build . --file ./allbench_traces/Dockerfile --no-cache --tag ghcr.io/Litz-Lab/scarab-infra/allbench_traces:${{ env.timestamp }}
+          docker build . --file ./docker_traces/Dockerfile --no-cache --tag ghcr.io/Litz-Lab/scarab-infra/docker_traces:${{ env.timestamp }}
 
       - name: Push Docker images to GitHub Packages
         run: |
-          docker push ghcr.io/Litz-Lab/Scarab-infra/allbench_traces:${{ env.timestamp }}
-          docker push ghcr.io/Litz-Lab/Scarab-infra/docker_traces:${{ env.timestamp }}
+          docker push ghcr.io/Litz-Lab/scarab-infra/allbench_traces:${{ env.timestamp }}
+          docker push ghcr.io/Litz-Lab/scarab-infra/docker_traces:${{ env.timestamp }}
