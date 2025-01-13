@@ -33,8 +33,17 @@ class Experiment:
 
             self.data["stats"] = rows
 
+            # TODO: Add Groups here. Issues with write protect will apply to the group col too. Getters and derived stats affected
+
             # Enable write protect for all base stats
             self.data["write_protect"] = [True for _ in rows]
+
+    def has_group_data(self):
+        return "groups" in self.data.columns
+
+    def set_groups(self, groups):
+        # NOTE: Add 7 0s at end for all the appends in add_simpoint
+        self.data["groups"] = list(groups) + [0]*7
 
     def add_simpoint(self, simpoint_data, experiment, arch, config, workload, seg_id, c_id, weight):
         column = simpoint_data
@@ -242,13 +251,13 @@ class Experiment:
         return self.data.drop(rows_to_drop)
 
     def get_experiments(self):
-        return list(set(list(self.data[self.data["stats"] == "Experiment"].iloc[0])[2:]))
+        return list(set(list(self.data[self.data["stats"] == "Experiment"].iloc[0])[3:]))
 
     def get_configurations(self):
-        return list(set(list(self.data[self.data["stats"] == "Configuration"].iloc[0])[2:]))
+        return list(set(list(self.data[self.data["stats"] == "Configuration"].iloc[0])[3:]))
 
     def get_workloads(self):
-        return list(set(list(self.data[self.data["stats"] == "Workload"].iloc[0])[2:]))
+        return list(set(list(self.data[self.data["stats"] == "Workload"].iloc[0])[3:]))
 
     def get_stats(self):
         return list(set(self.data["stats"]))
@@ -315,10 +324,10 @@ class stat_aggregator:
 
         return all_stats
 
-
     # Load simpoint from csv file as pandas dataframe
     def load_simpoint(self, path, load_ramulator=True, ignore_duplicates = True, return_stats = False, order = None):
         data = pd.Series()
+        group = pd.Series()
         all_stats = []
 
         for file in stat_files:
@@ -354,9 +363,10 @@ class stat_aggregator:
                 exit(1)
 
             all_stats += list(df.columns)
-            data = pd.concat([data, df.iloc[0]])
+            data = pd.concat([data, df.iloc[1]])
+            group = pd.concat([group, df.iloc[0]])
 
-
+        # NOTE: Ramulator will not be in distribution, group should be 0
         if load_ramulator:
             f = open(f"{path}ramulator.stat.out")
             lines = f.readlines()
@@ -372,6 +382,7 @@ class stat_aggregator:
                 tmp.append(line.split()[1])
 
             data = pd.concat([data, pd.Series(tmp, index=tmp_lbl)])
+            group = pd.concat([group, pd.Series([0 for _ in range(len(tmp))], index=tmp_lbl)])
 
             f.close()
 
@@ -394,7 +405,7 @@ class stat_aggregator:
         data = list(map(float, list(data)))
         if order != None: print(len(data), len(order))
 
-        if not return_stats: return data
+        if not return_stats: return data, group
         else: return all_stats
 
     # Load experiment from saved file
@@ -422,6 +433,8 @@ class stat_aggregator:
 
         # Set set of all stats. Should only differ by config
         for config in json_data["configurations"]:
+            config = config.replace("/", "-")
+
             # Use first workload
             workload = json_data["workloads_list"][0]
 
@@ -472,6 +485,7 @@ class stat_aggregator:
 
         # Load each configuration
         for config in json_data["configurations"]:
+            config = config.replace("/", "-")
 
             # Load each workload for each configuration
             for workload in json_data["workloads_list"]:
@@ -498,7 +512,12 @@ class stat_aggregator:
                             experiment = Experiment(known_stats)
 
                         print(f"LOAD {directory}")
-                        data = self.load_simpoint(directory, order=known_stats)
+                        data, groups = self.load_simpoint(directory, order=known_stats)
+
+                        if not experiment.has_group_data():
+                            print("INFO: Added group data")
+                            experiment.set_groups(groups)
+
                         experiment.add_simpoint(data, experiment_name, architecture, config, workload, seg_id_1, cluster_id, weight)
                         print(f"LOADED")
 
@@ -1359,6 +1378,7 @@ if __name__ == "__main__":
 
     da = stat_aggregator()
     E = da.load_experiment_json(args.descriptor_name, args.sim_path, args.trace_path, True)
+    E.to_csv("loaded.csv")
     print(E.get_experiments())
 
     # Create equation that sums all of the stats

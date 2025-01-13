@@ -57,7 +57,7 @@ def check_docker_container_running(nodes, container_name, mount_path, dbg_lvl = 
 # Check what containers are running in the slurm cluster
 # Inputs: None
 # Outputs: a list containing all node names that are currently available or None
-def check_available_nodes(dbg_lvl = 1):
+def check_available_nodes(dbg_lvl = 1, run_on_allocated = False):
     # Query sinfo to get all lines with status information for all nodes
     # Ex: [['LocalQ*', 'up', 'infinite', '2', 'idle', 'bohr[3,5]']]
     response = subprocess.check_output(["sinfo", "-N"]).decode("utf-8")
@@ -66,6 +66,7 @@ def check_available_nodes(dbg_lvl = 1):
     # Check each node is up and available
     available = []
     all_nodes = []
+    allocated = []
     for line in lines:
         node = line[0]
         all_nodes.append(node)
@@ -73,6 +74,7 @@ def check_available_nodes(dbg_lvl = 1):
         # Index -1 is STATE. Skip if not partially available
         if line[-1] != 'idle' and line[-1] != 'mix':
             info(f"{node} is not available. It is '{line[-1]}'", dbg_lvl)
+            allocated.append(node)
             continue
 
         # Now append node(s) to available list. May be single (bohr3) or multiple (bohr[3,5])
@@ -82,6 +84,12 @@ def check_available_nodes(dbg_lvl = 1):
             return None
             
         available.append(node)
+
+    # If no nodes are free, queue on allocated nodes
+    # run_on_alloc should be set when checking after trying to spin up container. More containers is better
+    # TODO: Check this logic with lab
+    if run_on_allocated and available == []:
+        available = allocated
 
     return available, all_nodes
 
@@ -406,8 +414,14 @@ if __name__ == "__main__":
 
         # If docker container is still not running exit
         if docker_running == []:
-            err("Error with launched container. Could not detect it after launching", dbg_lvl)
-            exit(1)
+            err("Error with launched container. Could not detect it after launching. Queueing on allocated node if possible", dbg_lvl)
+
+            available_slurm_nodes, all_nodes = check_available_nodes(dbg_lvl, run_on_allocated=True)
+            docker_running = check_docker_container_running(available_slurm_nodes, f"{docker_prefix}_{user}", mount_path, dbg_lvl)
+
+            if docker_running == []: 
+                err("Unable to find node (allocated or free) with suitable docker container, and one could not successfully be launched")
+                exit(1)
 
     info(f"Using docker container with name {docker_prefix}_{user}", dbg_lvl)
 
@@ -433,6 +447,7 @@ if __name__ == "__main__":
         simpoints = get_simpoints(user, workload, docker_running, docker_prefix, dbg_lvl)
         for config_key in configs:
             config = configs[config_key]
+            config_key = config_key.replace("/", "-")
 
             for simpoint, weight in simpoints.items():
                 print(simpoint, weight)
@@ -449,7 +464,7 @@ if __name__ == "__main__":
                 # TODO: Rewrite with sbatch arrays
 
                 # Create temp file with run command and run it
-                filename = f"{experiment_name}_{workload}_{config_key.replace("/", "-")}_{simpoint}_tmp_run.sh"
+                filename = f"{experiment_name}_{workload}_{config_key}_{simpoint}_tmp_run.sh"
                 tmp_files.append(filename)
                 with open(filename, "w") as f:
                     f.write("#!/bin/bash \n")
