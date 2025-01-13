@@ -114,7 +114,7 @@ class Experiment:
     def defragment(self):
         self.data = self.data.copy()
 
-    def derive_stat(self, equation:str, overwrite:bool=True, agg_first:bool=True):
+    def derive_stat(self, equation:str, overwrite:bool=True, pre_agg:bool=True):
         # TODO: Doesn't work for stats with spaces in the names
 
         # Make sure tokens have space padding
@@ -134,7 +134,8 @@ class Experiment:
         lookup_cols = {old:new for old, new in zip(self.data.T.columns, self.data.T.iloc[0])}
         str_rows = [list(self.data["stats"]).index(row) for row in ["Experiment","Architecture","Configuration","Workload"]]
 
-        lookup = self.data.T.rename(columns=lookup_cols).drop("stats").drop("write_protect")
+        # NOTE: Drop metadata here, don't do operations on them
+        lookup = self.data.T.rename(columns=lookup_cols).drop("stats").drop("write_protect").drop("groups")
 
         # Aggregates before returning row
         # Takes in a stat name, returns a Pandas series
@@ -158,8 +159,8 @@ class Experiment:
             # Make a sereies so equaation works
             return pd.Series(data_weighted_duplicated.values(), data_weighted_duplicated.keys())
 
-        # If agg_first, then aggregate *while* retrieving stat
-        if agg_first:
+        # If pre_agg, then aggregate *while* retrieving stat
+        if pre_agg:
             panda_fy = lambda name: f'panda_fy_agg("{name}")'
 
         str_rows = [lookup.columns[i] for i in str_rows]
@@ -219,7 +220,9 @@ class Experiment:
         # TODO: Unsafe!
         eval(to_eval)
 
-        row = [stat_name, False] + values[1]
+        # NOTE: Add metadata columns here.
+        # [name, write_prot, group]
+        row = [stat_name, False, 0] + values[1]
         self.data.loc[insert_index] = row
         return
 
@@ -1389,7 +1392,9 @@ if __name__ == "__main__":
 
     # Add stat as new entry
     E.derive_stat(equation)
-    E.derive_stat(equation2, agg_first=True)
+    E.derive_stat(equation2, pre_agg=True)
+    E.derive_stat("Test1 = BP_ON_PATH_MISFETCH_total_count + 1")
+    E.derive_stat("Test2 = Weight + 1", pre_agg=False)
 
     cfs = E.get_configurations()
     wls = E.get_workloads()

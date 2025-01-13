@@ -252,13 +252,13 @@ aggregation_level = "Config": f"{config} {statistic}"
 - simpoints: For aggregation level "Simpoint", optionally provide which simpoints you want data from. Default is all
 
 #### derive_stat
-Arguments: (equation:str, overwrite:bool=True, agg_first:bool=True)
+Arguments: (equation:str, overwrite:bool=True, pre_agg:bool=True)
 
 Creates a new stat column using the given equation. Format should be similar to `new_stat_name = stat_name + stat_name_2 * 42`. Format strings can be used to insert variables
 
 - equation: The equation to be used to derive a new statistic. + - * / all work, with column names or number literals.
 - overwrite: If set to false, will error if user attempts to overwrite the value of an existing stat. When enabled (default), it will replace the value of the stat if it exists. Cannot be used on stats collected directly from scarab.
-- agg_first: If set to false, do not carry out simpoint weighting during stat creation. When set to true (default), it will aggregate/weight simpoints during the data retrival step while deriving your stat.
+- pre_agg: If set to false, do not carry out simpoint weighting during stat creation. When set to true (default), it will aggregate/weight simpoints during the data retrival step while deriving your stat. **NOTE: If you don't want to agregate across simpoints (ex: Weight + 1), be sure to disable. Put another way, if you want individual simpoint data, set pre_agg to false**.
 
 #### to_csv
 Arguments: (path: str)
