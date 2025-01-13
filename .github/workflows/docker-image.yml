@@ -38,8 +38,9 @@ jobs:
           docker build . --file ./docker_traces/Dockerfile --no-cache --tag ghcr.io/litz-lab/scarab-infra/docker_traces:${{ env.timestamp }}
 
       - name: Show Docker Image History
-        run: docker history --no-trunc ghcr.io/litz-lab/scarab-infra/allbench_traces:${{ env.timestamp }}
-        run: docker history --no-trunc ghcr.io/litz-lab/scarab-infra/docker_traces:${{ env.timestamp }}
+        run: |
+          docker history --no-trunc ghcr.io/litz-lab/scarab-infra/allbench_traces:${{ env.timestamp }}
+          docker history --no-trunc ghcr.io/litz-lab/scarab-infra/docker_traces:${{ env.timestamp }}
 
       - name: Push Docker images to GitHub Packages
         run: |
