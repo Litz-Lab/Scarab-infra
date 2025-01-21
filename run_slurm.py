@@ -35,6 +35,17 @@ def check_docker_container_running(nodes, container_name, mount_path, dbg_lvl = 
     for node in nodes:
         # Check container is running and no errors
         try:
+            containers = subprocess.check_output(["srun", f"--nodelist={node}", "docker", "ps"])
+        except:
+            info(f"Couldn't find container {container_name} on {node}", dbg_lvl)
+            continue
+
+        containers = containers.decode("utf-8")
+
+        info(f"CONTAINER FOUND: {container_name in containers}", dbg_lvl)
+
+        # Check mount
+        try:
             mounts = subprocess.check_output(["srun", f"--nodelist={node}", "docker", "inspect", "-f", "'{{ .Mounts }}'", container_name])
         except:
             info(f"Couldn't find container {container_name} on {node}", dbg_lvl)
@@ -43,14 +54,14 @@ def check_docker_container_running(nodes, container_name, mount_path, dbg_lvl = 
         mounts = mounts.decode("utf-8")
 
         # Check mount matches
-        if mount_path not in mounts:
+        if mount_path not in mounts or container_name not in containers:
             warn(f"Couldn't find {mount_path} mounted on {node}.\nFound {mounts}", dbg_lvl)
             continue
 
         running_nodes.append(node)
 
     # NOTE: Could figure out mount here if all of them agree. Then it wouldn't need to be provided
-
+    print(f"FOUND RUNNING:  {running_nodes}")
     return running_nodes
 
 

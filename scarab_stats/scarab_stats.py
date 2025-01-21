@@ -420,6 +420,16 @@ class stat_aggregator:
         if not return_stats: return data, group
         else: return all_stats
 
+    def get_sim_path_from_json(self, path):
+        json_data = None
+        try:
+            with open(path, "r") as file:
+                json_data = json.loads(file.read())
+        except:
+            return None
+
+        return json_data["docker_home"]
+
     # Load experiment from saved file
     def load_experiment_csv(self, path):
         return Experiment(path)
@@ -1387,14 +1397,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-d','--descriptor_name', required=True, help='Experiment descriptor name. Usage: -d exp2.json')
-    parser.add_argument('-p','--sim_path', required=True, help='Path to the simulation directory. Usage: -p /soe/<USER>/allbench_home/simpoint_flow/simulations/')
-    parser.add_argument('-t','--trace_path', required=True, help='Path to the trace directory for reading simpoints. Usage: -t /soe/hlitz/lab/traces/')
+    parser.add_argument('-p','--sim_path', required=False, help='Path to the simulation directory. Usage: -p /soe/<USER>/allbench_home/simpoint_flow/simulations/')
+    parser.add_argument('-t','--trace_path', required=False, help='Path to the trace directory for reading simpoints. Usage: -t /soe/hlitz/lab/traces/')
 
     args = parser.parse_args()
 
     da = stat_aggregator()
-    E = da.load_experiment_json(args.descriptor_name, args.sim_path, args.trace_path, True)
-    E.to_csv("loaded.csv")
+    sim_path = da.get_sim_path_from_json(args.descriptor_name)
+    if sim_path == None:
+        sim_path = args.sim_path
+    trace_path = "/soe/hlitz/lab/traces/" if args.trace_path == None else args.trace_path
+    E = da.load_experiment_json(args.descriptor_name, sim_path, trace_path, True)
     print(E.get_experiments())
 
     # Create equation that sums all of the stats
