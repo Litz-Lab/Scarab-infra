@@ -218,12 +218,21 @@ class Experiment:
                 insert_index = self.data[self.data["stats"] == stat_name].index[0]
 
         # TODO: Unsafe!
+        print("Evalling:", to_eval)
         eval(to_eval)
 
         # NOTE: Add metadata columns here.
         # [name, write_prot, group]
+        print(f"Values:", values)
         row = [stat_name, False, 0] + values[1]
+
         self.data.loc[insert_index] = row
+
+        if self.data.loc[insert_index].isna().any():
+            print(f"ERR: 'NaN' calculated in result of the equation '{equation}'")
+            print(F"Likely division by zero. Found {self.data.loc[insert_index].isna().count()} NaNs")
+            return
+
         return
 
     def to_csv(self, path:str):
@@ -526,6 +535,10 @@ class stat_aggregator:
 
         experiment.defragment()
         print("\n\n", experiment)
+
+        # TODO: Derive derived stats for group stats
+        experiment.derive_stat("Cumulative_IPC = Cumulative_Instructions / Cumulative_Cycles")
+        experiment.derive_stat("Periodic_IPC = Periodic_Instructions / Periodic_Cycles")
 
         return experiment
 
@@ -1400,13 +1413,13 @@ if __name__ == "__main__":
     wls = E.get_workloads()
     stats_to_plot = ['UNUSEFUL_pct']
 
-    print(E.retrieve_stats(cfs, ["UNUSEFUL_pct", "UNUSEFUL_agg_pct"], wls))
+    # print(E.retrieve_stats(cfs, ["UNUSEFUL_pct", "UNUSEFUL_agg_pct"], wls))
 
     alls = ["UNUSEFUL_pct","UNUSEFUL_agg_pct", "ICACHE_EVICT_MISS_ONPATH_BY_FDIP_count", "ICACHE_EVICT_MISS_ONPATH_BY_FDIP_count", "ICACHE_EVICT_HIT_ONPATH_BY_FDIP_count"]
 
-    a = E.retrieve_stats(cfs, alls, wls)
-    for k,v in a.items():
-        print(f"{k}: {v}")
+    # a = E.retrieve_stats(cfs, alls, wls)
+    # for k,v in a.items():
+    #     print(f"{k}: {v}")
 
     # Call the plot function
     E.to_csv("agg.csv")
