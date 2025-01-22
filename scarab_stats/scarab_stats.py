@@ -45,6 +45,10 @@ class Experiment:
         # NOTE: Add 7 0s at end for all the appends in add_simpoint
         self.data["groups"] = list(groups) + [0]*7
 
+    def get_groups(self):
+        # NOTE: Add 7 0s at end for all the appends in add_simpoint
+        return set(self.data["groups"])
+
     def add_simpoint(self, simpoint_data, experiment, arch, config, workload, seg_id, c_id, weight):
         column = simpoint_data
         column.append(experiment)
@@ -260,7 +264,49 @@ class Experiment:
             #    if must_contain not in row:
             #        rows_to_drop.append(self.data.index[self.data["stats"] == row][0])
 
-        return self.data.drop(rows_to_drop)
+        return self.data.copy().drop(rows_to_drop)
+    
+    def calculate_distribution_stats(self):
+        groups = self.get_groups()
+        groups.remove(0)
+
+        errs = 0
+
+        # Do calculations for each group
+        for group in groups:
+            print(f"Group:", group)
+
+            remove_columns = ["write_protect", "groups"]
+            group_df = self.data[(self.data["groups"] == group)].drop(columns=remove_columns)
+
+            count_data_stats = list(filter(lambda x: x.endswith("_count") and not x.endswith("_total_count"), group_df["stats"]))
+            total_count_data_stats = list(filter(lambda x: x.endswith("_total_count"), group_df["stats"]))
+
+            errs += 1 if len(group_df) != len(count_data_stats) + len(total_count_data_stats) else 0
+
+            count_data_df = group_df[group_df["stats"].isin(count_data_stats)].set_index("stats")
+            total_count_data_df = group_df[group_df["stats"].isin(total_count_data_stats)].set_index("stats")
+
+            count_sums = count_data_df.sum(axis=0)
+            total_count_sums = total_count_data_df.sum(axis=0)
+
+            if float(0) not in list(count_sums):
+                print(count_data_df / count_sums)
+            else:
+                print("ERR: NULL")
+
+            if float(0) not in list(total_count_sums):
+                print(total_count_data_df / total_count_sums)
+            else:
+                print("ERR: NULL")
+
+            # Get mean and standard deviation of WHOLE distribution, then percent that each sample makes up of distribution (data_df/sums)
+
+        if errs != 0:
+            print("WARN: Distribution size and number of x_count + x_total_count stats is not equal.")
+            return
+
+        exit(1)
 
     def get_experiments(self):
         return list(set(list(self.data[self.data["stats"] == "Experiment"].iloc[0])[3:]))
@@ -547,8 +593,13 @@ class stat_aggregator:
         print("\n\n", experiment)
 
         # TODO: Derive derived stats for group stats
+        # Derive IPC
         experiment.derive_stat("Cumulative_IPC = Cumulative_Instructions / Cumulative_Cycles")
         experiment.derive_stat("Periodic_IPC = Periodic_Instructions / Periodic_Cycles")
+
+        # Derive distribution stats for each group
+        # 'Group' 0 is no group 
+        experiment.calculate_distribution_stats()
 
         return experiment
 
