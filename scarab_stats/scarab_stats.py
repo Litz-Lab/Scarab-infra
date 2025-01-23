@@ -274,7 +274,6 @@ class Experiment:
 
         # Do calculations for each group
         for group in groups:
-            print(f"Group:", group)
 
             remove_columns = ["write_protect", "groups"]
             group_df = self.data[(self.data["groups"] == group)].drop(columns=remove_columns)
@@ -290,23 +289,42 @@ class Experiment:
             count_sums = count_data_df.sum(axis=0)
             total_count_sums = total_count_data_df.sum(axis=0)
 
-            if float(0) not in list(count_sums):
-                print(count_data_df / count_sums)
-            else:
-                print("ERR: NULL")
+            if float(0) in list(count_sums):
+                # print("ERR: NULL. Skipping due to sum of 0 in distribution", group)
+                continue
 
-            if float(0) not in list(total_count_sums):
-                print(total_count_data_df / total_count_sums)
-            else:
-                print("ERR: NULL")
+            if float(0) in list(total_count_sums):
+                # print("ERR: NULL. Skipping due to sum of 0 in distribution", group)
+                continue
 
             # Get mean and standard deviation of WHOLE distribution, then percent that each sample makes up of distribution (data_df/sums)
+            total_count_means = total_count_sums / len(total_count_data_df)
+            count_means = count_sums / len(count_data_df)
+
+            total_count_stddev = (((total_count_data_df - total_count_means) ** 2).sum() / (len(total_count_data_df))).pow(0.5)
+            count_stddev = (((count_data_df - count_means) ** 2).sum() / (len(count_data_df))).pow(0.5)
+
+            total_count_percentages = total_count_data_df / total_count_sums
+            count_percentages = count_data_df / count_sums
+            
+            # print("Mean (Validated)", total_count_means)
+            # print("Standard Deviation", total_count_stddev)
+            # print("Percentages", total_count_percentages)
+
+            index = len(self.data)
+            self.data.loc[index]     = [f"group_{group}_total_mean", True, 0]   + list(total_count_means)
+            self.data.loc[index + 1] = [f"group_{group}_mean", True, 0]         + list(count_means)
+            self.data.loc[index + 2] = [f"group_{group}_total_stddev", True, 0] + list(total_count_stddev)
+            self.data.loc[index + 3] = [f"group_{group}_stddev", True, 0]       + list(count_stddev)
+
+            # exit(1)
+            # return
 
         if errs != 0:
             print("WARN: Distribution size and number of x_count + x_total_count stats is not equal.")
             return
 
-        exit(1)
+        # exit(1)
 
     def get_experiments(self):
         return list(set(list(self.data[self.data["stats"] == "Experiment"].iloc[0])[3:]))
