@@ -1,80 +1,75 @@
 # Scarab-infra
-scarab-infra is an infrastructure that serves an environment where a user analyzes CPU metrics of a workload, applies [SimPoint](https://cseweb.ucsd.edu/~calder/simpoint/) method to exploit program phase behavior, collects execution traces, and simulates the workload by using [scarab](https://github.com/Litz-Lab/scarab) microprocessor simulator. The environment is buildable via [Docker](https://www.docker.com/).
-
-This tool is mainly used for the following three scenarios where CPU architect works on CPU performance for datacenter workloads.
-1) Simulate and evaluate a customized modern microprocessor by using scarab CPU simulator and datacenter workloads' execution traces (trace-driven simulation) + plot CPU metrics from the simulation results.
-2) Run a datacenter workload itself or run scarab simulation of the workload in execution-driven mode.
-3) Analyze CPU metrics of a datacenter workload, extract its program phase behavior, and collect its exection traces.
-
-In this README, 1) and 2) are described with step-by-step instructions in a manual way.
-For the instructions using Slurm workload manager, please refer to [README.Slurm.md](./docs/README.Slurm.md) for non-UCSC LitzLab users or [README.Slurm.LitzLab.md](./docs/README.Slurm.LitzLab.md).
-
-There are four ways to run Scarab: 1) execution-driven w/o SimPoint 2) trace-based w/o SimPoint 3) execution-driven w/ SimPoint 4) trace-based w/ SimPoint. The execution-driven simulation runs the application binary directly without using traces while the trace-based simulation needs collected traces to run the application. SimPoints are used for fast-forwarding on the execution-driven run and for collecting traces/simulating on the trace-based run.
-The list of the Scarab parameters should be given to generate parameter descriptor file in `<experiment_name>.json`. Please refer to the `./json/exp.json` files for the examples.
-
-The following steps are for the fourth running scenario (trace-based w/ SimPoint) with the traces of datacenter workloads we already collected.
+scarab-infra is a set of tools that automate the execution of Scarab simulations. It utilizes [Docker](https://www.docker.com/) and Slurm [link] to effectively simulate applications according to the [SimPoint](https://cseweb.ucsd.edu/~calder/simpoint/) methodology. Furthermore, scarab-infra provides tools to analyze generated simulation statistics and to obtain simpoints and execution traces from binary applications.
 
 ## Requirements
-1. Install Docker based on the instructions from official [docker docs](https://docs.docker.com/engine/install/).
-2. To run scarab in a docker container, the host machine should use non-root user and the user has a proper GitHub setup to access https://github.com/Litz-Lab/scarab.
-To run docker as a non-root user, run ([ref](https://stackoverflow.com/questions/48957195/how-to-fix-docker-got-permission-denied-issue)):
+1. Install Docker [docker docs](https://docs.docker.com/engine/install/).
+2. Configure Docker to run as non-root user ([ref](https://stackoverflow.com/questions/48957195/how-to-fix-docker-got-permission-denied-issue)):
    ```
    sudo chmod 666 /var/run/docker.sock
    ```
-Generate a new SSH key and add it to the machine's SSH agent, then add it to your GitHub account ([link](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent?platform=linux)).
-
-## Set up the environment: build a Docker image and run a container of a built image
-### 1. Build a Docker image
+3. Add the SSH key of the machine(s) running the Docker container to your Github account ([link](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent?platform=linux)).
+4. Place simpointed instruction traces into $SIMPOINT_TRACES_DIR. scarab-infra offers prepackaged traces that can be downloaded as follows:
 ```
-./run.sh -b $WORKLOAD_GROUPNAME
-```
-For example,
-```
-./run.sh -b allbench_traces
-```
-
-### 2. Run a Docker container by using the built image and specifying home/scarab/trace paths to be mounted on host.
-For non-UCSC LitzLab users, please download the traces and place/unzip it, then provide the path with -tp.
-For example (only non-UCSC LitzLab users),
-```
-cd /home/$USER/simpoint_traces
+cd $SIMPOINT_TRACES_DIR
 gdown https://drive.google.com/uc?id=1tfKL7wYK1mUqpCH8yPaPVvxk2UIAJrOX
 tar -xzvf simpoint_traces.tar.gz
 ```
-and then (all the users),
-```
-./run.sh -r $WORKLOAD_NAME -hp <path_to_mount_docker_home> -sp <path_to_mount_scarab_repo> -tp <path_to_mount_simpoints_traces>
-```
-For example for non-UCSC users,
-```
-./run.sh -r allbench -hp /home/$USER/allbench_home -sp /home/$USER/scarab -tp /home/$USER/simpoint_traces
-```
-for UCSC users,
-```
-./run.sh -r allbench -hp /soe/$USER/allbench_home -sp /soe/$USER/scarab -tp /soe/hlitz/lab/traces
-```
-This step sets up the environment within a Docker container where a workload is ready to run and Scarab simulation is ready.
-`/home/$USER/allbench_home` is a path on host where scarab source codes are downloaded where a user can modify the source codes and rebuild it within the Docker container.
+5. Optional: Install Slurm [link]
 
-### 3. Run scarab trace-based simulation
-The example file descriptor for all the simulation scenarios is in `json/exp.json` and `json/exp.pt.json`
-The simulations using memtrace or pt traces should be launched separately with different simulation mode (4 : memtrace, 5 : PT trace). Still the two executions can be parallelized (by launching on different terminals). -w should be provided to identify applications with the same name but within different workload group.
-Run the following command with <experiment> name for -e.
-```
-./run.sh -o /home/$USER/allbench_home -s 4 -e exp -w allbench
-./run.sh -o /home/$USER/allbench_home -s 5 -e exp.pt -w allbench
-```
-The script will launch Scarab simulations in background until it runs all the different scenarios x workloads. You can check if all the simulations are over by checking if there is any 'scarab' process running (UNIX 'top' command).
+## Set up the environment (Docker image)
+### Alternative 1: Download a pre-built Docker image with preinstalled Scarab
+[TODO}
 
-### 4. Modify the source code and rebuild scarab
+### Alternative 2: Build your own Docker image
+```
+cd scarab-infra
+./run.sh -b $IMAGE_NAME
+```
+
+## List available workloads
+```
+./run.sh -l $SIMPOINT_TRACES_DIR
+```
+
+## Run a Scarab experiment
+1. Setup a new experiment descriptor
+```
+cp json/exp.json your_experiment.json
+```
+2. Edit your_experiment.json to describe your experiment. You need to provide paths to
+a) the path to your $IMAGE_NAME
+b) the local output directory mounted to docker into which the simulation generated outputs will be placed
+c) the local directory containing the traces ($SIMPOINT_TRACES_DIR)
+d) the workload(s) to be executed
+e) the machine parameters of the simulated microarchitecture
+a) OPTIONAL: the local path to the scarab binary used for the experiment. If not provided, the default scarab binary within the Docker file will be used.  
+3. Run all experiments
+```
+./run.sh -x your_experiment.json
+```
+The script will launch all Scarab simulations in parallel (one process per simpoint). You can check if the experiment is complete if there are no active scarab process running (UNIX 'top' command).
+
+
+## Run a Scarab experiment via Slurm
+scarab-infra utilizes Slurm a) to enable a scheduler that runs only one Scarab simulation per core at a time reducing the memory footprint and context switching overheads and b) to allow distribution of simulation runs across multiple nodes in a cluster.
+1. Setup Slurm [TODO]
+2. Setup your json experiment as above
+3. Run all experiments via slurm
+```
+./run.sh --slurm your_experiment.json
+```
+
+### 4. Modify Scarab source code and rebuild the binary
 A user can update scarab and rebuild for further simulation. Scarab can be updated either 'inside' or 'outside' the container. To exploit already-set simulation/building environment, scarab build itself should be done 'inside' the container.
 When you modify scarab outside the container, cd to the path you provided with -sp when you launch the container, and modify it.
+1. Alternative 1: Start an interactive container with preinstalled Scarab environment
 ```
+./run.sh --interactive $IMAGE_NAME
 cd /home/$USER/scarab/src
 ```
-If you modify scarab inside the container, open an interactive shell to the docker container, cd to the path within the container, and modify it.
+Alternative 2: Start an interactive container with preinstalled Scarab environment using slurm
 ```
-docker exec -it --user=$USER --pribileged $WORKLOAD_GROUPNAME\_$USER /bin/bash
+./run.sh --slurm_interactive $IMAGE_NAME
 cd /home/$USER/scarab/src
 ```
 Then outside the container, you can build the updated scarab with:
