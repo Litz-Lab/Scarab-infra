@@ -118,7 +118,8 @@ class Experiment:
     def defragment(self):
         self.data = self.data.copy()
 
-    def derive_stat(self, equation:str, overwrite:bool=True, pre_agg:bool=True):
+    def derive_stat(self, equation:str, overwrite:bool=True, pre_agg:bool=True,
+                    write_prot:bool=False):
         # TODO: Doesn't work for stats with spaces in the names
 
         # Make sure tokens have space padding
@@ -222,19 +223,20 @@ class Experiment:
                 insert_index = self.data[self.data["stats"] == stat_name].index[0]
 
         # TODO: Unsafe!
-        print("Evalling:", to_eval)
+        # print("Evalling:", to_eval)
         eval(to_eval)
 
         # NOTE: Add metadata columns here.
         # [name, write_prot, group]
-        print(f"Values:", values)
-        row = [stat_name, False, 0] + values[1]
+        # print(f"Values:", values)
+        row = [stat_name, write_prot, 0] + values[1]
 
         self.data.loc[insert_index] = row
 
         if self.data.loc[insert_index].isna().any():
             print(f"ERR: 'NaN' calculated in result of the equation '{equation}'")
-            print(F"Likely division by zero. Found {self.data.loc[insert_index].isna().count()} NaNs")
+            print(f"Likely division by zero. Found {self.data.loc[insert_index].isna().count()} NaNs",
+                  "across all simpoints.")
             return
 
         return
@@ -289,12 +291,23 @@ class Experiment:
             count_sums = count_data_df.sum(axis=0)
             total_count_sums = total_count_data_df.sum(axis=0)
 
-            if float(0) in list(count_sums):
+            # Replace NaN values where all values are zero
+            if float(0) in list(count_sums) or float(0) in list(total_count_sums):
                 # print("ERR: NULL. Skipping due to sum of 0 in distribution", group)
-                continue
+                new_stats = [f"group_{group}_total_mean", f"group_{group}_mean", 
+                             f"group_{group}_total_stddev", f"group_{group}_stddev"]
+                
+                for stat in total_count_percentages.index:
+                    new_stats.append(f"{stat}_pct")
 
-            if float(0) in list(total_count_sums):
-                # print("ERR: NULL. Skipping due to sum of 0 in distribution", group)
+                for stat in count_percentages.index:
+                    new_stats.append(f"{stat}_pct")
+
+                index = len(self.data)
+                for stat in new_stats:
+                    self.data.loc[index] = [stat, True, 0] + [np.nan] * len(count_sums)
+                    index += 1
+
                 continue
 
             # Get mean and standard deviation of WHOLE distribution, then percent that each sample makes up of distribution (data_df/sums)
@@ -316,6 +329,17 @@ class Experiment:
             self.data.loc[index + 1] = [f"group_{group}_mean", True, 0]         + list(count_means)
             self.data.loc[index + 2] = [f"group_{group}_total_stddev", True, 0] + list(total_count_stddev)
             self.data.loc[index + 3] = [f"group_{group}_stddev", True, 0]       + list(count_stddev)
+            index += 4
+
+            # print(count_percentages)
+
+            for stat in total_count_percentages.index:
+                self.data.loc[index] = [f"{stat}_pct", True, 0] + list(total_count_percentages.loc[stat])
+                index += 1
+
+            for stat in count_percentages.index:
+                self.data.loc[index] = [f"{stat}_pct", True, 0] + list(count_percentages.loc[stat])
+                index += 1
 
             # exit(1)
             # return
@@ -608,12 +632,13 @@ class stat_aggregator:
                         print(f"LOADED")
 
         experiment.defragment()
-        print("\n\n", experiment)
+        # print("\n\n", experiment)
 
-        # TODO: Derive derived stats for group stats
+        print("INFO: calculating derived stats...")
+        
         # Derive IPC
-        experiment.derive_stat("Cumulative_IPC = Cumulative_Instructions / Cumulative_Cycles")
-        experiment.derive_stat("Periodic_IPC = Periodic_Instructions / Periodic_Cycles")
+        experiment.derive_stat("Cumulative_IPC = Cumulative_Instructions / Cumulative_Cycles", write_prot = True)
+        experiment.derive_stat("Periodic_IPC = Periodic_Instructions / Periodic_Cycles", write_prot = True)
 
         # Derive distribution stats for each group
         # 'Group' 0 is no group 
