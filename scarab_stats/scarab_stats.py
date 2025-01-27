@@ -267,7 +267,7 @@ class Experiment:
             #        rows_to_drop.append(self.data.index[self.data["stats"] == row][0])
 
         return self.data.copy().drop(rows_to_drop)
-    
+
     def calculate_distribution_stats(self):
         groups = self.get_groups()
         groups.remove(0)
@@ -296,7 +296,7 @@ class Experiment:
                 # print("ERR: NULL. Skipping due to sum of 0 in distribution", group)
                 new_stats = [f"group_{group}_total_mean", f"group_{group}_mean", 
                              f"group_{group}_total_stddev", f"group_{group}_stddev"]
-                
+
                 for stat in total_count_percentages.index:
                     new_stats.append(f"{stat}_pct")
 
@@ -319,7 +319,7 @@ class Experiment:
 
             total_count_percentages = total_count_data_df / total_count_sums
             count_percentages = count_data_df / count_sums
-            
+
             # print("Mean (Validated)", total_count_means)
             # print("Standard Deviation", total_count_stddev)
             # print("Percentages", total_count_percentages)
@@ -635,7 +635,7 @@ class stat_aggregator:
         # print("\n\n", experiment)
 
         print("INFO: calculating derived stats...")
-        
+
         # Derive IPC
         experiment.derive_stat("Cumulative_IPC = Cumulative_Instructions / Cumulative_Cycles", write_prot = True)
         experiment.derive_stat("Periodic_IPC = Periodic_Instructions / Periodic_Cycles", write_prot = True)
@@ -1194,7 +1194,7 @@ class stat_aggregator:
                         bar_width:float = 0.35, bar_spacing:float = 0.05, workload_spacing:float = 0.3, 
                         colors = None, plot_name = None, relative_lbls = True, label_fontsize = "small",
                         label_rotation = 0):
-        
+
         # Check experiments are similar
         configs = set(experiment.get_configurations())
         workloads = set(experiment.get_workloads())

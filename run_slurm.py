@@ -73,7 +73,7 @@ def check_available_nodes(dbg_lvl = 1, run_on_allocated = False):
     # Ex: [['LocalQ*', 'up', 'infinite', '2', 'idle', 'bohr[3,5]']]
     response = subprocess.check_output(["sinfo", "-N"]).decode("utf-8")
     lines = [r.split() for r in response.split('\n') if r != ''][1:]
-    
+
     # Check each node is up and available
     available = []
     all_nodes = []
@@ -93,7 +93,7 @@ def check_available_nodes(dbg_lvl = 1, run_on_allocated = False):
             err(f"'sinfo -N' should not produce lists (such as bohr[2-5]).", dbg_lvl)
             print(f"     problematic entry was '{node}'")
             return None
-            
+
         available.append(node)
 
     # If no nodes are free, queue on allocated nodes
@@ -176,18 +176,18 @@ def generate_single_scarab_run_command(workload, group, experiment, config, conf
     command = command + str(use_traces_simp) + '" ' + scarab_path + " " + str(simpoint)
 
     return command
-    
+
 # Get command to sbatch scarab runs. 1 core each, exclude nodes where container isn't running
 def generate_sbatch_command(excludes, experiment_dir):
     # If all nodes are usable, no need to exclude
     if not excludes == set():
         return f"sbatch --exclude {','.join(excludes)} -c 1 -o {experiment_dir}/logs/job_%j.out "
-    
+
     return f"sbatch -c 1 -o {experiment_dir}/logs/job_%j.out "
 
 # Launch a docker container on one of the available nodes
 def launch_docker(infra_dir, docker_home, available_nodes, node=None, dbg_lvl=1):
-    
+
     # Get the path to the run script
     if infra_dir == ".": run_script = ""
     elif infra_dir[-1] == '/': run_script = infra_dir
@@ -227,13 +227,13 @@ def get_simpoints (user, workload, node, docker_container_prefix, dbg_lvl = 2):
     simpid_cmd = f"{slurm_cmd}{docker_cmd}{read_simp_simpid_command}"
     info(f"Executing '{simpid_cmd}'", dbg_lvl)
     simpid_out = subprocess.check_output(simpid_cmd.split(" ")).decode("utf-8").split("\n")[:-1]
-    
+
     # Make lut for the weight for each 'index' id
     weights = {}
     for weight_id in wieght_out:
         weight, id = weight_id.split(" ")
         weights[id] = float(weight)
-    
+
     # Make final dictionary associated each simpoint id to its weight
     simpoints = {}
     for simpid_id in simpid_out:
@@ -247,7 +247,7 @@ def kill_jobs(user, experiment_name, dbg_lvl = 2):
     # Format is JobID Name
     response = subprocess.check_output(["squeue", "-u", user, "--Format=JobID,Name:90"]).decode("utf-8")
     lines = [r.split() for r in response.split('\n') if r != ''][1:]
-    
+
     # Filter to entries assocaited with this experiment, and get job ids
     lines = list(filter(lambda x:experiment_name in x[1], lines))
     job_ids = list(map(lambda x:int(x[0]), lines))
@@ -346,7 +346,7 @@ if __name__ == "__main__":
     if args.info:
         info(f"Getting information about all nodes", dbg_lvl)    
         available_slurm_nodes, all_nodes = check_available_nodes(dbg_lvl)
-        
+
         print(f"Checking resource availability of slurm nodes:")
         for node in all_nodes:
             if node in available_slurm_nodes:
@@ -395,11 +395,11 @@ if __name__ == "__main__":
 
     # Check experiment doesn't already exists
     experiment_dir = f"{docker_home}/{experiment_name}"
-    
+
     if os.path.exists(experiment_dir):
         err(f"Experiment '{experiment_name}' already exists. Please try a different name.", dbg_lvl)
         exit(1)
-    
+
     # Get avlailable nodes. Error if none available
     available_slurm_nodes, all_nodes = check_available_nodes(dbg_lvl)
     info(f"Available nodes: {', '.join(available_slurm_nodes)}", dbg_lvl)
@@ -471,7 +471,7 @@ if __name__ == "__main__":
                 # Add help (?)  
                 # Look into squeue -o https://slurm.schedmd.com/squeue.html
                 # Look into resource allocation
-            
+
                 # TODO: Rewrite with sbatch arrays
 
                 # Create temp file with run command and run it
@@ -485,8 +485,8 @@ if __name__ == "__main__":
                     f.write(docker_cmd + scarab_cmd)
 
                 cmd_queue.append(sbatch_cmd + filename)
-                
-    
+
+
     for cmd in cmd_queue:
         os.system(cmd)
         info(f"Running sbatch command '{cmd}'", dbg_lvl)
