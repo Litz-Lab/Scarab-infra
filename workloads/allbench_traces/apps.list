@@ -1,1 +1,7 @@
-allbench
+mysql
+postgres
+gcc
+clang
+mongodb
+xgboost
+verilator

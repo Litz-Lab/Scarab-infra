@@ -12,13 +12,9 @@ help () {
                 [ -l | --list ]
                 [ -b | --build ]
                 [ -r | --run ]
-                [ --homepath ]
-                [ --scarabpath ]
-                [ --tracepath ]
                 [ -w | --workloads ]
                 [ -t | --trace ]
-                [ -s | --scarabmode ]
-                [ -e | --experiment ]
+                [ -s | --simulation ]
                 [ -c | --cleanup ]"
   echo
   echo "!! Modify '<experiment_name>.json' to specify the workloads to run Scarab simulations and Scarab parameters before run !!"
@@ -33,14 +29,10 @@ help () {
   echo "h           Print this Help."
   echo "l           List workload group names and workload names."
   echo "b           Build a docker image with application setup. The workload group name should be specified. For the available docker image name (workload group name), use -l. e.g) -b allbench_traces"
-  echo "r           Run a docker container with application setup. The workload should be specified. For the available workload names, use -l. e.g) -r mysql"
-  echo "homepath    Absolute path to the directory on host which will be mounted to docker home (/home/$USER) directory for pin, traces, simpoints, and simulation results. scarab and pin will be installed if they don't exist in the given path. The directory will be mounted as home directory of a container e.g) -hp /home/$USER/testbench_container_home"
-  echo "scarabpath  Absolute path of scarab repository to use on host which will be mounted to /scarab directory. scarab will be installed if it doesn't exist in the given path. e.g) -sp /home/$USER/scarab"
-  echo "tracepath   Absolute path of existing simpoints and traces on host which will be mounted to /simpoint_traces. /soe/hlitz/lab/traces by default. e.g) -tp /home/$USER/simpoint_traces"
+  echo "r           Run an interactive shell for a docker container. Provide a name of a json file in ./json to provide workload group name. e.g) -r exp (for exp.json)"
   echo "w           List of workloads for simpoint/tracing. Should be used with -t."
   echo "t           Collect traces with different SimPoint workflows. 0: Do not collect traces, 1: Collect traces based on SimPoint workflow - collect fingerprints, do simpoint clustering, trace, 2: Collect traces based on SimPoint post-processing workflow - trace, collect fingerprints, do simpoint clustering, 3: Only collect traces without simpoint clustering. e.g) -t 2"
-  echo "s           Scarab simulation mode. 0: No simulation 1: execution-driven simulation w/o SimPoint 2: trace-based simulation w/o SimPoint (-t should be 1 if no traces exist already in the container). 3: execution-driven simulation w/ SimPoint 4: trace-based simulation w/ SimPoint. 5: trace-based simulation w/o SimPoint with pt e.g) -s 4"
-  echo "e           Experiment name which is the name of json file inside ./json e.g.) -e exp"
+  echo "s           Scarab simulation. Provide a name of a json file name in ./json e.g) -s exp (for exp.json)"
   echo "c           Clean up all the containers/volumes after run. e.g) -c"
 }
 
@@ -109,16 +101,24 @@ build () {
 }
 
 run () {
+  # run an interactive shell of docker container
+  json_file=f"${INFRA_ROOT}/json/${SIMULATION}.json"
+  key="root_dir"
+  OUTDIR=$(jq -r ".$key" "$json_file")
   if [ ! -n "$OUTDIR" ]; then
-    echo "The output directory path should be provided. (e.g. -hp /home/$USER/allbench_home)"
+    echo "The output directory path should be provided under 'root_dir' in json."
     exit 1
   fi
 
+  key="scarab_path"
+  SCARABPATH=$(jq -r ".$key" "$json_file")
   if [ ! -n "$SCARABPATH" ]; then
-    echo "The scarab path should be provided. (e.g. -sp /home/$USER/scarab)"
+    echo "The scarab path should be provided under 'scarab_path' in json."
     exit 1
   fi
 
+  key="simpoint_traces_dir"
+  TRACEPATH=$(jq -r ".$key" "$json_file")
   if [ ! -n "$TRACEPATH" ]; then
     TRACEPATH=/soe/hlitz/lab/traces
   fi
@@ -128,12 +128,21 @@ run () {
     list
   fi
 
+  key="workloads_list"
+  APP_LIST=$(jq -r ".$key" "$json_file")
+  size=${#APP_LIST[@]}
+  if (( size > 1 )); then
+    echo "Only one workload should be provided for an interactive shell of docker container."
+    exit 1
+  fi
+
+  NAME=${APP_LIST[0]}
   FOUND=false
   for GROUPNAME in "${!WL_LIST[@]}"; do
     for APPNAME in "${WL_LIST[$GROUPNAME]}"; do
-      if [[ "$APPNAME" == "$RUN" ]]; then
+      if [[ "$APPNAME" == "$NAME" ]]; then
         set_app_groupname
-        if [[ "$APP_GROUPNAME" == "GROUPNAME" ]]; then
+        if [[ "$APP_GROUPNAME" == "$GROUPNAME" ]]; then
           FOUND=true
           break
         fi
@@ -191,39 +200,39 @@ run () {
       docker run -e user_id=$USER_ID -e group_id=$GROUP_ID -e username=$USER -e HOME=/home/$USER -dit --privileged --name $APP_GROUPNAME\_$USER --mount type=bind,source=$OUTDIR,target=/home/$USER $APP_GROUPNAME:$GIT_HASH /bin/bash
       docker start $APP_GROUPNAME\_$USER
       docker exec --privileged $APP_GROUPNAME\_$USER /bin/bash -c "/usr/local/bin/common_entrypoint.sh"
-      docker exec --user=$USER --privileged $APP_GROUPNAME\_$USER /bin/bash -c "[ ! -f /home/$USER/scarab/src/build/opt/scarab ] && cd /home/$USER/scarab/src && make clean && make"
+      docker exec -it --user=$USER $APP_GROUPNAME\_$USER /bin/bash
       ;;
     sysbench)
       docker run -e user_id=$USER_ID -e group_id=$GROUP_ID -e username=$USER -e HOME=/home/$USER -dit --privileged --name $APP_GROUPNAME\_$USER --mount type=bind,source=$OUTDIR,target=/home/$USER $APP_GROUPNAME:$GIT_HASH /bin/bash
       docker start $APP_GROUPNAME\_$USER
       docker exec --privileged $APP_GROUPNAME\_$USER /bin/bash -c "/usr/local/bin/common_entrypoint.sh"
-      docker exec --user=$USER --privileged $APP_GROUPNAME\_$USER /bin/bash -c "[ ! -f /home/$USER/scarab/src/build/opt/scarab ] && cd /home/$USER/scarab/src && make clean && make"
       docker exec --privileged $APP_GROUPNAME\_$USER /bin/bash -c "/usr/local/bin/entrypoint.sh \"$APPNAME\""
+      docker exec -it --user=$USER $APP_GROUPNAME\_$USER /bin/bash
       ;;
     allbench_traces)
       docker run -e user_id=$USER_ID -e group_id=$GROUP_ID -e username=$USER -e HOME=/home/$USER -dit --privileged --name $APP_GROUPNAME\_$USER --mount type=bind,source=$TRACEPATH,target=/simpoint_traces,readonly --mount type=bind,source=$OUTDIR,target=/home/$USER --mount type=bind,source=$SCARABPATH,target=/home/$USER/scarab $APP_GROUPNAME:$GIT_HASH /bin/bash
       docker start $APP_GROUPNAME\_$USER
       docker exec --privileged $APP_GROUPNAME\_$USER /bin/bash -c "/usr/local/bin/common_entrypoint.sh"
-      docker exec --user=$USER --privileged $APP_GROUPNAME\_$USER /bin/bash -c "[ ! -f /home/$USER/scarab/src/build/opt/scarab ] && cd /home/$USER/scarab/src && make clean && make"
+      docker exec -it --user=$USER $APP_GROUPNAME\_$USER /bin/bash
       ;;
     isca2024_udp)
       docker run -e user_id=$USER_ID -e group_id=$GROUP_ID -e username=$USER -e HOME=/home/$USER -dit --privileged --name $APP_GROUPNAME\_$USER --mount type=bind,source=$OUTDIR,target=/home/$USER $APP_GROUPNAME:$GIT_HASH /bin/bash
       docker start $APP_GROUPNAME\_$USER
       docker exec --privileged $APP_GROUPNAME\_$USER /bin/bash -c "/usr/local/bin/entrypoint.sh"
-      docker exec --user=$USER --privileged $APP_GROUPNAME\_$USER /bin/bash -c "[ ! -f /home/$USER/scarab/src/build/opt/scarab ] && cd /home/$USER/scarab/src && make clean && make"
+      docker exec -it --user=$USER $APP_GROUPNAME\_$USER /bin/bash
       ;;
     example)
       docker run -e user_id=$USER_ID -e group_id=$GROUP_ID -e username=$USER -e HOME=/home/$USER -dit --privileged --name $APP_GROUPNAME\_$USER --mount type=bind,source=$OUTDIR,target=/home/$USER $APP_GROUPNAME:$GIT_HASH /bin/bash
       docker start $APP_GROUPNAME\_$USER
       docker exec --privileged $APP_GROUPNAME\_$USER /bin/bash -c "/usr/local/bin/common_entrypoint.sh"
-      docker exec --user=$USER --privileged $APP_GROUPNAME\_$USER /bin/bash -c "[ ! -f /home/$USER/scarab/src/build/opt/scarab ] && cd /home/$USER/scarab/src && make clean && make"
       docker exec --user=$USER --privileged $APP_GROUPNAME\_$USER /bin/bash -c "cd /home/$USER/scarab/utils/qsort && make test_qsort"
+      docker exec -it --user=$USER $APP_GROUPNAME\_$USER /bin/bash
       ;;
     *)
       docker run -e user_id=$USER_ID -e group_id=$GROUP_ID -e username=$USER -e HOME=/home/$USER -dit --privileged --name $APP_GROUPNAME\_$USER --mount type=bind,source=$OUTDIR,target=/home/$USER $APP_GROUPNAME:$GIT_HASH /bin/bash
       docker start $APP_GROUPNAME\_$USER
       docker exec --privileged $APP_GROUPNAME\_$USER /bin/bash -c "/usr/local/bin/common_entrypoint.sh"
-      docker exec --user=$USER --privileged $APP_GROUPNAME\_$USER /bin/bash -c "[ ! -f /home/$USER/scarab/src/build/opt/scarab ] && cd /home/$USER/scarab/src && make clean && make"
+      docker exec -it --user=$USER $APP_GROUPNAME\_$USER /bin/bash
       ;;
   esac
 
@@ -280,50 +289,12 @@ simpoint_trace () {
 }
 
 run_scarab () {
-  if [[ ${#WORKLOADS[@]} -eq 0 ]]; then
-    echo "Workloads not provided with -w. This is required to identify workloads with the same name but within a different workload group."
-    exit 1
-  fi
-
   # run Scarab simulation
   echo "run Scarab simulation.."
   taskPids=()
   start=`date +%s`
 
-  for APPNAME in "${WORKLOADS[@]}"; do
-    set_app_groupname
-    set_app_bincmd
-    # update the script
-    docker cp ${INFRA_ROOT}/common/scripts/run_exp_using_descriptor.py $APP_GROUPNAME\_$USER:/usr/local/bin
-    if [ "$APP_GROUPNAME" == "allbench_traces" ]; then
-      cp ${INFRA_ROOT}/json/${EXPERIMENT}.json $OUTDIR
-      docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -m $SCARABMODE &
-      while read -r line; do
-        IFS=" " read PID CMD <<< $line
-        if [ "$CMD" == "python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -m $SCARABMODE" ]; then
-          taskPids+=($PID)
-        fi
-      done < <(docker top $APP_GROUPNAME\_$USER -eo pid,cmd)
-    elif [ "$APP_GROUPNAME" == "isca2024_udp" ]; then
-      cp ${INFRA_ROOT}/workloads/${APP_GROUPNAME}/${EXPERIMENT}.json $OUTDIR
-      docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -m $SCARABMODE &
-      while read -r line; do
-        IFS=" " read PID CMD <<< $line
-        if [ "$CMD" == "python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -m $SCARABMODE" ]; then
-          taskPids+=($PID)
-        fi
-      done < <(docker top $APP_GROUPNAME\_$USER -eo pid,cmd)
-    else
-      cp ${INFRA_ROOT}/json/${EXPERIMENT}.json $OUTDIR
-      docker exec --user $USER --workdir /home/$USER --privileged $APP_GROUPNAME\_$USER python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -c $BINCMD -m $SCARABMODE &
-      while read -r line; do
-        IFS=" " read PID CMD <<< $line
-        if [ "$CMD" == "python3 /usr/local/bin/run_exp_using_descriptor.py -d $EXPERIMENT.json -a $APPNAME -g $APP_GROUPNAME -c $BINCMD -m $SCARABMODE" ]; then
-          taskPids+=($PID)
-        fi
-      done < <(docker top $APP_GROUPNAME\_$USER -eo pid,cmd)
-    fi
-  done
+  python3 ${INFRA_ROOT}/scripts/run_simulation.py -dbg 3 -d ${INFRA_ROOT}/json/${SIMULATION}.json
 
   wait_for_non_child "Scarab-simulation" "${taskPids[@]}"
   end=`date +%s`
@@ -385,22 +356,22 @@ else
   exit 1
 fi
 
-SHORT=h,l,b:,r:,w:,t:,s:,e:,c
-LONG=help,list,build:,run:,homepath:,scarabpath:,tracepath:,workload:,trace:,scarabmode:,experiment:,cleanup
+SHORT=h,l,b:,r:,w:,t:,s:,c
+LONG=help,list,build:,run:,workload:,trace:,simulation:,cleanup
 OPTS=$(getopt -a -n "$(basename "$0")" --options $SHORT --longoptions $LONG -- "$@")
-echo $OPTS
+
 if [ $? -ne 0 ]; then
   echo "Error parsing options."
   exit 1
 fi
-
-eval set -- "$OPTS"
 
 if [ $# -eq 0 ]; then
   echo "No arguments provided. Showing help."
   help
   exit 0
 fi
+
+eval set -- "$OPTS"
 
 # Get the options
 while [[ $# -gt 0 ]]; do
@@ -422,19 +393,7 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     -r|--run) # run a docker container with application setup required during the launching time
-      RUN=$2
-      shift 2
-      ;;
-    --homepath) # output home directory
-      OUTDIR="$2"
-      shift 2
-      ;;
-    --scarabpath) # scarab repository path
-      SCARABPATH="$2"
-      shift 2
-      ;;
-    --tracepath) # trace path on host
-      TRACEPATH="$2"
+      RUN="$2"
       shift 2
       ;;
     -w|--workload) # list of workloads for simpoint/tracing
@@ -449,12 +408,8 @@ while [[ $# -gt 0 ]]; do
       SIMPOINT=$2
       shift 2
       ;;
-    -s|--scarabmode) # scarab simulation mode
-      SCARABMODE=$2
-      shift 2
-      ;;
-    -e|--experiment) # experiment name
-      EXPERIMENT=$2
+    -s|--simulation) # scarab simulation
+      SIMULATION="$2"
       shift 2
       ;;
     -c|--cleanup) # clean up the containers
@@ -486,7 +441,7 @@ if [ $SIMPOINT ]; then
   exit 0
 fi
 
-if [ $SCARABMODE ]; then
+if [ $SIMULATION ]; then
   run_scarab
   exit 0
 fi

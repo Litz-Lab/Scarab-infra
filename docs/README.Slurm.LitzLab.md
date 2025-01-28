@@ -18,8 +18,8 @@ The following steps are for the fourth running scenario (trace-based w/ SimPoint
 2. To run scarab_ll non-public branches in a docker container, the host machine should have ssh private key ~/.ssh/id_rsa permitted to clone 'scarab_ll' github repository.
 3. Slurm runner must run on a slurm cluster node. To install Slurm, see the [Slurm Installation Guide](slurm_install_guide.md)
 Only use this for images that are private and will always be! The private key will be visible in the container.
-3. To run the SPEC2017 benchmarks, the host machine should have the image `cpu2017-1_0_5.iso` under `SPEC2017/`.
-4. To access traces and simpoints already residing in UCSC LDAP (allbench_traces), you need a BSOE account.
+4. To run the SPEC2017 benchmarks, the host machine should have the image `cpu2017-1_0_5.iso` under `SPEC2017/`.
+5. To access traces and simpoints already residing in UCSC LDAP (allbench_traces), you need a BSOE account.
 
 ## Running on a Slurm cluster
 This script must be run on a slurm cluster connected to the NFS. It will spawn all simpoints as slurm jobs to run on any node where the docker container is found. If no nodes are found it will attempt launch a container on one of the nodes using this Scarab-Infra repository (which should be on the nfs to launch containers from).
