@@ -35,6 +35,17 @@ def check_docker_container_running(nodes, container_name, mount_path, dbg_lvl = 
     for node in nodes:
         # Check container is running and no errors
         try:
+            containers = subprocess.check_output(["srun", f"--nodelist={node}", "docker", "ps"])
+        except:
+            info(f"Couldn't find container {container_name} on {node}", dbg_lvl)
+            continue
+
+        containers = containers.decode("utf-8")
+
+        info(f"CONTAINER FOUND: {container_name in containers}", dbg_lvl)
+
+        # Check mount
+        try:
             mounts = subprocess.check_output(["srun", f"--nodelist={node}", "docker", "inspect", "-f", "'{{ .Mounts }}'", container_name])
         except:
             info(f"Couldn't find container {container_name} on {node}", dbg_lvl)
@@ -43,29 +54,30 @@ def check_docker_container_running(nodes, container_name, mount_path, dbg_lvl = 
         mounts = mounts.decode("utf-8")
 
         # Check mount matches
-        if mount_path not in mounts:
+        if mount_path not in mounts or container_name not in containers:
             warn(f"Couldn't find {mount_path} mounted on {node}.\nFound {mounts}", dbg_lvl)
             continue
 
         running_nodes.append(node)
 
     # NOTE: Could figure out mount here if all of them agree. Then it wouldn't need to be provided
-
+    print(f"FOUND RUNNING:  {running_nodes}")
     return running_nodes
 
 
 # Check what containers are running in the slurm cluster
 # Inputs: None
 # Outputs: a list containing all node names that are currently available or None
-def check_available_nodes(dbg_lvl = 1):
+def check_available_nodes(dbg_lvl = 1, run_on_allocated = False):
     # Query sinfo to get all lines with status information for all nodes
     # Ex: [['LocalQ*', 'up', 'infinite', '2', 'idle', 'bohr[3,5]']]
     response = subprocess.check_output(["sinfo", "-N"]).decode("utf-8")
     lines = [r.split() for r in response.split('\n') if r != ''][1:]
-    
+
     # Check each node is up and available
     available = []
     all_nodes = []
+    allocated = []
     for line in lines:
         node = line[0]
         all_nodes.append(node)
@@ -73,6 +85,7 @@ def check_available_nodes(dbg_lvl = 1):
         # Index -1 is STATE. Skip if not partially available
         if line[-1] != 'idle' and line[-1] != 'mix':
             info(f"{node} is not available. It is '{line[-1]}'", dbg_lvl)
+            allocated.append(node)
             continue
 
         # Now append node(s) to available list. May be single (bohr3) or multiple (bohr[3,5])
@@ -80,8 +93,14 @@ def check_available_nodes(dbg_lvl = 1):
             err(f"'sinfo -N' should not produce lists (such as bohr[2-5]).", dbg_lvl)
             print(f"     problematic entry was '{node}'")
             return None
-            
+
         available.append(node)
+
+    # If no nodes are free, queue on allocated nodes
+    # run_on_alloc should be set when checking after trying to spin up container. More containers is better
+    # TODO: Check this logic with lab
+    if run_on_allocated and available == []:
+        available = allocated
 
     return available, all_nodes
 
@@ -157,18 +176,18 @@ def generate_single_scarab_run_command(workload, group, experiment, config, conf
     command = command + str(use_traces_simp) + '" ' + scarab_path + " " + str(simpoint)
 
     return command
-    
+
 # Get command to sbatch scarab runs. 1 core each, exclude nodes where container isn't running
 def generate_sbatch_command(excludes, experiment_dir):
     # If all nodes are usable, no need to exclude
     if not excludes == set():
         return f"sbatch --exclude {','.join(excludes)} -c 1 -o {experiment_dir}/logs/job_%j.out "
-    
+
     return f"sbatch -c 1 -o {experiment_dir}/logs/job_%j.out "
 
 # Launch a docker container on one of the available nodes
 def launch_docker(infra_dir, docker_home, available_nodes, node=None, dbg_lvl=1):
-    
+
     # Get the path to the run script
     if infra_dir == ".": run_script = ""
     elif infra_dir[-1] == '/': run_script = infra_dir
@@ -208,13 +227,13 @@ def get_simpoints (user, workload, node, docker_container_prefix, dbg_lvl = 2):
     simpid_cmd = f"{slurm_cmd}{docker_cmd}{read_simp_simpid_command}"
     info(f"Executing '{simpid_cmd}'", dbg_lvl)
     simpid_out = subprocess.check_output(simpid_cmd.split(" ")).decode("utf-8").split("\n")[:-1]
-    
+
     # Make lut for the weight for each 'index' id
     weights = {}
     for weight_id in wieght_out:
         weight, id = weight_id.split(" ")
         weights[id] = float(weight)
-    
+
     # Make final dictionary associated each simpoint id to its weight
     simpoints = {}
     for simpid_id in simpid_out:
@@ -228,7 +247,7 @@ def kill_jobs(user, experiment_name, dbg_lvl = 2):
     # Format is JobID Name
     response = subprocess.check_output(["squeue", "-u", user, "--Format=JobID,Name:90"]).decode("utf-8")
     lines = [r.split() for r in response.split('\n') if r != ''][1:]
-    
+
     # Filter to entries assocaited with this experiment, and get job ids
     lines = list(filter(lambda x:experiment_name in x[1], lines))
     job_ids = list(map(lambda x:int(x[0]), lines))
@@ -327,7 +346,7 @@ if __name__ == "__main__":
     if args.info:
         info(f"Getting information about all nodes", dbg_lvl)    
         available_slurm_nodes, all_nodes = check_available_nodes(dbg_lvl)
-        
+
         print(f"Checking resource availability of slurm nodes:")
         for node in all_nodes:
             if node in available_slurm_nodes:
@@ -376,11 +395,11 @@ if __name__ == "__main__":
 
     # Check experiment doesn't already exists
     experiment_dir = f"{docker_home}/{experiment_name}"
-    
+
     if os.path.exists(experiment_dir):
         err(f"Experiment '{experiment_name}' already exists. Please try a different name.", dbg_lvl)
         exit(1)
-    
+
     # Get avlailable nodes. Error if none available
     available_slurm_nodes, all_nodes = check_available_nodes(dbg_lvl)
     info(f"Available nodes: {', '.join(available_slurm_nodes)}", dbg_lvl)
@@ -406,8 +425,14 @@ if __name__ == "__main__":
 
         # If docker container is still not running exit
         if docker_running == []:
-            err("Error with launched container. Could not detect it after launching", dbg_lvl)
-            exit(1)
+            err("Error with launched container. Could not detect it after launching. Queueing on allocated node if possible", dbg_lvl)
+
+            available_slurm_nodes, all_nodes = check_available_nodes(dbg_lvl, run_on_allocated=True)
+            docker_running = check_docker_container_running(available_slurm_nodes, f"{docker_prefix}_{user}", mount_path, dbg_lvl)
+
+            if docker_running == []: 
+                err("Unable to find node (allocated or free) with suitable docker container, and one could not successfully be launched")
+                exit(1)
 
     info(f"Using docker container with name {docker_prefix}_{user}", dbg_lvl)
 
@@ -427,11 +452,13 @@ if __name__ == "__main__":
 
     # Iterate over each workload and config combo
     tmp_files = []
+    cmd_queue = []
     for workload in workloads:
         # Only needed for modes 3 and 4
         simpoints = get_simpoints(user, workload, docker_running, docker_prefix, dbg_lvl)
         for config_key in configs:
             config = configs[config_key]
+            config_key = config_key.replace("/", "-")
 
             for simpoint, weight in simpoints.items():
                 print(simpoint, weight)
@@ -444,11 +471,11 @@ if __name__ == "__main__":
                 # Add help (?)  
                 # Look into squeue -o https://slurm.schedmd.com/squeue.html
                 # Look into resource allocation
-            
+
                 # TODO: Rewrite with sbatch arrays
 
                 # Create temp file with run command and run it
-                filename = f"{experiment_name}_{workload}_{config_key.replace("/", "-")}_{simpoint}_tmp_run.sh"
+                filename = f"{experiment_name}_{workload}_{config_key}_{simpoint}_tmp_run.sh"
                 tmp_files.append(filename)
                 with open(filename, "w") as f:
                     f.write("#!/bin/bash \n")
@@ -457,9 +484,13 @@ if __name__ == "__main__":
                     f.write(chmod_docker_cmd + "chmod +x /usr/local/bin/run_single_simpoint.sh \n")
                     f.write(docker_cmd + scarab_cmd)
 
-                os.system(sbatch_cmd + filename)
-                info(f"Running sbatch command '{sbatch_cmd + filename}'", dbg_lvl)
-    
+                cmd_queue.append(sbatch_cmd + filename)
+
+
+    for cmd in cmd_queue:
+        os.system(cmd)
+        info(f"Running sbatch command '{cmd}'", dbg_lvl)
+
     # Clean up temp files
     for tmp in tmp_files:
         info(f"Removing temporary run script {tmp}", dbg_lvl)
