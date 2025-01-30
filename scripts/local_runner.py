@@ -4,38 +4,108 @@
 
 import os
 import subprocess
-from utilities import err, warn, info, get_simpoints, generate_docker_entrypoint_command, generate_docker_command, generate_single_scarab_run_command
+import psutil
+import signal
+import re
+from utilities import (
+        err,
+        warn,
+        info,
+        get_simpoints,
+        write_docker_command_to_file,
+        prepare_simulation,
+        finish_simulation
+        )
 
-# Kills all local jobs for experiment_name, if associated with user
-def kill_local_jobs(user, experiment_name, dbg_lvl = 2):
-    found_processes = []
-    for process in psutil.process_iter(['pid', 'name', 'cmdline']):
+# Check if a container is running on local
+# Inputs: docker_prefix, experiment_name, user,
+# Output: list of containers
+def check_docker_container_running(docker_prefix, experiment_name, user, dbg_lvl):
+    pattern = re.compile(fr"^{docker_prefix}_.*_{experiment_name}.*_.*_{user}$")
+    try:
+        dockers = subprocess.run(["docker", "ps", "--format", "{{.Names}}"], capture_output=True, text=True, check=True)
+        lines = dockers.stdout.strip().split("\n") if dockers.stdout else []
+        matching_containers = [line for line in lines if pattern.match(line)]
+        return matching_containers
+    except Exception as e:
+        err(f"Error while checking a running docker container named {docker_prefix}_.*_{experiment_name}_.*_.*_{user} on node {node}", dbg_lvl)
+        raise e
+
+# Print info/status of running experiment and available cores
+def print_status(user, experiment_name, docker_prefix, dbg_lvl = 2):
+    docker_running = check_docker_container_running(docker_prefix, experiment_name, user, dbg_lvl)
+    if len(docker_running) > 0:
+        print(f"\033[92mRUNNING:     local\033[0m")
+        for docker in docker_running:
+            print(f"\033[92m    CONTAINER: {docker}\033[0m")
+    else:
+        print(f"\033[31mNOT RUNNING: local\033[0m")
+
+def remove_docker_containers(docker_prefix, experiment_name, user, dbg_lvl):
+    pattern = re.compile(fr"^{docker_prefix}_.*_{experiment_name}.*_.*_{user}$")
+    try:
+        dockers = subprocess.run(["docker", "ps", "--format", "{{.Names}}"], capture_output=True, text=True, check=True)
+        lines = dockers.stdout.strip().split("\n") if dockers.stdout else []
+        matching_containers = [line for line in lines if pattern.match(line)]
+
+        if matching_containers:
+            for container in matching_containers:
+                subprocess.run(["docker", "rm", "-f", container], check=True)
+                info(f"Removed container: {container}", dbg_lvl)
+        else:
+            info("No containers found.", dbg_lvl)
+    except subprocess.CalledProcessError as e:
+        err(f"Error while removing containers: {e}")
+
+def kill_jobs(user, experiment_name, docker_prefix, infra_dir, dbg_lvl):
+    # Define the process name pattern
+    pattern = re.compile(f"python3 {infra_dir}/scripts/run_simulation.py -dbg 3 -d {infra_dir}/json/{experiment_name}.json")
+
+    # Iterate over all processes
+    found_process = []
+    for proc in psutil.process_iter(attrs=['pid', 'name', 'username', 'cmdline']):
         try:
-            if process.info['cmdline'] and any("scarab" in arg for arg in process.info['cmdline']):
-                found_processes.append(process)
+            # Check if the process name matches the pattern and is run by the specified user
+            cmdline = " ".join(proc.info['cmdline'])
+            if pattern.match(cmdline) and proc.info['username'] == user:
+                found_process.append(proc)
+                print(f"Found process {proc.info['name']} with PID {proc.info['pid']} running by {user}")
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            pass
+            # Handle processes that may have been terminated or we don't have permission to access
+            continue
 
-    if not found_processes:
-        print(f"No processes found with command including: {search_string}")
-        return
-
+    print(str(len(found_process)) + "found.")
     confirm = input("Do you want to kill these processes? (y/n): ").lower()
     if confirm == 'y':
-        for proc in found_processes:
+        # Iterate over found processes
+        for proc in found_process:
             try:
-                proc.terminate()  # Gracefully terminate the process
-                proc.wait(5)     # Wait for the process to terminate
-                print(f"Successfully terminated PID {proc.info['pid']}")
-            except psutil.TimeoutExpired:
-                print(f"Force killing PID {proc.info['pid']}")
-                proc.kill()  # Force kill the process
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                print(f"Unable to terminate PID {proc.info['pid']}")
+                # Kill the process and all its child processes
+                for child in proc.children(recursive=True):
+                    try:
+                        child.kill()
+                        print(f"Killed child process with PID {child.pid}")
+                    except (psutil.NoSuchProcess):
+                        print(f"No such process {child.pid}")
+                        continue
+                    except (psutil.AccessDenied):
+                        print(f"Access denied to {child.pid}")
+                        continue
+                proc.kill()
+                print(f"Terminated process {proc.info['name']} and its children.")
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                # Handle processes that may have been terminated or we don't have permission to access
+                continue
     else:
         print("Operation canceled.")
 
-def run_simulation(args, descriptor_data, dbg_lvl = 1):
+    info(f"Clean up docker containers..", dbg_lvl)
+    remove_docker_containers(docker_prefix, experiment_name, user, dbg_lvl)
+
+    info(f"Removing temporary run scripts..", dbg_lvl)
+    os.system(f"rm {experiment_name}_*_tmp_run.sh")
+
+def run_simulation(user, descriptor_data, dbg_lvl = 1):
     architecture = descriptor_data["architecture"]
     docker_prefix = descriptor_data["workload_group"]
     workloads = descriptor_data["workloads_list"]
@@ -46,10 +116,14 @@ def run_simulation(args, descriptor_data, dbg_lvl = 1):
     simpoint_traces_dir = descriptor_data["simpoint_traces_dir"]
     configs = descriptor_data["configurations"]
 
+    available_cores = os.cpu_count()
+    max_processes = int(available_cores * 0.9)
+    processes = set()
+
     try:
-        # Get user for commands
-        user = subprocess.check_output("whoami").decode('utf-8')[:-1]
-        info(f"User detected as {user}", dbg_lvl)
+        # Get a local user/group ids
+        local_uid = os.getuid()
+        local_gid = os.getgid()
 
         # Get GitHash
         try:
@@ -60,27 +134,18 @@ def run_simulation(args, descriptor_data, dbg_lvl = 1):
         except subprocess.CalledProcessError:
             err("Error: Not in a Git repository or unable to retrieve Git hash.")
 
+        image = subprocess.check_output(["docker", "images", "-q", f"{docker_prefix}:{githash}"])
+        if image == []:
+            info(f"Couldn't find image {docker_prefix}:{githash}", dbg_lvl)
+            subprocess.check_output(["./run.sh", "-b", docker_prefix])
+            image = subprocess.check_output(["docker", "images", "-q", f"{docker_prefix}:{githash}"])
+            if image == []:
+                info(f"Still couldn't find image {docker_prefix}:{githash} after trying to build one", dbg_lvl)
+                exit(1)
 
-        # Kill and exit if killing jobs
-        if args.kill:
-            info(f"Killing all simulation jobs associated with {descriptor_path}", dbg_lvl)
-            kill_local_jobs(user, experiment_name, dbg_lvl)
-            exit(0)
-
-        if args.info:
-            err(f"--info option is only available for slurm mode", dbg_lvl)
-            exit(1)
-
-        experiment_dir = f"{descriptor_data['root_dir']}/simulations/{experiment_name}"
-        entry_cmd = generate_docker_entrypoint_command(user, f"{docker_prefix}", experiment_name, githash)
-        info(f"Running '{entry_cmd}'", dbg_lvl)
-        os.system(entry_cmd)
+        scarab_githash = prepare_simulation(user, scarab_path, descriptor_data['root_dir'], experiment_name, architecture, dbg_lvl)
 
         # Iterate over each workload and config combo
-        available_cores = os.cpu_count()
-        max_processes = int(available_cores * 0.9)
-        processes = set()
-        max_processes = 0.9
         tmp_files = []
         for workload in workloads:
             simpoints = get_simpoints(simpoint_traces_dir, workload, dbg_lvl)
@@ -90,24 +155,14 @@ def run_simulation(args, descriptor_data, dbg_lvl = 1):
                 for simpoint, weight in simpoints.items():
                     print(simpoint, weight)
 
-                    # Generate a run command
-                    docker_cmd = generate_docker_command(user, f"{docker_prefix}_{workload}_{config_key}_{simpoint}_{user}", f"{docker_prefix}", docker_home, scarab_path, simpoint_traces_dir, experiment_name, githash)
-                    scarab_cmd = generate_single_scarab_run_command(workload, docker_prefix, experiment_name, config_key, config, scarab_mode, architecture, f"/home/{user}/{experiment_name}/scarab", simpoint)
-                    info(f"Running '{docker_cmd + scarab_cmd}'", dbg_lvl)
-
+                    docker_container_name = f"{docker_prefix}_{workload}_{experiment_name}_{config_key}_{simpoint}_{user}"
                     # Create temp file with run command and run it
                     filename = f"{experiment_name}_{workload}_{config_key.replace("/", "-")}_{simpoint}_tmp_run.sh"
+                    write_docker_command_to_file(user, local_uid, local_gid, workload, experiment_name,
+                                                 docker_prefix, docker_container_name, simpoint_traces_dir,
+                                                 docker_home, githash, config_key, config, scarab_mode, scarab_githash,
+                                                 architecture, simpoint, filename)
                     tmp_files.append(filename)
-                    with open(filename, "w") as f:
-                        f.write("#!/bin/bash\n")
-                        f.write(f"echo \"Running {config_key} {workload} {simpoint}\"\n")
-                        f.write("echo \"Running on $(uname -n)\"\n")
-                        f.write("LOCAL_UID=$(id -u $USER)\n")
-                        f.write("LOCAL_GID=$(id -g $USER)\n")
-                        f.write("USER_ID=${LOCAL_UID:-9001}\n")
-                        f.write("GROUP_ID=${LOCAL_GID:-9001}\n")
-                        f.write(docker_cmd + scarab_cmd)
-
                     command = '/bin/bash ' + filename
                     process = subprocess.Popen("exec " + command, stdout=subprocess.PIPE, shell=True)
                     processes.add(process)
@@ -127,7 +182,9 @@ def run_simulation(args, descriptor_data, dbg_lvl = 1):
         # Clean up temp files
         for tmp in tmp_files:
             info(f"Removing temporary run script {tmp}", dbg_lvl)
-            # os.remove(tmp)
+            os.remove(tmp)
+
+        finish_simulation(user, f"{docker_home}/simulations/{experiment_name}")
 
     except Exception as e:
         print("An exception occurred:", e)

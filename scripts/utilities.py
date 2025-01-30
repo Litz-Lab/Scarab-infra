@@ -36,7 +36,7 @@ def read_descriptor_from_json(filename="experiment.json", dbg_lvl = 1):
         return None
 
 # Verify the given descriptor file
-def verify_descriptor(descriptor_data, infra_dir, dbg_lvl = 2):
+def verify_descriptor(descriptor_data, infra_dir, open_shell = False, dbg_lvl = 2):
     ## Check if the provided json describes all the valid data
 
     # Check the scarab path
@@ -78,8 +78,8 @@ def verify_descriptor(descriptor_data, infra_dir, dbg_lvl = 2):
 
     # Check experiment doesn't already exists
     experiment_dir = f"{descriptor_data['root_dir']}/simulations/{descriptor_data['experiment']}"
-    if os.path.exists(experiment_dir):
-        err(f"Experiment '{experiment_name}' already exists. Please try a different name.", dbg_lvl)
+    if os.path.exists(experiment_dir) and not open_shell:
+        err(f"Experiment '{experiment_dir}' already exists. Please try a different name or remove the directory if not needed", dbg_lvl)
         exit(1)
 
     # Check the simulation mode
@@ -119,22 +119,120 @@ def verify_descriptor(descriptor_data, infra_dir, dbg_lvl = 2):
         error("Need configurations to simulate. Set in descriptor file under 'configurations'", dbg_lvl)
         exit(1)
 
-# Generate entrypoint command
-def generate_docker_entrypoint_command(user, docker_prefix, experiment_name, githash):
-    return f"docker run --rm --entrypoint /bin/bash {docker_prefix}:{githash} -c 'mkdir -p /home/{user}/simulations/{experiment_name}/scarab'"
+# copy_scarab deprecated
+# new API prepare_simulation
+# Copies specified scarab binary, parameters, and launch scripts
+# Inputs:   user        - username
+#           scarab_path - Path to the scarab repository on host
+#           docker_home - Path to the directory on host to be mount to the docker container home
+#           experiment_name - Name of the current experiment
+#           architecture - Architecture name
+#
+# Outputs:  scarab githash
+def prepare_simulation(user, scarab_path, docker_home, experiment_name, architecture, dbg_lvl=1):
+    ## Copy required scarab files into the experiment folder
+    try:
+        scarab_githash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=scarab_path).decode("utf-8").strip()
+        info(f"Scarab git hash: {scarab_githash}", dbg_lvl)
 
-# Generate command to exec in the docker container for a user
-def generate_docker_command(user, docker_container_name, docker_prefix, docker_home, scarab_path, simpoint_traces_dir, experiment_name, githash):
-    return f"docker run --rm -e user_id=$USER_ID -e group_id=$GROUP_ID -e username={user} -e HOME=/home/{user} --name {docker_container_name} --mount type=bind,source={simpoint_traces_dir},target=/simpoint_traces,readonly --mount type=bind,source={docker_home},target=/home/{user} --mount type=bind,source={scarab_path},target=/home/{user}/simulations/{experiment_name}/scarab {docker_prefix}:{githash} "
+        # If scarab binary does not exist in the provided scarab path, build the binary first.
+        scarab_bin = f"{scarab_path}/src/build/opt/scarab"
+        if not os.path.isfile(scarab_bin):
+            info(f"Scarab binary not found at '{scarab_bin}', build it first...", dbg_lvl)
+            os.system(f"docker run --rm \
+                    --mount type=bind,source={scarab_path}:/scarab \
+                    /bin/bash -c \"cd /scarab/src && make clean && make && chown -R {local_uid}:{local_gid} /scarab\"")
+
+        experiment_dir = f"{docker_home}/simulations/{experiment_name}"
+        os.system(f"mkdir -p {experiment_dir}/logs/")
+
+        # Copy binary and architectural params to scarab/src
+        arch_params = f"{scarab_path}/src/PARAMS.{architecture}"
+        os.system(f"mkdir -p {experiment_dir}/scarab/src/")
+        os.system(f"cp {scarab_bin} {experiment_dir}/scarab/src/scarab")
+        os.symlink(f"{experiment_dir}/scarab/src/scarab", f"{experiment_dir}/scarab/src/scarab_{scarab_githash}")
+        os.system(f"cp {arch_params} {experiment_dir}/scarab/src")
+
+        # Required for non mode 4. Copy launch scripts from the docker container's scarab repo.
+        # NOTE: Could cause issues if a copied version of scarab is incompatible with the version of
+        # the launch scripts in the docker container's repo
+        os.system(f"mkdir -p {experiment_dir}/scarab/bin/scarab_globals")
+        os.system(f"cp {scarab_path}/bin/scarab_launch.py  {experiment_dir}/scarab/bin/scarab_launch.py ")
+        os.system(f"cp {scarab_path}/bin/scarab_globals/*  {experiment_dir}/scarab/bin/scarab_globals/ ")
+
+        # os.system(f"chmod -R 777 {experiment_dir}")
+
+        return scarab_githash
+    except Exception as e:
+        raise e
+
+def finish_simulation(user, experiment_dir):
+    try:
+        print("Finish simulation..")
+        # TODO: do some cleanup or sanity check
+        # os.system(f"chmod -R 755 {experiment_dir}")
+    except Exception as e:
+        raise e
 
 # Generate command to do a single run of scarab
-def generate_single_scarab_run_command(workload, group, experiment, config_key, config,
-                   mode, arch, scarab_path, simpoint, use_traces_simp = 1):
-    command = 'run_single_simpoint.sh "' + workload + '" "' + group + '" "" "' + experiment + '/'
-    command = command + config_key + '" "' + config + '" "' + mode + '" "' + arch + '" "'
-    command = command + str(use_traces_simp) + '" ' + scarab_path + "/src/build/opt/scarab " + str(simpoint)
+def generate_single_scarab_run_command(user, workload, group, experiment, config_key, config,
+                   mode, arch, scarab_githash, simpoint, use_traces_simp = 1):
+    command = f"run_single_simpoint.sh \"{workload}\" \"{group}\" \"/home/{user}/simulations/{experiment}/{config_key}\" \"{config}\" \"{mode}\" \"{arch}\" \"{use_traces_simp}\" /home/{user}/simulations/{experiment}/scarab {simpoint}"
 
     return command
+
+def write_docker_command_to_file_run_by_root(user, local_uid, local_gid, workload, experiment_name,
+                                 docker_prefix, docker_container_name, simpoint_traces_dir,
+                                 docker_home, githash, config_key, config, scarab_mode, scarab_githash,
+                                 architecture, simpoint, filename):
+    try:
+        scarab_cmd = generate_single_scarab_run_command(user, workload, docker_prefix, experiment_name, config_key, config, scarab_mode, architecture, scarab_githash, simpoint)
+        with open(filename, "w") as f:
+            f.write("#!/bin/bash\n")
+            f.write(f"echo \"Running {config_key} {workload} {simpoint}\"\n")
+            f.write("echo \"Running on $(uname -n)\"\n")
+            f.write(f"docker run --rm \
+            -e user_id={local_uid} \
+            -e group_id={local_gid} \
+            -e username={user} \
+            -e HOME=/home/{user} \
+            --name {docker_container_name} \
+            --mount type=bind,source={simpoint_traces_dir},target=/simpoint_traces,readonly \
+            --mount type=bind,source={docker_home},target=/home/{user} \
+            {docker_prefix}:{githash} \
+            /bin/bash {scarab_cmd}\n")
+    except Exception as e:
+        raise e
+
+def write_docker_command_to_file(user, local_uid, local_gid, workload, experiment_name,
+                                 docker_prefix, docker_container_name, simpoint_traces_dir,
+                                 docker_home, githash, config_key, config, scarab_mode, scarab_githash,
+                                 architecture, simpoint, filename):
+    try:
+        scarab_cmd = generate_single_scarab_run_command(user, workload, docker_prefix, experiment_name, config_key, config, scarab_mode, architecture, scarab_githash, simpoint)
+        with open(filename, "w") as f:
+            f.write("#!/bin/bash\n")
+            f.write(f"echo \"Running {config_key} {workload} {simpoint}\"\n")
+            f.write("echo \"Running on $(uname -n)\"\n")
+            f.write(f"docker run \
+            -e user_id={local_uid} \
+            -e group_id={local_gid} \
+            -e username={user} \
+            -e HOME=/home/{user} \
+            -e APP_GROUPNAME={docker_prefix} \
+            -e APPNAME={workload} \
+            -dit \
+            --name {docker_container_name} \
+            --mount type=bind,source={simpoint_traces_dir},target=/simpoint_traces,readonly \
+            --mount type=bind,source={docker_home},target=/home/{user} \
+            {docker_prefix}:{githash} \
+            /bin/bash\n")
+            # f.write(f"docker start {docker_container_name}\n")
+            f.write(f"docker exec {docker_container_name} /bin/bash -c '/usr/local/bin/common_entrypoint.sh'\n")
+            f.write(f"docker exec --user={user} {docker_container_name} /bin/bash {scarab_cmd}\n")
+            f.write(f"docker rm -f {docker_container_name}\n")
+    except Exception as e:
+        raise e
 
 # Get workload simpoint ids and their associated weights
 def get_simpoints (simpoint_traces_dir, workload, dbg_lvl = 2):
@@ -160,3 +258,56 @@ def get_simpoints (simpoint_traces_dir, workload, dbg_lvl = 2):
         simpoints[int(simpid)] = weights[id]
 
     return simpoints
+
+def open_interactive_shell(user, descriptor_data, dbg_lvl = 1):
+    try:
+        # Get user for commands
+        user = subprocess.check_output("whoami").decode('utf-8')[:-1]
+        info(f"User detected as {user}", dbg_lvl)
+
+        # Get a local user/group ids
+        local_uid = os.getuid()
+        local_gid = os.getgid()
+
+        # Get GitHash
+        try:
+            githash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("utf-8").strip()
+            info(f"Git hash: {githash}", dbg_lvl)
+        except FileNotFoundError:
+            err("Error: 'git' command not found. Make sure Git is installed and in your PATH.")
+        except subprocess.CalledProcessError:
+            err("Error: Not in a Git repository or unable to retrieve Git hash.")
+
+        # TODO: always make sure to open the interactive shell on a development node (not worker nodes) if slurm mode
+        # need to maintain the list of nodes for development
+        # currently open it on local
+
+        # Generate commands for executing in users docker and sbatching to nodes with containers
+        scarab_githash = prepare_simulation(user, scarab_path, descriptor_data['root_dir'], experiment_name, architecture, dbg_lvl)
+        docker_prefix = descriptor['workload_group']
+        workload = descriptor['workloads_list'][0]
+        docker_container_name = f"{docker_prefix}_{experiment_name}_scarab_{scarab_githash}_{user}"
+        simpoint_traces_dir = descriptor_data["simpoint_traces_dir"]
+        docker_home = descriptor_data["root_dir"]
+        try:
+            os.system(f"docker run \
+                -e user_id={local_uid} \
+                -e group_id={local_gid} \
+                -e username={user} \
+                -e HOME=/home/{user} \
+                -e APP_GROUPNAME={docker_prefix} \
+                -e APPNAME={workload} \
+                -dit \
+                --name {docker_container_name} \
+                --mount type=bind,source={simpoint_traces_dir},target=/simpoint_traces,readonly \
+                --mount type=bind,source={docker_home},target=/home/{user} \
+                {docker_prefix}:{githash} \
+                /bin/bash")
+                # f.write(f"docker start {docker_container_name}\n")
+            os.system(f"docker exec {docker_container_name} /bin/bash -c '/usr/local/bin/common_entrypoint.sh'")
+            subprocess.run(["docker", "exec", "-it", container_name, "/bin/bash"])
+        except KeyboardInterrupt:
+            os.system(f"docker rm -f {docker_container_name}")
+            exit(0)
+    except Exception as e:
+        raise e

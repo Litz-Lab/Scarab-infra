@@ -73,6 +73,7 @@ ENV PIN_ROOT $tmpdir/pin-3.15-98253-gb56e429b1-gcc-linux
 ENV SCARAB_ENABLE_PT_MEMTRACE 1
 ENV LD_LIBRARY_PATH $tmpdir/pin-3.15-98253-gb56e429b1-gcc-linux/extras/xed-intel64/lib
 ENV LD_LIBRARY_PATH $tmpdir/pin-3.15-98253-gb56e429b1-gcc-linux/intel64/runtime/pincrt:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH $DYNAMORIO_HOME/lib64/release:$LD_LIBRARY_PATH
 
 # Build SimPoint 3.2
 # Reference:
@@ -81,6 +82,9 @@ RUN cd $tmpdir/ && \
     git clone https://github.com/kofyou/SimPoint.3.2.git && \
     make -C SimPoint.3.2 && \
     ln -s SimPoint.3.2/bin/simpoint ./simpoint
+
+RUN cd $tmpdir/ && git clone https://github.com/litz-lab/scarab
+RUN pip3 install -r $tmpdir/scarab/bin/requirements.txt
 
 ENV DOCKER_BUILDKIT 1
 ENV COMPOSE_DOCKER_CLI_BUILD 1

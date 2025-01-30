@@ -6,20 +6,29 @@
 import os
 import random
 import subprocess
-from utilities import err, warn, info, generate_docker_command, generate_single_scarab_run_command
+import re
+from utilities import (
+        err,
+        warn,
+        info,
+        get_simpoints,
+        write_docker_command_to_file,
+        prepare_simulation,
+        finish_simulation
+        )
 
-# Check if a required docker image exists on the provided nodes, return those that are
-# Inputs: list of nodes
-# Output: list of nodes where the docker image was found
+# Check if the docker image exists on available slurm nodes
+# Inputs: list of available slurm nodes
+# Output: list of nodes where the docker image is ready
 def check_docker_image(nodes, docker_prefix, githash, dbg_lvl = 1):
     try:
         available_nodes = []
         for node in nodes:
             # Check if the image exists
-            images = subprocess.check_output(["srun", f"--nodelist={node}", "docker", "images", "|", "grep", f"{docker_prefix}:{githash}"])
-            info(f"{images}", dbg_lvl)
-            if images == []:
-                info(f"Cound't find image {docker_prefix}:{githash} on {node}", dbg_lvl)
+            image = subprocess.check_output(["srun", f"--nodelist={node}", "docker", "images", "-q", f"{docker_prefix}:{githash}"])
+            info(f"{image}", dbg_lvl)
+            if image == []:
+                info(f"Couldn't find image {docker_prefix}:{githash} on {node}", dbg_lvl)
                 continue
 
             available_nodes.append(node)
@@ -28,12 +37,65 @@ def check_docker_image(nodes, docker_prefix, githash, dbg_lvl = 1):
     except Exception as e:
         raise
 
+
+# Prepare the docker image on each slurm node
+# Inputs: list of available slurm nodes
+# Output: list of nodes where the docker image is ready
+def prepare_docker_image(nodes, docker_prefix, githash, dbg_lvl = 1):
+    try:
+        available_nodes = []
+        for node in nodes:
+            # Check if the image exists
+            image = subprocess.check_output(["srun", f"--nodelist={node}", "docker", "images", "-q", f"{docker_prefix}:{githash}"])
+            info(f"{image}", dbg_lvl)
+            if image == []:
+                info(f"Couldn't find image {docker_prefix}:{githash} on {node}", dbg_lvl)
+                # TODO: user prebuilt image
+                # build the image for now
+                subprocess.check_output(["srun", f"--nodelist={node}", "./run.sh", "-b", docker_prefix])
+
+                image = subprocess.check_output(["srun", f"--nodelist={node}", "docker", "images", "-q", f"{docker_prefix}:{githash}"])
+                info(f"{image}", dbg_lvl)
+                if image == []:
+                    info(f"Still couldn't find image {docker_prefix}:{githash} on {node} after trying to build one", dbg_lvl)
+
+                    continue
+
+            available_nodes.append(node)
+
+        return available_nodes
+    except Exception as e:
+        raise
+
+# Check if a container is running on the provided nodes, return those that are
+# Inputs: list of nodes, docker_prefix, experiment_name, user
+# Output: dictionary of node-containers
+def check_docker_container_running(nodes, docker_prefix, experiment_name, user, dbg_lvl = 1):
+    pattern = re.compile(fr"^{docker_prefix}_.*_{experiment_name}.*_.*_{user}$")
+    try:
+        running_nodes_dockers = {}
+        for node in nodes:
+            # Check container is running and no errors
+            try:
+                dockers = subprocess.run(["srun", f"--nodelist={node}", "docker", "ps", "--format", "{{.Names}}"], capture_output=True, text=True, check=True)
+                lines = dockers.stdout.strip().split("\n") if dockers.stdout else []
+                matching_containers = [line for line in lines if pattern.match(line)]
+            except:
+                err(f"Error while checking a running docker container named {docker_prefix}_.*_{experiment_name}_.*_.*_{user} on node {node}", dbg_lvl)
+
+                continue
+
+            running_nodes_dockers[node] = matching_containers
+        return running_nodes_dockers
+    except Exception as e:
+        raise e
+
 # Check if a container is running on the provided nodes, return those that are
 # Inputs: list of nodes, docker container name, path to container mount
 # Output: list of nodes where the docker container was found running
 # NOTE: Possible race condition where node was available but become full before srun,
 # in which case this code will hang.
-def check_docker_container_running(nodes, container_name, mount_path, dbg_lvl = 1):
+def check_docker_container_running_by_mount_path(nodes, container_name, mount_path, dbg_lvl = 1):
     try:
         running_nodes = []
         for node in nodes:
@@ -57,7 +119,7 @@ def check_docker_container_running(nodes, container_name, mount_path, dbg_lvl = 
 
         return running_nodes
     except Exception as e:
-        raise
+        raise e
 
 # Check what containers are running in the slurm cluster
 # Inputs: None
@@ -81,6 +143,13 @@ def check_available_nodes(dbg_lvl = 1):
                 info(f"{node} is not available. It is '{line[-1]}'", dbg_lvl)
                 continue
 
+            # If docker is not installed, skip
+            try:
+                docker_installed = subprocess.check_output(["srun", f"--nodelist={node}", "docker", "--version"])
+            except Exception as e:
+                info(f"docker is not installed on {node}", dbg_lvl)
+                continue
+
             # Now append node(s) to available list. May be single (bohr3) or multiple (bohr[3,5])
             if '[' in node:
                 err(f"'sinfo -N' should not produce lists (such as bohr[2-5]).", dbg_lvl)
@@ -92,39 +161,6 @@ def check_available_nodes(dbg_lvl = 1):
         return available, all_nodes
     except Exception as e:
         raise
-
-# Copies specified scarab binary, parameters, and launch scripts
-# Inputs:   home_dir    - Path to the home directory for the docker container(s)
-#           arch        - The architecture to be used for this experiment
-#           experiment_name  - The name of the current experiment
-#           sacrab_bin  - Path to the scarab binary to use
-#           arch_params_path - A path to a custom architectural params file.
-#                              Tries to source file from the scarab repo in home_dir if None
-# Outputs:  None
-# deprecated
-def copy_scarab(home_dir: str, arch: str, experiment_name: str, scarab_path: str = None, arch_params_path: str = None, docker_prefix: str = None, dbg_lvl=1):
-    ## Copy required scarab files into the experiment folder
-    # If scarab binary does not exist in the provided scarab path, build the binary first.
-    scarab_bin = f"{descriptor_data['scarab_path']}/src/build/opt/scarab"
-    if not os.path.isfile(scarab_bin):
-        info(f"Scarab binary not found at '{scarab_bin}', build it first...", dbg_lvl)
-        os.system(f"docker run -rm --user={user} --privileged {docker_prefix}_{user} /bin/bash -c \"cd /home/{user}/scarab/src && make clean && make\"")
-
-    experiment_dir = f"{descriptor_data['root_dir']}/{descriptor_data['experiment']}"
-    os.system(f"mkdir -p {experiment_dir}/logs/")
-
-    # Copy binary and architectural params to scarab/src
-    arch_params = f"{descriptor_data['scarab_path']}/src/PARAMS.{descriptor_data['architecture']}"
-    os.system(f"mkdir -p {experiment_dir}/scarab/src/")
-    os.system(f"cp {scarab_bin} {experiment_dir}/scarab/src/scarab")
-    os.system(f"cp {arch_params} {experiment_dir}/scarab/src")
-
-    # Required for non mode 4. Copy launch scripts from the docker container's scarab repo.
-    # NOTE: Could cause issues if a copied version of scarab is incompatible with the version of 
-    # the launch scripts in the docker container's repo
-    os.system(f"mkdir -p " + home_dir + f"/{experiment_name}/scarab/bin/scarab_globals")
-    os.system(f"cp {home_dir}/scarab/bin/scarab_launch.py  {experiment_dir}/scarab/bin/scarab_launch.py ")
-    os.system(f"cp {home_dir}/scarab/bin/scarab_globals/*  {experiment_dir}/scarab/bin/scarab_globals/ ")
 
 # Get command to sbatch scarab runs. 1 core each, exclude nodes where container isn't running
 def generate_sbatch_command(excludes, experiment_dir):
@@ -161,8 +197,52 @@ def launch_docker(infra_dir, docker_home, available_nodes, node=None, dbg_lvl=1)
     except Exception as e:
         raise
 
+# Print info of docker/slurm nodes and running experiment
+def print_status(user, experiment_name, docker_prefix, dbg_lvl = 1):
+    # Get GitHash
+    try:
+        githash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("utf-8").strip()
+        info(f"Git hash: {githash}", dbg_lvl)
+    except FileNotFoundError:
+        err("Error: 'git' command not found. Make sure Git is installed and in your PATH.")
+    except subprocess.CalledProcessError:
+        err("Error: Not in a Git repository or unable to retrieve Git hash.")
+
+    info(f"Getting information about all nodes", dbg_lvl)
+    available_slurm_nodes, all_nodes = check_available_nodes(dbg_lvl)
+
+    print(f"Checking resource availability of slurm nodes:")
+    for node in all_nodes:
+        if node in available_slurm_nodes:
+            print(f"\033[92mAVAILABLE:   {node}\033[0m")
+        else:
+            print(f"\033[31mUNAVAILABLE: {node}\033[0m")
+
+    print(f"\nChecking what nodes have the corresponding image:")
+    available_slurm_nodes = check_docker_image(available_slurm_nodes, docker_prefix, githash, dbg_lvl)
+    for node in all_nodes:
+        if node in available_slurm_nodes:
+            print(f"\033[92mAVAILABLE:   {node}\033[0m")
+        else:
+            print(f"\033[31mUNAVAILABLE: {node}\033[0m")
+
+    print(f"\nChecking what nodes have a running container with name {docker_prefix}_*_{experiment_name}_*_*_{user}")
+    node_docker_running = check_docker_container_running(available_slurm_nodes, docker_prefix, experiment_name, user, dbg_lvl)
+
+    for node in all_nodes:
+        if node in node_docker_running.keys():
+            print(f"\033[92mRUNNING:     {node}\033[0m")
+            for docker in node_docker_running[node]:
+                print(f"\033[92m    CONTAINER: {docker}\033[0m")
+        else:
+            print(f"\033[31mNOT RUNNING: {node}\033[0m")
+
+
 # Kills all jobs for experiment_name, if associated with user
-def kill_slurm_jobs(user, experiment_name, dbg_lvl = 2):
+def kill_jobs(user, experiment_name, docker_prefix, dbg_lvl = 2):
+    # Kill and exit if killing jobs
+    info(f"Killing all slurm jobs associated with {experiment_name}", dbg_lvl)
+
     # Format is JobID Name
     response = subprocess.check_output(["squeue", "-u", user, "--Format=JobID,Name:90"]).decode("utf-8")
     lines = [r.split() for r in response.split('\n') if r != ''][1:]
@@ -171,15 +251,25 @@ def kill_slurm_jobs(user, experiment_name, dbg_lvl = 2):
     lines = list(filter(lambda x:experiment_name in x[1], lines))
     job_ids = list(map(lambda x:int(x[0]), lines))
 
-    # Kill each job
-    info(f"Killing jobs with slurm job ids: {', '.join(map(str, job_ids))}", dbg_lvl)
-    for id in job_ids:
-        try:
-            subprocess.check_call(["scancel", "-u", user, str(id)])
-        except subprocess.CalledProcessError as e:
-            err(f"Couldn't cancel job with id {id}. Return code: {e.returncode}", dbg_lvl)
+    if lines:
+        print("Found jobs: ")
+        print(lines)
 
-def run_simulation(args, descriptor_data, dbg_lvl = 1):
+        confirm = input("Do you want to kill these jobs? (y/n): ").lower()
+        if confirm == 'y':
+            # Kill each job
+            info(f"Killing jobs with slurm job ids: {', '.join(map(str, job_ids))}", dbg_lvl)
+            for id in job_ids:
+                try:
+                    subprocess.check_call(["scancel", "-u", user, str(id)])
+                except subprocess.CalledProcessError as e:
+                    err(f"Couldn't cancel job with id {id}. Return code: {e.returncode}", dbg_lvl)
+        else:
+            print("Operation canceled.")
+    else:
+        print("No job found.")
+
+def run_simulation(user, descriptor_data, dbg_lvl = 1):
     architecture = descriptor_data["architecture"]
     docker_prefix = descriptor_data["workload_group"]
     workloads = descriptor_data["workloads_list"]
@@ -195,42 +285,19 @@ def run_simulation(args, descriptor_data, dbg_lvl = 1):
         user = subprocess.check_output("whoami").decode('utf-8')[:-1]
         info(f"User detected as {user}", dbg_lvl)
 
+        # Get a local user/group ids
+        local_uid = os.getuid()
+        local_gid = os.getgid()
+
         # Get GitHash
-        githash = subprocess.check_output("git rev-parse --short HEAD").decode('utf-8')[:-1]
-        info(f"GitHash: {githash}", dbg_lvl)
+        try:
+            githash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("utf-8").strip()
+            info(f"Git hash: {githash}", dbg_lvl)
+        except FileNotFoundError:
+            err("Error: 'git' command not found. Make sure Git is installed and in your PATH.")
+        except subprocess.CalledProcessError:
+            err("Error: Not in a Git repository or unable to retrieve Git hash.")
 
-        # Kill and exit if killing jobs
-        if args.kill:
-            info(f"Killing all slurm jobs associated with {descriptor_path}", dbg_lvl)
-            kill_slurm_jobs(user, experiment_name, dbg_lvl)
-            exit(0)
-
-        if args.info:
-            info(f"Getting information about all nodes", dbg_lvl)
-            available_slurm_nodes, all_nodes = check_available_nodes(dbg_lvl)
-
-            print(f"Checking resource availability of slurm nodes:")
-            for node in all_nodes:
-                if node in available_slurm_nodes:
-                    print(f"\033[92mAVAILABLE:   {node}\033[0m")
-                else:
-                    print(f"\033[31mUNAVAILABLE: {node}\033[0m")
-
-            # Check what nodes have docker containers that map to same docker home
-            mount_path = docker_home[docker_home.rfind('/') + 1:]
-
-            # print(f"\nChecking what nodes have a running container mounted at {mount_path} with name {docker_prefix}_{user}")
-            # docker_running = check_docker_container_running(available_slurm_nodes, f"{docker_prefix}_{user}", mount_path, dbg_lvl)
-            print(f"\nChecking what nodes have the corresponding image")
-            docker_running = check_docker_image(available_slurm_nodes, docker_prefix, githash, dbg_lvl)
-
-            for node in all_nodes:
-                if node in docker_running:
-                    print(f"\033[92mRUNNING:     {node}\033[0m")
-                else:
-                    print(f"\033[31mNOT RUNNING: {node}\033[0m")
-
-            exit(0)
 
         # Get avlailable nodes. Error if none available
         available_slurm_nodes, all_nodes = check_available_nodes(dbg_lvl)
@@ -240,19 +307,11 @@ def run_simulation(args, descriptor_data, dbg_lvl = 1):
             err("Cannot find any running slurm nodes", dbg_lvl)
             exit(1)
 
-        # Try to build the image if one is needed, check it is running
+        docker_running = prepare_docker_image(available_slurm_nodes, docker_prefix, githash, dbg_lvl)
+        # If docker image still does not exist, exit
         if docker_running == []:
-            warn(f"No nodes found existing docker image with name {docker_prefix}:{githash}", dbg_lvl)
-
-            info ("No nodes have prebuilt image. Building one", dbg_lvl)
-            build_image(infra_dir, docker_home, available_slurm_nodes, dbg_lvl)
-            docker_running = check_docker_image(available_slurm_nodes, docker_prefix, githash, dbg_lvl)
-            info(f"Nodes with docker image found now: {', '.join(docker_running)}", dbg_lvl)
-
-            # If docker image still does not exist, exit
-            if docker_running == []:
-                err("Error with launched container. Could not detect it after launching", dbg_lvl)
-                exit(1)
+            err("Error with launched container. Could not detect it after launching", dbg_lvl)
+            exit(1)
 
         info(f"Using docker image with name {docker_prefix}:{githash}", dbg_lvl)
 
@@ -262,6 +321,7 @@ def run_simulation(args, descriptor_data, dbg_lvl = 1):
 
         # Generate commands for executing in users docker and sbatching to nodes with containers
         experiment_dir = f"{descriptor_data['root_dir']}/simulations/{experiment_name}"
+        scarab_githash = prepare_simulation(user, scarab_path, descriptor_data['root_dir'], experiment_name, architecture, dbg_lvl)
         sbatch_cmd = generate_sbatch_command(excludes, experiment_dir)
 
         # Iterate over each workload and config combo
@@ -275,10 +335,7 @@ def run_simulation(args, descriptor_data, dbg_lvl = 1):
                 for simpoint, weight in simpoints.items():
                     print(simpoint, weight)
 
-                    # Generate a run command
-                    docker_cmd = generate_docker_command(user, f"{docker_prefix}_{workload}_{config_key}_{simpoint}_{user}", f"{docker_prefix}", docker_home, scarab_path, simpoint_trace_dir, experiment_name, githash)
-                    scarab_cmd = generate_single_scarab_run_command(workload, docker_prefix, experiment_name, config_key, config, scarab_mode, architecture, f"/home/{user}/{experiment_name}/scarab", simpoint)
-                    info(f"Running '{docker_cmd + scarab_cmd}'", dbg_lvl)
+                    docker_container_name = f"{docker_prefix}_{workload}_{experiment_name}_{config_key}_{simpoint}_{user}"
 
                     # TODO: Notification when a run fails, point to output file and command that caused failure
                     # Add help (?)
@@ -289,16 +346,11 @@ def run_simulation(args, descriptor_data, dbg_lvl = 1):
 
                     # Create temp file with run command and run it
                     filename = f"{experiment_name}_{workload}_{config_key.replace("/", "-")}_{simpoint}_tmp_run.sh"
+                    write_docker_command_to_file(user, local_uid, local_gid, workload, experiment_name,
+                                                 docker_prefix, docker_container_name, simpoint_traces_dir,
+                                                 docker_home, githash, config_key, config, scarab_mode, scarab_githash,
+                                                 architecture, simpoint, filename)
                     tmp_files.append(filename)
-                    with open(filename, "w") as f:
-                        f.write("#!/bin/bash \n")
-                        f.write(f"echo \"Running {config_key} {workload} {simpoint}\" \n")
-                        f.write("echo \"Running on $(uname -n)\" \n")
-                        f.write(f"LOCAL_UID=$(id -u {user})\n")
-                        f.write(f"LOCAL_GID=$(id -g {user})\n")
-                        f.write("USER_ID=${LOCAL_UID:-9001}\n")
-                        f.write("GROUP_ID=${LOCAL_GID:-9001}\n")
-                        f.write(docker_cmd + scarab_cmd)
 
                     os.system(sbatch_cmd + filename)
                     info(f"Running sbatch command '{sbatch_cmd + filename}'", dbg_lvl)
@@ -307,6 +359,8 @@ def run_simulation(args, descriptor_data, dbg_lvl = 1):
         for tmp in tmp_files:
             info(f"Removing temporary run script {tmp}", dbg_lvl)
             os.remove(tmp)
+
+        finish_simulation(user, f"{docker_home}/simulations/{experiment_name}")
 
         # TODO: check resource capping policies, add kill/info options
 

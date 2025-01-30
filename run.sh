@@ -15,6 +15,8 @@ help () {
                 [ -w | --workloads ]
                 [ -t | --trace ]
                 [ -s | --simulation ]
+                [ -i | --info ]
+                [ -k | --kill ]
                 [ -c | --cleanup ]"
   echo
   echo "!! Modify '<experiment_name>.json' to specify the workloads to run Scarab simulations and Scarab parameters before run !!"
@@ -32,7 +34,9 @@ help () {
   echo "r           Run an interactive shell for a docker container. Provide a name of a json file in ./json to provide workload group name. e.g) -r exp (for exp.json)"
   echo "w           List of workloads for simpoint/tracing. Should be used with -t."
   echo "t           Collect traces with different SimPoint workflows. 0: Do not collect traces, 1: Collect traces based on SimPoint workflow - collect fingerprints, do simpoint clustering, trace, 2: Collect traces based on SimPoint post-processing workflow - trace, collect fingerprints, do simpoint clustering, 3: Only collect traces without simpoint clustering. e.g) -t 2"
-  echo "s           Scarab simulation. Provide a name of a json file name in ./json e.g) -s exp (for exp.json)"
+  echo "s           Scarab simulation. Provide a name of a json file name in ./json. e.g) -s exp (for exp.json)"
+  echo "k           Kill Scarab simulation related to the experiment of a json file. e.g) -k exp (for exp.json)"
+  echo "i           Print status of docker/slurm nodes and running experiments related to json. e.g) -i exp (for exp.json)"
   echo "c           Clean up all the containers/volumes after run. e.g) -c"
 }
 
@@ -92,7 +96,6 @@ build () {
 
   # build a docker image
   echo "build docker image.."
-  taskPids=()
   start=`date +%s`
   # build from the beginning and overwrite whatever image with the same name
   docker build . -f ./workloads/$APP_GROUPNAME/Dockerfile --no-cache -t $APP_GROUPNAME:$GIT_HASH
@@ -101,33 +104,12 @@ build () {
 }
 
 run () {
-  # run an interactive shell of docker container
-  json_file=f"${INFRA_ROOT}/json/${SIMULATION}.json"
-  key="root_dir"
-  OUTDIR=$(jq -r ".$key" "$json_file")
-  if [ ! -n "$OUTDIR" ]; then
-    echo "The output directory path should be provided under 'root_dir' in json."
-    exit 1
-  fi
-
-  key="scarab_path"
-  SCARABPATH=$(jq -r ".$key" "$json_file")
-  if [ ! -n "$SCARABPATH" ]; then
-    echo "The scarab path should be provided under 'scarab_path' in json."
-    exit 1
-  fi
-
-  key="simpoint_traces_dir"
-  TRACEPATH=$(jq -r ".$key" "$json_file")
-  if [ ! -n "$TRACEPATH" ]; then
-    TRACEPATH=/soe/hlitz/lab/traces
-  fi
-
   # WL_LIST is filled if build is executed within a single run
   if [ ${#WL_LIST[@]} -eq 0 ]; then
     list
   fi
 
+  json_file=f"${INFRA_ROOT}/json/${RUN}.json"
   key="workloads_list"
   APP_LIST=$(jq -r ".$key" "$json_file")
   size=${#APP_LIST[@]}
@@ -171,73 +153,15 @@ run () {
     exit 1
   fi
 
-  mkdir -p $OUTDIR
 
-  LOCAL_UID=$(id -u $USER)
-  LOCAL_GID=$(id -g $USER)
-  USER_ID=${LOCAL_UID:-9001}
-  GROUP_ID=${LOCAL_GID:-9001}
-
-  mkdir -p $OUTDIR/.ssh
-  cp ~/.ssh/id_rsa $OUTDIR/.ssh/id_rsa
-
-  # run a docker container
-  echo "run a docker container.."
-  taskPids=()
+  # open an interactive shell of docker container
+  echo "open an interactive shell.."
   start=`date +%s`
-  case $APP_GROUPNAME in
-    solr)
-      # solr requires the host machine to download the data (14GB) from cloudsuite by first running "docker run --name web_search_dataset cloudsuite/web-search:dataset" once
-      if [ $( docker ps -a -f name=web_search_dataset | wc -l ) -eq 2 ]; then
-        echo "dataset exists"
-      else
-        echo "dataset does not exist, downloading"
-        docker run --name web_search_dataset cloudsuite/web-search:dataset
-      fi
-      # must mount dataset volume for server and docker to start querying
-      docker exec -it --privileged $APP_GROUPNAME\_$USER /bin/bash -c "/usr/local/bin/entrypoint.sh"
-      docker exec -it -d --privileged $APP_GROUPNAME\_$USER /bin/bash -c '(docker run -it --name web_search_client --net host cloudsuite/web-search:client $(hostname -I) 10; pkill java)'
-      docker run -e user_id=$USER_ID -e group_id=$GROUP_ID -e username=$USER -e HOME=/home/$USER -dit --privileged --name $APP_GROUPNAME\_$USER --mount type=bind,source=$OUTDIR,target=/home/$USER $APP_GROUPNAME:$GIT_HASH /bin/bash
-      docker start $APP_GROUPNAME\_$USER
-      docker exec --privileged $APP_GROUPNAME\_$USER /bin/bash -c "/usr/local/bin/common_entrypoint.sh"
-      docker exec -it --user=$USER $APP_GROUPNAME\_$USER /bin/bash
-      ;;
-    sysbench)
-      docker run -e user_id=$USER_ID -e group_id=$GROUP_ID -e username=$USER -e HOME=/home/$USER -dit --privileged --name $APP_GROUPNAME\_$USER --mount type=bind,source=$OUTDIR,target=/home/$USER $APP_GROUPNAME:$GIT_HASH /bin/bash
-      docker start $APP_GROUPNAME\_$USER
-      docker exec --privileged $APP_GROUPNAME\_$USER /bin/bash -c "/usr/local/bin/common_entrypoint.sh"
-      docker exec --privileged $APP_GROUPNAME\_$USER /bin/bash -c "/usr/local/bin/entrypoint.sh \"$APPNAME\""
-      docker exec -it --user=$USER $APP_GROUPNAME\_$USER /bin/bash
-      ;;
-    allbench_traces)
-      docker run -e user_id=$USER_ID -e group_id=$GROUP_ID -e username=$USER -e HOME=/home/$USER -dit --privileged --name $APP_GROUPNAME\_$USER --mount type=bind,source=$TRACEPATH,target=/simpoint_traces,readonly --mount type=bind,source=$OUTDIR,target=/home/$USER --mount type=bind,source=$SCARABPATH,target=/home/$USER/scarab $APP_GROUPNAME:$GIT_HASH /bin/bash
-      docker start $APP_GROUPNAME\_$USER
-      docker exec --privileged $APP_GROUPNAME\_$USER /bin/bash -c "/usr/local/bin/common_entrypoint.sh"
-      docker exec -it --user=$USER $APP_GROUPNAME\_$USER /bin/bash
-      ;;
-    isca2024_udp)
-      docker run -e user_id=$USER_ID -e group_id=$GROUP_ID -e username=$USER -e HOME=/home/$USER -dit --privileged --name $APP_GROUPNAME\_$USER --mount type=bind,source=$OUTDIR,target=/home/$USER $APP_GROUPNAME:$GIT_HASH /bin/bash
-      docker start $APP_GROUPNAME\_$USER
-      docker exec --privileged $APP_GROUPNAME\_$USER /bin/bash -c "/usr/local/bin/entrypoint.sh"
-      docker exec -it --user=$USER $APP_GROUPNAME\_$USER /bin/bash
-      ;;
-    example)
-      docker run -e user_id=$USER_ID -e group_id=$GROUP_ID -e username=$USER -e HOME=/home/$USER -dit --privileged --name $APP_GROUPNAME\_$USER --mount type=bind,source=$OUTDIR,target=/home/$USER $APP_GROUPNAME:$GIT_HASH /bin/bash
-      docker start $APP_GROUPNAME\_$USER
-      docker exec --privileged $APP_GROUPNAME\_$USER /bin/bash -c "/usr/local/bin/common_entrypoint.sh"
-      docker exec --user=$USER --privileged $APP_GROUPNAME\_$USER /bin/bash -c "cd /home/$USER/scarab/utils/qsort && make test_qsort"
-      docker exec -it --user=$USER $APP_GROUPNAME\_$USER /bin/bash
-      ;;
-    *)
-      docker run -e user_id=$USER_ID -e group_id=$GROUP_ID -e username=$USER -e HOME=/home/$USER -dit --privileged --name $APP_GROUPNAME\_$USER --mount type=bind,source=$OUTDIR,target=/home/$USER $APP_GROUPNAME:$GIT_HASH /bin/bash
-      docker start $APP_GROUPNAME\_$USER
-      docker exec --privileged $APP_GROUPNAME\_$USER /bin/bash -c "/usr/local/bin/common_entrypoint.sh"
-      docker exec -it --user=$USER $APP_GROUPNAME\_$USER /bin/bash
-      ;;
-  esac
+
+  python3 ${INFRA_ROOT}/scripts/run_simulation.py -dbg 3 -l -d ${INFRA_ROOT}/json/${RUN}.json
 
   end=`date +%s`
-  report_time "run-container" "$start" "$end"
+  report_time "interactive-shell" "$start" "$end"
 }
 
 simpoint_trace () {
@@ -294,11 +218,35 @@ run_scarab () {
   taskPids=()
   start=`date +%s`
 
-  python3 ${INFRA_ROOT}/scripts/run_simulation.py -dbg 3 -d ${INFRA_ROOT}/json/${SIMULATION}.json
+  cmd="python3 ${INFRA_ROOT}/scripts/run_simulation.py -dbg 3 -d ${INFRA_ROOT}/json/${SIMULATION}.json"
+  eval $cmd &
+  taskPids+=($!)
 
   wait_for_non_child "Scarab-simulation" "${taskPids[@]}"
   end=`date +%s`
   report_time "Scarab-simulation" "$start" "$end"
+}
+
+kill () {
+  # kill Scarab simulation
+  echo "kill scarab simulation of experiment $KILL .."
+  start=`date +%s`
+
+  python3 ${INFRA_ROOT}/scripts/run_simulation.py -dbg 3 -k -d ${INFRA_ROOT}/json/${KILL}.json
+
+  end=`date +%s`
+  report_time "kill-Scarab-simulation" "$start" "$end"
+}
+
+info () {
+  # print status of Scarab simulation or docker/slurm nodes
+  echo "print docker/slurm node info and status of scarab simulation of experiment $KILL .."
+  start=`date +%s`
+
+  python3 ${INFRA_ROOT}/scripts/run_simulation.py -dbg 3 -i -d ${INFRA_ROOT}/json/${INFO}.json
+
+  end=`date +%s`
+  report_time "print-status" "$start" "$end"
 }
 
 cleanup () {
@@ -356,8 +304,8 @@ else
   exit 1
 fi
 
-SHORT=h,l,b:,r:,w:,t:,s:,c
-LONG=help,list,build:,run:,workload:,trace:,simulation:,cleanup
+SHORT=h,l,b:,r:,w:,t:,s:,k:,i:,c
+LONG=help,list,build:,run:,workload:,trace:,simulation:,kill:,info:,cleanup
 OPTS=$(getopt -a -n "$(basename "$0")" --options $SHORT --longoptions $LONG -- "$@")
 
 if [ $? -ne 0 ]; then
@@ -386,6 +334,16 @@ while [[ $# -gt 0 ]]; do
       for GROUP_NAME in "${!WL_LIST[@]}"; do
         echo "$GROUP_NAME: ${WL_LIST[$GROUP_NAME]}"
       done
+      exit 0
+      ;;
+    -k|--kill) # kill scarab simulation
+      KILL="$2"
+      kill
+      exit 0
+      ;;
+    -i|--info) # print status of docker/slurm nodes and scarab simulation
+      INFO="$2"
+      info
       exit 0
       ;;
     -b|--build) # build a docker image with application setup required during the building time

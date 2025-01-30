@@ -21,9 +21,9 @@ RUN cd $tmpdir && wget https://apt.llvm.org/llvm.sh
 RUN chmod u+x llvm.sh
 RUN sudo ./llvm.sh 16
 
+COPY ./workloads/spec2017/entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY ./workloads/spec2017/compile-538-clang.sh $tmpdir
 COPY ./workloads/spec2017/memtrace.cfg $tmpdir
-COPY ./workloads/spec2017/entrypoint.sh $tmpdir
 COPY ./workloads/spec2017/install.sh $tmpdir
 
 # Start your application

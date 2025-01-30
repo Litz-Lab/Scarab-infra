@@ -1,13 +1,7 @@
 #!/bin/bash
 #set -x #echo on
 
-cd /home/$username
-if [ ! -d "/home/$username/scarab" ]; then
-  sudo -u $username touch /home/$username/.ssh/known_hosts
-  sudo -u $username /bin/bash -c "ssh-keyscan github.com >> /home/$username/.ssh/known_hosts"
-  sudo -u $username git clone -b main git@github.com:Litz-Lab/scarab.git scarab
+useradd -u $user_id -m $username && groupmod -g $group_id $username
+if [ -f "/usr/local/bin/entrypoint.sh" ]; then
+  bash /usr/local/bin/entrypoint.sh $APPNAME
 fi
-
-pip3 install -r /home/$username/scarab/bin/requirements.txt
-sudo -u $username rm /home/$username/.ssh/id_rsa
-sudo -u $username rm /home/$username/.ssh/known_hosts

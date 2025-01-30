@@ -227,17 +227,16 @@ echo "Running on $(hostname)"
 # TODO: for other apps?
 APPNAME="$1"
 APP_GROUPNAME="$2"
-BINCMD="$3"
-SCENARIONUM="$4"
-SCARABPARAMS="$5"
+SCENARIO="$3"
+SCARABPARAMS="$4"
 # this is fixed/settled for NON trace post-processing flow.
 # for trace post-processing flow, SEGSIZE is read from file
 SEGSIZE=100000000
-SCARABMODE="$6"
-SCARABARCH="$7"
-TRACESSIMP="$8"
-SCARABHOME="$9"
-SEGMENT_ID="$10"
+SCARABMODE="$5"
+SCARABARCH="$6"
+TRACESSIMP="$7"
+SCARABHOME="$8"
+SEGMENT_ID="$9"
 
 if [ "$APP_GROUPNAME" == "allbench_traces" ] || [ "$APP_GROUPNAME" == "isca2024_udp" ]; then
   # 10M warmup by default
@@ -255,12 +254,11 @@ if [ "$TRACESSIMP" == "1" ]; then
   TRACEFILE=/simpoint_traces/$APPNAME/traces_simp/trace
 fi
 
-SIMHOME=$HOME/$SCENARIONUM/$APPNAME
+SIMHOME=$SCENARIO/$APPNAME
 mkdir -p $SIMHOME
 TRACEHOME=/simpoint_traces/$APPNAME
 
 cd $SIMHOME
-mkdir $SCENARIONUM
 
 cd $TRACEHOME/traces/whole
 # continue if only one trace file

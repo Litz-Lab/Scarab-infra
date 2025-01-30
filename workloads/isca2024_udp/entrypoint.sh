@@ -1,5 +1,6 @@
 #!/bin/bash
 #set -x #echo on
+APPNAME="$1"
 
 useradd -u $user_id -o -m $username || true
 groupmod -g $group_id $username
