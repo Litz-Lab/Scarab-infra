@@ -30,7 +30,7 @@ jobs:
 
       - name: Set GitHash
         id: githash
-        run: echo "git rev-parse --short HEAD" >> $GIT_HASH
+        run: export GIT_HASH=$(git rev-parse --short HEAD)
 
       - name: Build Docker images
         run: docker build . --file ./allbench_traces/Dockerfile --no-cache --tag ghcr.io/litz-lab/scarab-infra/allbench_traces:${{ env.githash }}
