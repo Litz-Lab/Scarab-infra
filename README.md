@@ -52,6 +52,11 @@ The script will launch all Scarab simulations in parallel (one process per simpo
 ./run.sh -k your_experiment
 ```
 
+## Open an interactive shell of a docker container for the purpose of debugging/development
+```
+./run.sh -l your_experiment
+```
+
 ## Modify the source code and rebuild scarab
 A user can update scarab and rebuild for further simulation. Scarab can be updated either 'inside' or 'outside' the container. To exploit already-set simulation/building environment, scarab build itself should be done 'inside' the container.
 ### Alternative 1. Start an interactive container with pre-installed Scarab environment

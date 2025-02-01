@@ -13,6 +13,7 @@ from utilities import (
         info,
         get_simpoints,
         write_docker_command_to_file,
+        remove_docker_containers,
         prepare_simulation,
         finish_simulation
         )
@@ -40,22 +41,6 @@ def print_status(user, experiment_name, docker_prefix, dbg_lvl = 2):
             print(f"\033[92m    CONTAINER: {docker}\033[0m")
     else:
         print(f"\033[31mNOT RUNNING: local\033[0m")
-
-def remove_docker_containers(docker_prefix, experiment_name, user, dbg_lvl):
-    pattern = re.compile(fr"^{docker_prefix}_.*_{experiment_name}.*_.*_{user}$")
-    try:
-        dockers = subprocess.run(["docker", "ps", "--format", "{{.Names}}"], capture_output=True, text=True, check=True)
-        lines = dockers.stdout.strip().split("\n") if dockers.stdout else []
-        matching_containers = [line for line in lines if pattern.match(line)]
-
-        if matching_containers:
-            for container in matching_containers:
-                subprocess.run(["docker", "rm", "-f", container], check=True)
-                info(f"Removed container: {container}", dbg_lvl)
-        else:
-            info("No containers found.", dbg_lvl)
-    except subprocess.CalledProcessError as e:
-        err(f"Error while removing containers: {e}")
 
 def kill_jobs(user, experiment_name, docker_prefix, infra_dir, dbg_lvl):
     # Define the process name pattern

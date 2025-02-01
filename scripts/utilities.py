@@ -5,6 +5,10 @@
 import json
 import os
 import subprocess
+import re
+import docker
+
+client = docker.from_env()
 
 # Print an error message if on right debugging level
 def err(msg: str, level: int):
@@ -150,7 +154,10 @@ def prepare_simulation(user, scarab_path, docker_home, experiment_name, architec
         arch_params = f"{scarab_path}/src/PARAMS.{architecture}"
         os.system(f"mkdir -p {experiment_dir}/scarab/src/")
         os.system(f"cp {scarab_bin} {experiment_dir}/scarab/src/scarab")
-        os.symlink(f"{experiment_dir}/scarab/src/scarab", f"{experiment_dir}/scarab/src/scarab_{scarab_githash}")
+        try:
+            os.symlink(f"{experiment_dir}/scarab/src/scarab", f"{experiment_dir}/scarab/src/scarab_{scarab_githash}")
+        except FileExistsError:
+            pass
         os.system(f"cp {arch_params} {experiment_dir}/scarab/src")
 
         # Required for non mode 4. Copy launch scripts from the docker container's scarab repo.
@@ -227,7 +234,6 @@ def write_docker_command_to_file(user, local_uid, local_gid, workload, experimen
             --mount type=bind,source={docker_home},target=/home/{user} \
             {docker_prefix}:{githash} \
             /bin/bash\n")
-            # f.write(f"docker start {docker_container_name}\n")
             f.write(f"docker exec {docker_container_name} /bin/bash -c '/usr/local/bin/common_entrypoint.sh'\n")
             f.write(f"docker exec --user={user} {docker_container_name} /bin/bash {scarab_cmd}\n")
             f.write(f"docker rm -f {docker_container_name}\n")
@@ -260,6 +266,7 @@ def get_simpoints (simpoint_traces_dir, workload, dbg_lvl = 2):
     return simpoints
 
 def open_interactive_shell(user, descriptor_data, dbg_lvl = 1):
+    experiment_name = descriptor_data["experiment"]
     try:
         # Get user for commands
         user = subprocess.check_output("whoami").decode('utf-8')[:-1]
@@ -283,9 +290,14 @@ def open_interactive_shell(user, descriptor_data, dbg_lvl = 1):
         # currently open it on local
 
         # Generate commands for executing in users docker and sbatching to nodes with containers
-        scarab_githash = prepare_simulation(user, scarab_path, descriptor_data['root_dir'], experiment_name, architecture, dbg_lvl)
-        docker_prefix = descriptor['workload_group']
-        workload = descriptor['workloads_list'][0]
+        scarab_githash = prepare_simulation(user,
+                                            descriptor_data['scarab_path'],
+                                            descriptor_data['root_dir'],
+                                            experiment_name,
+                                            descriptor_data['architecture'],
+                                            dbg_lvl)
+        docker_prefix = descriptor_data['workload_group']
+        workload = descriptor_data['workloads_list'][0]
         docker_container_name = f"{docker_prefix}_{experiment_name}_scarab_{scarab_githash}_{user}"
         simpoint_traces_dir = descriptor_data["simpoint_traces_dir"]
         docker_home = descriptor_data["root_dir"]
@@ -305,9 +317,31 @@ def open_interactive_shell(user, descriptor_data, dbg_lvl = 1):
                 /bin/bash")
                 # f.write(f"docker start {docker_container_name}\n")
             os.system(f"docker exec {docker_container_name} /bin/bash -c '/usr/local/bin/common_entrypoint.sh'")
-            subprocess.run(["docker", "exec", "-it", container_name, "/bin/bash"])
+            subprocess.run(["docker", "exec", "-it", f"--user={user}", f"--workdir=/home/{user}", docker_container_name, "/bin/bash"])
         except KeyboardInterrupt:
             os.system(f"docker rm -f {docker_container_name}")
             exit(0)
+        finally:
+            try:
+                client.containers.get(docker_container_name).remove(force=True)
+                print(f"Container {docker_container_name} removed.")
+            except docker.errors.NotFound:
+                print(f"Container {docker_container_name} not found.")
     except Exception as e:
         raise e
+
+def remove_docker_containers(docker_prefix, experiment_name, user, dbg_lvl):
+    pattern = re.compile(fr"^{docker_prefix}_.*_{experiment_name}.*_.*_{user}$")
+    try:
+        dockers = subprocess.run(["docker", "ps", "--format", "{{.Names}}"], capture_output=True, text=True, check=True)
+        lines = dockers.stdout.strip().split("\n") if dockers.stdout else []
+        matching_containers = [line for line in lines if pattern.match(line)]
+
+        if matching_containers:
+            for container in matching_containers:
+                subprocess.run(["docker", "rm", "-f", container], check=True)
+                info(f"Removed container: {container}", dbg_lvl)
+        else:
+            info("No containers found.", dbg_lvl)
+    except subprocess.CalledProcessError as e:
+        err(f"Error while removing containers: {e}")

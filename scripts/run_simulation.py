@@ -6,7 +6,13 @@
 import subprocess
 import argparse
 import os
-from utilities import info, read_descriptor_from_json, verify_descriptor, open_interactive_shell
+from utilities import (
+        info,
+        read_descriptor_from_json,
+        verify_descriptor,
+        open_interactive_shell,
+        remove_docker_containers
+        )
 import slurm_runner
 import local_runner
 
@@ -18,7 +24,8 @@ if __name__ == "__main__":
     parser.add_argument('-d','--descriptor_name', required=True, help='Experiment descriptor name. Usage: -d exp.json')
     parser.add_argument('-k','--kill', required=False, default=False, action=argparse.BooleanOptionalAction, help='Don\'t launch jobs from descriptor, kill running jobs as described in descriptor')
     parser.add_argument('-i','--info', required=False, default=False, action=argparse.BooleanOptionalAction, help='Get info about all nodes and if they have containers for slurm workloads')
-    parser.add_argument('-l','--launch', required=False, default=None, help='Launch a docker container on a node for the purpose of development/debugging where the environment is for the experiment described in a descriptor.')
+    parser.add_argument('-l','--launch', required=False, default=False, action=argparse.BooleanOptionalAction, help='Launch a docker container on a node for the purpose of development/debugging where the environment is for the experiment described in a descriptor.')
+    parser.add_argument('-c','--clean', required=False, default=False, action=argparse.BooleanOptionalAction, help='Clean up all the docker containers related to an experiment')
     parser.add_argument('-dbg','--debug', required=False, type=int, default=2, help='1 for errors, 2 for warnings, 3 for info')
     parser.add_argument('-si','--scarab_infra', required=False, default=None, help='Path to scarab infra repo to launch new containers')
 
@@ -60,6 +67,10 @@ if __name__ == "__main__":
     if args.launch:
         verify_descriptor(descriptor_data, infra_dir, True, dbg_lvl)
         open_interactive_shell(user, descriptor_data, dbg_lvl)
+        exit(0)
+
+    if args.clean:
+        remove_docker_containers(docker_prefix, experiment_name, user, dbg_lvl)
         exit(0)
 
     verify_descriptor(descriptor_data, infra_dir, False, dbg_lvl)

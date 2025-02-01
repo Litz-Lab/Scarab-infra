@@ -37,7 +37,7 @@ help () {
   echo "s           Scarab simulation. Provide a name of a json file name in ./json. e.g) -s exp (for exp.json)"
   echo "k           Kill Scarab simulation related to the experiment of a json file. e.g) -k exp (for exp.json)"
   echo "i           Print status of docker/slurm nodes and running experiments related to json. e.g) -i exp (for exp.json)"
-  echo "c           Clean up all the containers/volumes after run. e.g) -c"
+  echo "c           Clean up all the containers related to an experiment. e.g) -c exp (for exp.json)"
 }
 
 # list function: list all the available docker image names
@@ -109,7 +109,7 @@ run () {
     list
   fi
 
-  json_file=f"${INFRA_ROOT}/json/${RUN}.json"
+  json_file="${INFRA_ROOT}/json/${RUN}.json"
   key="workloads_list"
   APP_LIST=$(jq -r ".$key" "$json_file")
   size=${#APP_LIST[@]}
@@ -250,51 +250,30 @@ info () {
 }
 
 cleanup () {
-  if [[ ${#WORKLOADS[@]} -eq 0 ]]; then
-    echo "Workloads not provided with -w."
-    exit 1
-  fi
-
   echo "clean up the containers.."
-  # solr requires extra cleanup
-  taskPids=()
   start=`date +%s`
-  for APPNAME in "${WORKLOADS[@]}"; do
-    set_app_groupname
-    case $APPNAME in
-      solr)
-        rmCmd="docker rm web_search_client"
-        eval $rmCmd &
-        taskPids+=($!)
-        sleep 2
-        ;;
-    esac
-    docker stop $APP_GROUPNAME\_$USER
-    rmCmd="docker rm $APP_GROUPNAME\_$USER"
-    eval $rmCmd &
-    taskPids+=($!)
-    sleep 2
-  done
+#  for APPNAME in "${WORKLOADS[@]}"; do
+    #set_app_groupname
+    #case $APPNAME in
+      # solr requires extra cleanup
+      #solr)
+        #rmCmd="docker rm web_search_client"
+        #eval $rmCmd &
+        #taskPids+=($!)
+        #sleep 2
+        #;;
+    #esac
+    #docker stop $APP_GROUPNAME\_$USER
+    #rmCmd="docker rm $APP_GROUPNAME\_$USER"
+    #eval $rmCmd &
+    #taskPids+=($!)
+    #sleep 2
+  #done
 
-  wait_for "container-cleanup" "${taskPids[@]}"
+  python3 ${INFRA_ROOT}/scripts/run_simulation.py -dbg 3 -c -d ${INFRA_ROOT}/json/${CLEANUP}.json
+
   end=`date +%s`
   report_time "container-cleanup" "$start" "$end"
-
-  echo "clean up the volumes.."
-  # remove docker volume
-  taskPids=()
-  start=`date +%s`
-  for APPNAME in "${WORKLOADS[@]}"; do
-    set_app_groupname
-    rmCmd="docker volume rm $APP_GROUPNAME"
-    eval $rmCmd &
-    taskPids+=($!)
-    sleep 2
-  done
-
-  wait_for "volume-cleanup" "${taskPids[@]}"
-  end=`date +%s`
-  report_time "volume-cleanup" "$start" "$end"
 }
 
 if [ -f "README.md" ]; then
@@ -304,8 +283,8 @@ else
   exit 1
 fi
 
-SHORT=h,l,b:,r:,w:,t:,s:,k:,i:,c
-LONG=help,list,build:,run:,workload:,trace:,simulation:,kill:,info:,cleanup
+SHORT=h,l,b:,r:,w:,t:,s:,k:,i:,c:
+LONG=help,list,build:,run:,workload:,trace:,simulation:,kill:,info:,cleanup:
 OPTS=$(getopt -a -n "$(basename "$0")" --options $SHORT --longoptions $LONG -- "$@")
 
 if [ $? -ne 0 ]; then
@@ -371,8 +350,8 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     -c|--cleanup) # clean up the containers
-      CLEANUP=true
-      shift
+      CLEANUP="$2"
+      shift 2
       ;;
     --)
       shift
