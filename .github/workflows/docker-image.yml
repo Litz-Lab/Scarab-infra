@@ -30,10 +30,10 @@ jobs:
 
       - name: Set GitHash
         id: githash
-        run: export GIT_HASH=$(git rev-parse --short HEAD)
+        run: echo "::set-output name=GIT_HASH::$(git rev-parse --short HEAD)"
 
       - name: Build Docker images
-        run: docker build . --file ./allbench_traces/Dockerfile --no-cache --tag ghcr.io/litz-lab/scarab-infra/allbench_traces:${{ env.githash }}
+        run: docker build . --file ./allbench_traces/Dockerfile --no-cache --tag ghcr.io/litz-lab/scarab-infra/allbench_traces:${{ steps.githash.outputs.GIT_HASH }}
 
       - name: Push Docker images to GitHub Packages
-        run: docker push ghcr.io/litz-lab/scarab-infra/allbench_traces:${{ env.githash }}
+        run: docker push ghcr.io/litz-lab/scarab-infra/allbench_traces:${{ steps.githash.outputs.GIT_HASH }}
