@@ -9,13 +9,13 @@ declare -A WL_LIST
 # help function
 help () {
   echo "Usage: ./run.sh [ -h | --help ]
-                [ -l | --list ]
+                [ --list ]
                 [ -b | --build ]
-                [ -r | --run ]
+                [ --run ]
                 [ -w | --workloads ]
                 [ -t | --trace ]
-                [ -s | --simulation ]
-                [ -i | --info ]
+                [ --simulation ]
+                [ --status ]
                 [ -k | --kill ]
                 [ -c | --cleanup ]"
   echo
@@ -238,12 +238,12 @@ kill () {
   report_time "kill-Scarab-simulation" "$start" "$end"
 }
 
-info () {
+status () {
   # print status of Scarab simulation or docker/slurm nodes
   echo "print docker/slurm node info and status of scarab simulation of experiment $KILL .."
   start=`date +%s`
 
-  python3 ${INFRA_ROOT}/scripts/run_simulation.py -dbg 3 -i -d ${INFRA_ROOT}/json/${INFO}.json
+  python3 ${INFRA_ROOT}/scripts/run_simulation.py -dbg 3 -i -d ${INFRA_ROOT}/json/${STATUS}.json
 
   end=`date +%s`
   report_time "print-status" "$start" "$end"
@@ -283,8 +283,8 @@ else
   exit 1
 fi
 
-SHORT=h,l,b:,r:,w:,t:,s:,k:,i:,c:
-LONG=help,list,build:,run:,workload:,trace:,simulation:,kill:,info:,cleanup:
+SHORT=h,b:,w:,t:,k:,c:
+LONG=help,list,build:,run:,workload:,trace:,simulation:,kill:,status:,cleanup:
 OPTS=$(getopt -a -n "$(basename "$0")" --options $SHORT --longoptions $LONG -- "$@")
 
 if [ $? -ne 0 ]; then
@@ -307,7 +307,7 @@ while [[ $# -gt 0 ]]; do
       help
       exit 0
       ;;
-    -l|--list) # list all the workload groups
+    --list) # list all the workload groups
       list
       echo "WORKLOAD_GROUPNAME: WORKLOAD_NAME1 WORKLOAD_NAME2 ..."
       for GROUP_NAME in "${!WL_LIST[@]}"; do
@@ -320,16 +320,16 @@ while [[ $# -gt 0 ]]; do
       kill
       exit 0
       ;;
-    -i|--info) # print status of docker/slurm nodes and scarab simulation
-      INFO="$2"
-      info
+    --status) # print status of docker/slurm nodes and scarab simulation
+      STATUS="$2"
+      status
       exit 0
       ;;
     -b|--build) # build a docker image with application setup required during the building time
       BUILD="$2"
       shift 2
       ;;
-    -r|--run) # run a docker container with application setup required during the launching time
+    --run) # run a docker container with application setup required during the launching time
       RUN="$2"
       shift 2
       ;;
@@ -345,7 +345,7 @@ while [[ $# -gt 0 ]]; do
       SIMPOINT=$2
       shift 2
       ;;
-    -s|--simulation) # scarab simulation
+    --simulation) # scarab simulation
       SIMULATION="$2"
       shift 2
       ;;
