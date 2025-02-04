@@ -33,7 +33,7 @@ jobs:
         run: echo "::set-output name=GIT_HASH::$(git rev-parse --short HEAD)"
 
       - name: Build Docker images
-        run: docker build . --file ./allbench_traces/Dockerfile --no-cache --tag ghcr.io/litz-lab/scarab-infra/allbench_traces:${{ steps.githash.outputs.GIT_HASH }}
+        run: docker build . --file ./workloads/allbench_traces/Dockerfile --no-cache --tag ghcr.io/litz-lab/scarab-infra/allbench_traces:${{ steps.githash.outputs.GIT_HASH }}
 
       - name: Push Docker images to GitHub Packages
         run: docker push ghcr.io/litz-lab/scarab-infra/allbench_traces:${{ steps.githash.outputs.GIT_HASH }}
