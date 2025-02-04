@@ -21,7 +21,10 @@ tar -xzvf simpoint_traces.tar.gz
 5. Optional: Install [Slurm](docs/slurm_install_guide.md)
 
 ## Set up the environment (Docker image)
-### Alternative 1. Download a pre-built Docker image
+### Alternative 1. Download a pre-built Docker image (only available for trace-based simulations)
+```
+docker pull ghcr.io/litz-lab/scarab-infra/allbench_traces:<GitHash>
+```
 ### Alternative 2. Build your own Docker image
 ```
 ./run.sh -b $WORKLOAD_GROUPNAME
