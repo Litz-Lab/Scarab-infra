@@ -1,0 +1,39 @@
+name: Build and Publish Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+    # Allows manual triggering of the workflow
+
+permissions:
+    contents: write
+    packages: write
+
+jobs:
+  build-and-publish:
+    name: Build and Publish Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set GitHash
+        id: githash
+        run: echo "::set-output name=GIT_HASH::$(git rev-parse --short HEAD)"
+
+      - name: Build Docker images
+        run: docker build . --file ./workloads/allbench_traces/Dockerfile --no-cache --tag ghcr.io/litz-lab/scarab-infra/allbench_traces:${{ steps.githash.outputs.GIT_HASH }}
+
+      - name: Push Docker images to GitHub Packages
+        run: docker push ghcr.io/litz-lab/scarab-infra/allbench_traces:${{ steps.githash.outputs.GIT_HASH }}
