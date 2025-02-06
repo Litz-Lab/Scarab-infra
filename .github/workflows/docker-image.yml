@@ -1,7 +1,7 @@
 name: Build and Publish Docker Image CI
 
 on:
-  pull_request:
+  push:
     branches:
       - main
   workflow_dispatch: # Allows manual triggering of the workflow
@@ -13,7 +13,6 @@ permissions:
 jobs:
   build-and-publish:
     name: Build and Publish Docker Image
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:
