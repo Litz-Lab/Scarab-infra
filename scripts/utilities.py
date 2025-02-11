@@ -136,6 +136,9 @@ def verify_descriptor(descriptor_data, infra_dir, open_shell = False, dbg_lvl = 
 def prepare_simulation(user, scarab_path, docker_home, experiment_name, architecture, dbg_lvl=1):
     ## Copy required scarab files into the experiment folder
     try:
+        local_uid = os.getuid()
+        local_gid = os.getgid()
+
         scarab_githash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=scarab_path).decode("utf-8").strip()
         info(f"Scarab git hash: {scarab_githash}", dbg_lvl)
 
