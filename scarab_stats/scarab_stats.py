@@ -375,14 +375,9 @@ stat_files = ["bp.stat.0.csv",
               "inst.stat.0.csv",
               "l2l1pref.stat.0.csv",
               "memory.stat.0.csv",
-              #"per_branch_stats.csv",
-              #"per_line_icache_line_info.csv",
               "power.stat.0.csv",
               "pref.stat.0.csv",
-              "stream.stat.0.csv"]#,
-              #"uop_queue_fill_cycles.csv",
-              #"uop_queue_fill_pws.csv",
-              #"uop_queue_fill_unique_pws.csv"]
+              "stream.stat.0.csv"]
 
 class stat_aggregator:
     def __init__(self) -> None:
@@ -508,26 +503,22 @@ class stat_aggregator:
         if not return_stats: return data, group
         else: return all_stats
 
-    def get_sim_path_from_json(self, path):
-        json_data = None
-        try:
-            with open(path, "r") as file:
-                json_data = json.loads(file.read())
-        except:
-            return None
-
-        return json_data["root_dir"]
-
     # Load experiment from saved file
     def load_experiment_csv(self, path):
         return Experiment(path)
 
-    # Load experiment form json file, and the corresponding simulations directory
-    def load_experiment_json(self, experiment_file: str, simulations_path: str, simpoints_path: str, slurm: bool = False):
+    # Load experiment form json file
+    def load_experiment_json(self, experiment_file: str, slurm: bool = False):
         # Load json data from experiment file
         json_data = None
-        with open(experiment_file, "r") as file:
-            json_data = json.loads(file.read())
+        try:
+            with open(experiment_file, "r") as file:
+                json_data = json.loads(file.read())
+        except:
+            return None
+
+        simulations_path = json_data["root_dir"]
+        simpoints_path = "/soe/hlitz/lab/traces/" if json_data["simpoint_traces_dir"] == None else json_data["simpoint_traces_dir"]
 
         # Make sure simulations and simpoints path has known format
         if simulations_path[-1] != '/': simulations_path += "/"
@@ -567,10 +558,7 @@ class stat_aggregator:
                     print(f"       Encountered {seg_id_1} in .p and {seg_id_2} in .w")
                     exit(1)
 
-                if not slurm:
-                    directory = f"{simulations_path}{workload}/{experiment_name}/{config}/{str(cluster_id)}/"
-                else:
-                    directory = f"{simulations_path}{experiment_name}/{config}/{workload}/{str(cluster_id)}/"
+                directory = f"{simulations_path}{experiment_name}/{config}/{workload}/{str(cluster_id)}/"
 
                 print("CHECK", directory)
 
@@ -617,10 +605,7 @@ class stat_aggregator:
                             print(f"       Encountered {seg_id_1} in .p and {seg_id_2} in .w")
                             exit(1)
 
-                        if not slurm:
-                            directory = f"{simulations_path}{workload}/{experiment_name}/{config}/{str(cluster_id)}/"
-                        else:
-                            directory = f"{simulations_path}{experiment_name}/{config}/{workload}/{str(cluster_id)}/"
+                        directory = f"{simulations_path}{experiment_name}/{config}/{workload}/{str(cluster_id)}/"
 
                         if experiment == None:
                             experiment = Experiment(known_stats)
@@ -1494,18 +1479,12 @@ class stat_aggregator:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-d','--descriptor_name', required=True, help='Experiment descriptor name. Usage: -d exp2.json')
-    parser.add_argument('-p','--sim_path', required=False, help='Path to the simulation directory. Usage: -p /soe/<USER>/allbench_home/simpoint_flow/simulations/')
-    parser.add_argument('-t','--trace_path', required=False, help='Path to the trace directory for reading simpoints. Usage: -t /soe/hlitz/lab/traces/')
+    parser.add_argument('-d','--descriptor_name', required=True, help='Experiment descriptor name. Usage: -d exp.json')
 
     args = parser.parse_args()
 
     da = stat_aggregator()
-    sim_path = da.get_sim_path_from_json(args.descriptor_name)
-    if sim_path == None:
-        sim_path = args.sim_path
-    trace_path = "/soe/hlitz/lab/traces/" if args.trace_path == None else args.trace_path
-    E = da.load_experiment_json(args.descriptor_name, sim_path, trace_path, True)
+    E = da.load_experiment_json(args.descriptor_name, True)
     print(E.get_experiments())
 
     # Create equation that sums all of the stats
