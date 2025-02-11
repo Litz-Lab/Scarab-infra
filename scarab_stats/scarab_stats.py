@@ -33,8 +33,21 @@ class Experiment:
 
             self.data["stats"] = rows
 
+            # TODO: Add Groups here. Issues with write protect will apply to the group col too. Getters and derived stats affected
+
             # Enable write protect for all base stats
             self.data["write_protect"] = [True for _ in rows]
+
+    def has_group_data(self):
+        return "groups" in self.data.columns
+
+    def set_groups(self, groups):
+        # NOTE: Add 7 0s at end for all the appends in add_simpoint
+        self.data["groups"] = list(groups) + [0]*7
+
+    def get_groups(self):
+        # NOTE: Add 7 0s at end for all the appends in add_simpoint
+        return set(self.data["groups"])
 
     def add_simpoint(self, simpoint_data, experiment, arch, config, workload, seg_id, c_id, weight):
         column = simpoint_data
@@ -105,7 +118,8 @@ class Experiment:
     def defragment(self):
         self.data = self.data.copy()
 
-    def derive_stat(self, equation:str, overwrite:bool=True, agg_first:bool=True):
+    def derive_stat(self, equation:str, overwrite:bool=True, pre_agg:bool=True,
+                    write_prot:bool=False):
         # TODO: Doesn't work for stats with spaces in the names
 
         # Make sure tokens have space padding
@@ -125,7 +139,8 @@ class Experiment:
         lookup_cols = {old:new for old, new in zip(self.data.T.columns, self.data.T.iloc[0])}
         str_rows = [list(self.data["stats"]).index(row) for row in ["Experiment","Architecture","Configuration","Workload"]]
 
-        lookup = self.data.T.rename(columns=lookup_cols).drop("stats").drop("write_protect")
+        # NOTE: Drop metadata here, don't do operations on them
+        lookup = self.data.T.rename(columns=lookup_cols).drop("stats").drop("write_protect").drop("groups")
 
         # Aggregates before returning row
         # Takes in a stat name, returns a Pandas series
@@ -149,8 +164,8 @@ class Experiment:
             # Make a sereies so equaation works
             return pd.Series(data_weighted_duplicated.values(), data_weighted_duplicated.keys())
 
-        # If agg_first, then aggregate *while* retrieving stat
-        if agg_first:
+        # If pre_agg, then aggregate *while* retrieving stat
+        if pre_agg:
             panda_fy = lambda name: f'panda_fy_agg("{name}")'
 
         str_rows = [lookup.columns[i] for i in str_rows]
@@ -208,10 +223,22 @@ class Experiment:
                 insert_index = self.data[self.data["stats"] == stat_name].index[0]
 
         # TODO: Unsafe!
+        # print("Evalling:", to_eval)
         eval(to_eval)
 
-        row = [stat_name, False] + values[1]
+        # NOTE: Add metadata columns here.
+        # [name, write_prot, group]
+        # print(f"Values:", values)
+        row = [stat_name, write_prot, 0] + values[1]
+
         self.data.loc[insert_index] = row
+
+        if self.data.loc[insert_index].isna().any():
+            print(f"ERR: 'NaN' calculated in result of the equation '{equation}'")
+            print(f"Likely division by zero. Found {self.data.loc[insert_index].isna().count()} NaNs",
+                  "across all simpoints.")
+            return
+
         return
 
     def to_csv(self, path:str):
@@ -239,16 +266,98 @@ class Experiment:
             #    if must_contain not in row:
             #        rows_to_drop.append(self.data.index[self.data["stats"] == row][0])
 
-        return self.data.drop(rows_to_drop)
+        return self.data.copy().drop(rows_to_drop)
+
+    def calculate_distribution_stats(self):
+        groups = self.get_groups()
+        groups.remove(0)
+
+        errs = 0
+
+        # Do calculations for each group
+        for group in groups:
+
+            remove_columns = ["write_protect", "groups"]
+            group_df = self.data[(self.data["groups"] == group)].drop(columns=remove_columns)
+
+            count_data_stats = list(filter(lambda x: x.endswith("_count") and not x.endswith("_total_count"), group_df["stats"]))
+            total_count_data_stats = list(filter(lambda x: x.endswith("_total_count"), group_df["stats"]))
+
+            errs += 1 if len(group_df) != len(count_data_stats) + len(total_count_data_stats) else 0
+
+            count_data_df = group_df[group_df["stats"].isin(count_data_stats)].set_index("stats")
+            total_count_data_df = group_df[group_df["stats"].isin(total_count_data_stats)].set_index("stats")
+
+            count_sums = count_data_df.sum(axis=0)
+            total_count_sums = total_count_data_df.sum(axis=0)
+
+            # Replace NaN values where all values are zero
+            if float(0) in list(count_sums) or float(0) in list(total_count_sums):
+                # print("ERR: NULL. Skipping due to sum of 0 in distribution", group)
+                new_stats = [f"group_{group}_total_mean", f"group_{group}_mean", 
+                             f"group_{group}_total_stddev", f"group_{group}_stddev"]
+
+                for stat in total_count_percentages.index:
+                    new_stats.append(f"{stat}_pct")
+
+                for stat in count_percentages.index:
+                    new_stats.append(f"{stat}_pct")
+
+                index = len(self.data)
+                for stat in new_stats:
+                    self.data.loc[index] = [stat, True, 0] + [np.nan] * len(count_sums)
+                    index += 1
+
+                continue
+
+            # Get mean and standard deviation of WHOLE distribution, then percent that each sample makes up of distribution (data_df/sums)
+            total_count_means = total_count_sums / len(total_count_data_df)
+            count_means = count_sums / len(count_data_df)
+
+            total_count_stddev = (((total_count_data_df - total_count_means) ** 2).sum() / (len(total_count_data_df))).pow(0.5)
+            count_stddev = (((count_data_df - count_means) ** 2).sum() / (len(count_data_df))).pow(0.5)
+
+            total_count_percentages = total_count_data_df / total_count_sums
+            count_percentages = count_data_df / count_sums
+
+            # print("Mean (Validated)", total_count_means)
+            # print("Standard Deviation", total_count_stddev)
+            # print("Percentages", total_count_percentages)
+
+            index = len(self.data)
+            self.data.loc[index]     = [f"group_{group}_total_mean", True, 0]   + list(total_count_means)
+            self.data.loc[index + 1] = [f"group_{group}_mean", True, 0]         + list(count_means)
+            self.data.loc[index + 2] = [f"group_{group}_total_stddev", True, 0] + list(total_count_stddev)
+            self.data.loc[index + 3] = [f"group_{group}_stddev", True, 0]       + list(count_stddev)
+            index += 4
+
+            # print(count_percentages)
+
+            for stat in total_count_percentages.index:
+                self.data.loc[index] = [f"{stat}_pct", True, 0] + list(total_count_percentages.loc[stat])
+                index += 1
+
+            for stat in count_percentages.index:
+                self.data.loc[index] = [f"{stat}_pct", True, 0] + list(count_percentages.loc[stat])
+                index += 1
+
+            # exit(1)
+            # return
+
+        if errs != 0:
+            print("WARN: Distribution size and number of x_count + x_total_count stats is not equal.")
+            return
+
+        # exit(1)
 
     def get_experiments(self):
-        return list(set(list(self.data[self.data["stats"] == "Experiment"].iloc[0])[2:]))
+        return list(set(list(self.data[self.data["stats"] == "Experiment"].iloc[0])[3:]))
 
     def get_configurations(self):
-        return list(set(list(self.data[self.data["stats"] == "Configuration"].iloc[0])[2:]))
+        return list(set(list(self.data[self.data["stats"] == "Configuration"].iloc[0])[3:]))
 
     def get_workloads(self):
-        return list(set(list(self.data[self.data["stats"] == "Workload"].iloc[0])[2:]))
+        return list(set(list(self.data[self.data["stats"] == "Workload"].iloc[0])[3:]))
 
     def get_stats(self):
         return list(set(self.data["stats"]))
@@ -266,14 +375,9 @@ stat_files = ["bp.stat.0.csv",
               "inst.stat.0.csv",
               "l2l1pref.stat.0.csv",
               "memory.stat.0.csv",
-              #"per_branch_stats.csv",
-              #"per_line_icache_line_info.csv",
               "power.stat.0.csv",
               "pref.stat.0.csv",
-              "stream.stat.0.csv"]#,
-              #"uop_queue_fill_cycles.csv",
-              #"uop_queue_fill_pws.csv",
-              #"uop_queue_fill_unique_pws.csv"]
+              "stream.stat.0.csv"]
 
 class stat_aggregator:
     def __init__(self) -> None:
@@ -315,10 +419,10 @@ class stat_aggregator:
 
         return all_stats
 
-
     # Load simpoint from csv file as pandas dataframe
     def load_simpoint(self, path, load_ramulator=True, ignore_duplicates = True, return_stats = False, order = None):
         data = pd.Series()
+        group = pd.Series()
         all_stats = []
 
         for file in stat_files:
@@ -354,9 +458,10 @@ class stat_aggregator:
                 exit(1)
 
             all_stats += list(df.columns)
-            data = pd.concat([data, df.iloc[0]])
+            data = pd.concat([data, df.iloc[1]])
+            group = pd.concat([group, df.iloc[0]])
 
-
+        # NOTE: Ramulator will not be in distribution, group should be 0
         if load_ramulator:
             f = open(f"{path}ramulator.stat.out")
             lines = f.readlines()
@@ -372,6 +477,7 @@ class stat_aggregator:
                 tmp.append(line.split()[1])
 
             data = pd.concat([data, pd.Series(tmp, index=tmp_lbl)])
+            group = pd.concat([group, pd.Series([0 for _ in range(len(tmp))], index=tmp_lbl)])
 
             f.close()
 
@@ -394,23 +500,33 @@ class stat_aggregator:
         data = list(map(float, list(data)))
         if order != None: print(len(data), len(order))
 
-        if not return_stats: return data
+        if not return_stats: return data, group
         else: return all_stats
 
     # Load experiment from saved file
     def load_experiment_csv(self, path):
         return Experiment(path)
 
-    # Load experiment form json file, and the corresponding simulations directory
-    def load_experiment_json(self, experiment_file: str, simulations_path: str, simpoints_path: str, slurm: bool = False):
+    # Load experiment form json file
+    def load_experiment_json(self, experiment_file: str, slurm: bool = False):
         # Load json data from experiment file
         json_data = None
-        with open(experiment_file, "r") as file:
-            json_data = json.loads(file.read())
+        try:
+            with open(experiment_file, "r") as file:
+                json_data = json.loads(file.read())
+        except:
+            return None
+
+        simulations_path = json_data["root_dir"]
+        simpoints_path = "/soe/hlitz/lab/traces/" if json_data["simpoint_traces_dir"] == None else json_data["simpoint_traces_dir"]
 
         # Make sure simulations and simpoints path has known format
         if simulations_path[-1] != '/': simulations_path += "/"
         if simpoints_path[-1] != '/': simpoints_path += "/"
+        
+        # Asking user can provide simulations directory or docker home folder
+        if not simulations_path.endswith("simulations/"):
+            simulations_path += "simulations/"
 
         experiment_name = json_data["experiment"]
         architecture = json_data["architecture"]
@@ -422,6 +538,8 @@ class stat_aggregator:
 
         # Set set of all stats. Should only differ by config
         for config in json_data["configurations"]:
+            config = config.replace("/", "-")
+
             # Use first workload
             workload = json_data["workloads_list"][0]
 
@@ -440,10 +558,7 @@ class stat_aggregator:
                     print(f"       Encountered {seg_id_1} in .p and {seg_id_2} in .w")
                     exit(1)
 
-                if not slurm:
-                    directory = f"{simulations_path}{workload}/{experiment_name}/{config}/{str(cluster_id)}/"
-                else:
-                    directory = f"{simulations_path}{experiment_name}/{config}/{workload}/{str(cluster_id)}/"
+                directory = f"{simulations_path}{experiment_name}/{config}/{workload}/{str(cluster_id)}/"
 
                 print("CHECK", directory)
 
@@ -472,6 +587,7 @@ class stat_aggregator:
 
         # Load each configuration
         for config in json_data["configurations"]:
+            config = config.replace("/", "-")
 
             # Load each workload for each configuration
             for workload in json_data["workloads_list"]:
@@ -489,21 +605,33 @@ class stat_aggregator:
                             print(f"       Encountered {seg_id_1} in .p and {seg_id_2} in .w")
                             exit(1)
 
-                        if not slurm:
-                            directory = f"{simulations_path}{workload}/{experiment_name}/{config}/{str(cluster_id)}/"
-                        else:
-                            directory = f"{simulations_path}{experiment_name}/{config}/{workload}/{str(cluster_id)}/"
+                        directory = f"{simulations_path}{experiment_name}/{config}/{workload}/{str(cluster_id)}/"
 
                         if experiment == None:
                             experiment = Experiment(known_stats)
 
                         print(f"LOAD {directory}")
-                        data = self.load_simpoint(directory, order=known_stats)
+                        data, groups = self.load_simpoint(directory, order=known_stats)
+
+                        if not experiment.has_group_data():
+                            print("INFO: Added group data")
+                            experiment.set_groups(groups)
+
                         experiment.add_simpoint(data, experiment_name, architecture, config, workload, seg_id_1, cluster_id, weight)
                         print(f"LOADED")
 
         experiment.defragment()
-        print("\n\n", experiment)
+        # print("\n\n", experiment)
+
+        print("INFO: calculating derived stats...")
+
+        # Derive IPC
+        experiment.derive_stat("Cumulative_IPC = Cumulative_Instructions / Cumulative_Cycles", write_prot = True)
+        experiment.derive_stat("Periodic_IPC = Periodic_Instructions / Periodic_Cycles", write_prot = True)
+
+        # Derive distribution stats for each group
+        # 'Group' 0 is no group 
+        experiment.calculate_distribution_stats()
 
         return experiment
 
@@ -1055,7 +1183,7 @@ class stat_aggregator:
                         bar_width:float = 0.35, bar_spacing:float = 0.05, workload_spacing:float = 0.3, 
                         colors = None, plot_name = None, relative_lbls = True, label_fontsize = "small",
                         label_rotation = 0):
-        
+
         # Check experiments are similar
         configs = set(experiment.get_configurations())
         workloads = set(experiment.get_workloads())
@@ -1351,14 +1479,12 @@ class stat_aggregator:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-d','--descriptor_name', required=True, help='Experiment descriptor name. Usage: -d exp2.json')
-    parser.add_argument('-p','--sim_path', required=True, help='Path to the simulation directory. Usage: -p /soe/<USER>/allbench_home/simpoint_flow/simulations/')
-    parser.add_argument('-t','--trace_path', required=True, help='Path to the trace directory for reading simpoints. Usage: -t /soe/hlitz/lab/traces/')
+    parser.add_argument('-d','--descriptor_name', required=True, help='Experiment descriptor name. Usage: -d exp.json')
 
     args = parser.parse_args()
 
     da = stat_aggregator()
-    E = da.load_experiment_json(args.descriptor_name, args.sim_path, args.trace_path, True)
+    E = da.load_experiment_json(args.descriptor_name, True)
     print(E.get_experiments())
 
     # Create equation that sums all of the stats
@@ -1369,19 +1495,21 @@ if __name__ == "__main__":
 
     # Add stat as new entry
     E.derive_stat(equation)
-    E.derive_stat(equation2, agg_first=True)
+    E.derive_stat(equation2, pre_agg=True)
+    E.derive_stat("Test1 = BP_ON_PATH_MISFETCH_total_count + 1")
+    E.derive_stat("Test2 = Weight + 1", pre_agg=False)
 
     cfs = E.get_configurations()
     wls = E.get_workloads()
     stats_to_plot = ['UNUSEFUL_pct']
 
-    print(E.retrieve_stats(cfs, ["UNUSEFUL_pct", "UNUSEFUL_agg_pct"], wls))
+    # print(E.retrieve_stats(cfs, ["UNUSEFUL_pct", "UNUSEFUL_agg_pct"], wls))
 
     alls = ["UNUSEFUL_pct","UNUSEFUL_agg_pct", "ICACHE_EVICT_MISS_ONPATH_BY_FDIP_count", "ICACHE_EVICT_MISS_ONPATH_BY_FDIP_count", "ICACHE_EVICT_HIT_ONPATH_BY_FDIP_count"]
 
-    a = E.retrieve_stats(cfs, alls, wls)
-    for k,v in a.items():
-        print(f"{k}: {v}")
+    # a = E.retrieve_stats(cfs, alls, wls)
+    # for k,v in a.items():
+    #     print(f"{k}: {v}")
 
     # Call the plot function
     E.to_csv("agg.csv")
