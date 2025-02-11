@@ -348,3 +348,4 @@ def remove_docker_containers(docker_prefix, experiment_name, user, dbg_lvl):
             info("No containers found.", dbg_lvl)
     except subprocess.CalledProcessError as e:
         err(f"Error while removing containers: {e}")
+        raise e

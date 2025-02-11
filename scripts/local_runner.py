@@ -7,6 +7,7 @@ import subprocess
 import psutil
 import signal
 import re
+import traceback
 from utilities import (
         err,
         warn,
@@ -173,5 +174,6 @@ def run_simulation(user, descriptor_data, dbg_lvl = 1):
 
     except Exception as e:
         print("An exception occurred:", e)
+        traceback.print_exec()  # Print the full stack trace
         for p in processes:
             p.kill()
