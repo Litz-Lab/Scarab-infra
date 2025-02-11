@@ -7,6 +7,7 @@ import os
 import random
 import subprocess
 import re
+import traceback
 from utilities import (
         err,
         warn,
@@ -35,7 +36,7 @@ def check_docker_image(nodes, docker_prefix, githash, dbg_lvl = 1):
 
         return available_nodes
     except Exception as e:
-        raise
+        raise e
 
 
 # Prepare the docker image on each slurm node
@@ -65,7 +66,7 @@ def prepare_docker_image(nodes, docker_prefix, githash, dbg_lvl = 1):
 
         return available_nodes
     except Exception as e:
-        raise
+        raise e
 
 # Check if a container is running on the provided nodes, return those that are
 # Inputs: list of nodes, docker_prefix, experiment_name, user
@@ -160,7 +161,7 @@ def check_available_nodes(dbg_lvl = 1):
 
         return available, all_nodes
     except Exception as e:
-        raise
+        raise e
 
 # Get command to sbatch scarab runs. 1 core each, exclude nodes where container isn't running
 def generate_sbatch_command(excludes, experiment_dir):
@@ -367,3 +368,4 @@ def run_simulation(user, descriptor_data, dbg_lvl = 1):
         # TODO: (long term) add evalstats to json descriptor to run stats library with PMU counters
     except Exception as e:
         print("An exception occurred:", e)
+        traceback.print_exec()  # Print the full stack trace
