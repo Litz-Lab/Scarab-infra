@@ -94,6 +94,18 @@ build () {
     exit 1
   fi
 
+  # Local image not found. Trying to pull pre-built image from GitHub Packages...
+  if docker pull ghcr.io/litz-lab/scarab-infra/"$APP_GROUPNAME:$GIT_HASH"; then
+    echo "Successfully pulled pre-built image."
+    docker tag ghcr.io/litz-lab/scarab-infra/"$APP_GROUPNAME:$GIT_HASH" "$APP_GROUPNAME:$GIT_HASH"
+    echo "Tagged pulled image as $APP_GROUPNAME:$GIT_HASH"
+    docker rmi ghcr.io/litz-lab/scarab-infra/"$APP_GROUPNAME:$GIT_HASH"
+    exit 1
+  else
+    echo "No pre-built image found for $APP_GROUPNAME:$GIT_HASH (or pull failed)."
+    echo "Will build locally..."
+  fi
+
   # build a docker image
   echo "build docker image.."
   start=`date +%s`
