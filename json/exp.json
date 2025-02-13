@@ -22,7 +22,7 @@
     "_root_dir": "Root directory mounted into the docker container home, for instance, the user's home directory",
     "root_dir": "/home/$USER",
     "_scarab_path": "The path to the scarab repository that contains the scarab binary used to run the experiment.",
-    "scarab_path": "/soe/surim/allbench_home/scarab",
+    "scarab_path": "/home/$USER/allbench_home/scarab",
     "_simpoint_traces_dir": "The local directory containing all simpointed traces",
     "simpoint_traces_dir": "/home/$USER/simpoint_traces",
     "_configurations": "scarab configurations to sweep",
