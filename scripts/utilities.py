@@ -39,8 +39,56 @@ def read_descriptor_from_json(filename="experiment.json", dbg_lvl = 1):
         err(f"Error decoding JSON in file '{filename}': {e}", dbg_lvl)
         return None
 
+def validate_simulation(workloads_data, suite_data, simulations, dbg_lvl = 2):
+    for simulation in simulations:
+        suite = simulation["suite"]
+        subsuite = simulation["subsuite"]
+        workload = simulation["workload"]
+        cluster_id = simulation["cluster_id"]
+        sim_mode = simulation["simulation_type"]
+
+        if suite == None:
+            err(f"Suite field cannot be null.", dbg_lvl)
+            exit(1)
+
+        if suite not in suite_data.keys():
+            err(f"Suite '{suite}' is not valid.", dbg_lvl)
+            exit(1)
+
+        if subsuite != None and subsuite not in suite_data[suite].keys():
+            err(f"Subsuite '{subsuite}' is not valid in Suite '{suite}'.", dbg_lvl);
+            exit(1)
+
+        if workload == None and (cluster_id != None or sim_mode != None):
+            err(f"If you want to run all the workloads within '{suite}', empty all 'workload', 'cluster_id', 'simulation_type'.", dbg_lvl)
+            exit(1)
+
+        if workload != None and workload not in workloads_data.keys():
+            err(f"Workload '{workload}' is not valid.", dbg_lvl)
+            exit(1)
+
+        if workload != None and sim_mode not in workloads_data[workload]["simulation"].keys():
+            err(f"Simulation mode '{sim_mode}' is not an valid option for workload '{workload}'.", dbg_lvl)
+            exit(1)
+
+        if workload != None and cluster_id == None and "simpoints" not in workloads_data[workload].keys():
+            err(f"Simpoints are not available. Choose '0' for cluster id.", dbg_lvl)
+            exit(1)
+
+        if workload != None and cluster_id != None and cluster_id > 0:
+            found = False
+            for simpoint in workloads_data[workload]["simpoints"]:
+                if cluster_id == simpoint["cluster_id"]:
+                    found = True
+                    break
+            if not found:
+                err(f"Cluster ID {cluster_id} is not valid for workload '{workload}'.", dbg_lvl)
+                exit(1)
+        print(f"[{suite}, {subsuite}, {workload}, {cluster_id}, {sim_mode}] is a valid simulation option.")
+
+
 # Verify the given descriptor file
-def verify_descriptor(descriptor_data, infra_dir, open_shell = False, dbg_lvl = 2):
+def verify_descriptor(descriptor_data, workloads_data, suite_data, open_shell = False, dbg_lvl = 2):
     ## Check if the provided json describes all the valid data
 
     # Check the scarab path
@@ -56,41 +104,14 @@ def verify_descriptor(descriptor_data, infra_dir, open_shell = False, dbg_lvl = 
         err(f"PARAMS.{descriptor_data['architecture']} does not exist. Please provide an available architecture for scarab simulation", dbg_lvl)
         exit(1)
 
-    # Check if a valid workload group is provided
-    if descriptor_data["workload_group"] == None:
-        err("Need a workload group which is a prefix of docker container name.", dbg_lvl)
-        exit(1)
-    elif not os.path.exists(f"{infra_dir}/workloads/{descriptor_data['workload_group']}"):
-        err(f"{infra_dir}/workloads/{descriptor_data['workload_group']} does not exist. Please provide an available workload group name", dbg_lvl)
-        exit(1)
-
-    # Check if a valid workload is provided
-    if descriptor_data["workloads_list"] == None:
-        err("Need workloads list to simulate. Set in descriptor file under 'workloads_list'", dbg_lvl)
-        exit(1)
-    else:
-        for workload in descriptor_data["workloads_list"]:
-            found=False
-            with open(f"{infra_dir}/workloads/{descriptor_data['workload_group']}/apps.list", 'r') as f:
-                for line in f:
-                    if line.strip() == workload:
-                        found=True
-                        break
-                if not found:
-                    err(f"{workload} not found in {infra_dir}/workloads/{descriptor_data['workload_group']}/apps.list", dbg_lvl)
-                    exit(1)
-
     # Check experiment doesn't already exists
     experiment_dir = f"{descriptor_data['root_dir']}/simulations/{descriptor_data['experiment']}"
     if os.path.exists(experiment_dir) and not open_shell:
         err(f"Experiment '{experiment_dir}' already exists. Please try a different name or remove the directory if not needed", dbg_lvl)
         exit(1)
 
-    # Check the simulation mode
-    simulation_mode = int(descriptor_data["simulation_mode"])
-    if simulation_mode > 5 or simulation_mode <= 0:
-        err("0 < simulation_mode <= 5 supported", dbg_lvl)
-        exit(1)
+    # Check if each simulation type is valid
+    validate_simulation(workloads_data, suite_data, descriptor_data['simulations'])
 
     # Check the workload manager
     if descriptor_data["workload_manager"] != "manual" and descriptor_data["workload_manager"] != "slurm":
@@ -186,20 +207,32 @@ def finish_simulation(user, experiment_dir):
 
 # Generate command to do a single run of scarab
 def generate_single_scarab_run_command(user, workload, group, experiment, config_key, config,
-                   mode, arch, scarab_githash, simpoint, use_traces_simp = 1):
-    command = f"run_single_simpoint.sh \"{workload}\" \"{group}\" \"/home/{user}/simulations/{experiment}/{config_key}\" \"{config}\" \"{mode}\" \"{arch}\" \"{use_traces_simp}\" /home/{user}/simulations/{experiment}/scarab {simpoint}"
+                                       mode, arch, scarab_githash, cluster_id,
+                                       trim_type, modules_dir, trace_file,
+                                       env_vars, bincmd, client_bincmd):
+    if mode == "memtrace":
+        command = f"run_memtrace_single_simpoint.sh \"{workload}\" \"{group}\" \"/home/{user}/simulations/{experiment}/{config_key}\" \"{config}\" \"{arch}\" \"{trim_type}\" /home/{user}/simulations/{experiment}/scarab {cluster_id} {modules_dir} {trace_file}"
+    elif mode == "pt":
+        command = f"run_pt_single_simpoint.sh \"{workload}\" \"{group}\" \"/home/{user}/simulations/{experiment}/{config_key}\" \"{config}\" \"{arch}\" \"{trim_type}\" /home/{user}/simulations/{experiment}/scarab {cluster_id}"
+    elif mode == "exec":
+        command = f"run_exec_single_simpoint.sh \"{workload}\" \"{group}\" \"/home/{user}/simulations/{experiment}/{config_key}\" \"{config}\" \"{arch}\" /home/{user}/simulations/{experiment}/scarab {env_vars} {bincmd} {client_bincmd}"
+    else:
+        command = ""
 
     return command
 
 def write_docker_command_to_file_run_by_root(user, local_uid, local_gid, workload, experiment_name,
-                                 docker_prefix, docker_container_name, simpoint_traces_dir,
-                                 docker_home, githash, config_key, config, scarab_mode, scarab_githash,
-                                 architecture, simpoint, filename):
+                                             docker_prefix, docker_container_name, simpoint_traces_dir,
+                                             docker_home, githash, config_key, config, scarab_mode, scarab_githash,
+                                             architecture, cluster_id, trim_type, modules_dir, trace_file,
+                                             env_vars, bincmd, client_bincmd, filename):
     try:
-        scarab_cmd = generate_single_scarab_run_command(user, workload, docker_prefix, experiment_name, config_key, config, scarab_mode, architecture, scarab_githash, simpoint)
+        scarab_cmd = generate_single_scarab_run_command(user, workload, docker_prefix, experiment_name, config_key, config,
+                                                        scarab_mode, architecture, scarab_githash, cluster_id,
+                                                        trim_type, modules_dir, trace_file, env_vars, bincmd, client_bincmd)
         with open(filename, "w") as f:
             f.write("#!/bin/bash\n")
-            f.write(f"echo \"Running {config_key} {workload} {simpoint}\"\n")
+            f.write(f"echo \"Running {config_key} {workload} {cluster_id}\"\n")
             f.write("echo \"Running on $(uname -n)\"\n")
             f.write(f"docker run --rm \
             -e user_id={local_uid} \
@@ -217,12 +250,15 @@ def write_docker_command_to_file_run_by_root(user, local_uid, local_gid, workloa
 def write_docker_command_to_file(user, local_uid, local_gid, workload, experiment_name,
                                  docker_prefix, docker_container_name, simpoint_traces_dir,
                                  docker_home, githash, config_key, config, scarab_mode, scarab_githash,
-                                 architecture, simpoint, filename):
+                                 architecture, cluster_id, trim_type, modules_dir, trace_file,
+                                 env_vars, bincmd, client_bincmd, filename):
     try:
-        scarab_cmd = generate_single_scarab_run_command(user, workload, docker_prefix, experiment_name, config_key, config, scarab_mode, architecture, scarab_githash, simpoint)
+        scarab_cmd = generate_single_scarab_run_command(user, workload, docker_prefix, experiment_name, config_key, config,
+                                                        scarab_mode, architecture, scarab_githash, cluster_id,
+                                                        trim_type, modules_dir, trace_file, env_vars, bincmd, client_bincmd)
         with open(filename, "w") as f:
             f.write("#!/bin/bash\n")
-            f.write(f"echo \"Running {config_key} {workload} {simpoint}\"\n")
+            f.write(f"echo \"Running {config_key} {workload} {cluster_id}\"\n")
             f.write("echo \"Running on $(uname -n)\"\n")
             f.write(f"docker run \
             -e user_id={local_uid} \
@@ -243,8 +279,15 @@ def write_docker_command_to_file(user, local_uid, local_gid, workload, experimen
     except Exception as e:
         raise e
 
+def get_simpoints (workload_data, dbg_lvl = 2):
+    simpoints = {}
+    for simpoint in workload_data["simpoints"]:
+        simpoints[f"{simpoint['cluster_id']}"] = simpoint["weight"]
+
+    return simpoints
+
 # Get workload simpoint ids and their associated weights
-def get_simpoints (simpoint_traces_dir, workload, dbg_lvl = 2):
+def get_simpoints_from_simpoints_file (simpoint_traces_dir, workload, dbg_lvl = 2):
     read_simp_weight_command = f"cat /{simpoint_traces_dir}/{workload}/simpoints/opt.w.lpt0.99"
     read_simp_simpid_command = f"cat /{simpoint_traces_dir}/{workload}/simpoints/opt.p.lpt0.99"
 
@@ -268,7 +311,27 @@ def get_simpoints (simpoint_traces_dir, workload, dbg_lvl = 2):
 
     return simpoints
 
-def open_interactive_shell(user, descriptor_data, dbg_lvl = 1):
+def get_image_name(workloads_data, suite_data, simulation):
+    suite = simulation["suite"]
+    subsuite = simulation["subsuite"]
+    workload = simulation["workload"]
+    cluster_id = simulation["cluster_id"]
+    sim_mode = simulation["simulation_type"]
+
+    if workload != None:
+        return workloads_data[workload]["simulation"][sim_mode]["image_name"]
+
+    if subsuite != None:
+        workload = next(iter(suite_data[suite][subsuite]["predefined_simulation_mode"]))
+        sim_mode = suite_data[suite][subsuite]["predefined_simulation_mode"][workload]
+    else:
+        subsuite = next(iter(suite_data[suite]))
+        workload = next(iter(suite_data[suite][subsuite]["predefined_simulation_mode"]))
+        sim_mode = suite_data[suite][subsuite]["predefined_simulation_mode"][workload]
+
+    return workloads_data[workload]["simulation"][sim_mode]["image_name"]
+
+def open_interactive_shell(user, descriptor_data, workloads_data, suite_data, dbg_lvl = 1):
     experiment_name = descriptor_data["experiment"]
     try:
         # Get user for commands
@@ -299,8 +362,10 @@ def open_interactive_shell(user, descriptor_data, dbg_lvl = 1):
                                             experiment_name,
                                             descriptor_data['architecture'],
                                             dbg_lvl)
-        docker_prefix = descriptor_data['workload_group']
-        workload = descriptor_data['workloads_list'][0]
+        workload = descriptor_data['simulations'][0]['workload']
+        mode = descriptor_data['simulations'][0]['simulation_type']
+        docker_prefix = get_image_name(workloads_data, suite_data, descriptor_data['simulations'][0])
+
         docker_container_name = f"{docker_prefix}_{experiment_name}_scarab_{scarab_githash}_{user}"
         simpoint_traces_dir = descriptor_data["simpoint_traces_dir"]
         docker_home = descriptor_data["root_dir"]
@@ -333,19 +398,58 @@ def open_interactive_shell(user, descriptor_data, dbg_lvl = 1):
     except Exception as e:
         raise e
 
-def remove_docker_containers(docker_prefix, experiment_name, user, dbg_lvl):
-    pattern = re.compile(fr"^{docker_prefix}_.*_{experiment_name}.*_.*_{user}$")
+def remove_docker_containers(docker_prefix_list, experiment_name, user, dbg_lvl):
     try:
-        dockers = subprocess.run(["docker", "ps", "--format", "{{.Names}}"], capture_output=True, text=True, check=True)
-        lines = dockers.stdout.strip().split("\n") if dockers.stdout else []
-        matching_containers = [line for line in lines if pattern.match(line)]
+        for docker_prefix in docker_prefix_list:
+            pattern = re.compile(fr"^{docker_prefix}_.*_{experiment_name}.*_.*_{user}$")
+            dockers = subprocess.run(["docker", "ps", "--format", "{{.Names}}"], capture_output=True, text=True, check=True)
+            lines = dockers.stdout.strip().split("\n") if dockers.stdout else []
+            matching_containers = [line for line in lines if pattern.match(line)]
 
-        if matching_containers:
-            for container in matching_containers:
-                subprocess.run(["docker", "rm", "-f", container], check=True)
-                info(f"Removed container: {container}", dbg_lvl)
-        else:
-            info("No containers found.", dbg_lvl)
+            if matching_containers:
+                for container in matching_containers:
+                    subprocess.run(["docker", "rm", "-f", container], check=True)
+                    info(f"Removed container: {container}", dbg_lvl)
+            else:
+                info("No containers found.", dbg_lvl)
     except subprocess.CalledProcessError as e:
         err(f"Error while removing containers: {e}")
         raise e
+
+def get_image_list(simulations, workloads_data, suite_data):
+    image_list = []
+    for simulation in simulations:
+        suite = simulation["suite"]
+        subsuite = simulation["subsuite"]
+        workload = simulation["workload"]
+        exp_cluster_id = simulation["cluster_id"]
+        mode = simulation["simulation_type"]
+
+        if workload == None and exp_cluster_id == None and mode == None:
+            if subsuite == None:
+                for subsuite in suite_data[suite].keys():
+                    for workload in suite_data[suite][subsuite]["predefined_simulation_mode"].keys():
+                        mode = suite_data[suite][subsuite]["predefined_simulation_mode"][workload]
+                        if mode in workloads_data[workload]["simulation"].keys() and workloads_data[workload]["simulation"][mode]["image_name"] not in image_list:
+                            image_list.append(workloads_data[workload]["simulation"][mode]["image_name"])
+            else:
+                for workload in suite_data[suite][subsuite]["predefined_simulation_mode"].keys():
+                    mode = suite_data[suite][subsuite]["predefined_simulation_mode"][workload]
+                    if mode in workloads_data[workload]["simulation"].keys() and workloads_data[workload]["simulation"][mode]["image_name"] not in image_list:
+                        image_list.append(workloads_data[workload]["simulation"][mode]["image_name"])
+        else:
+            if mode in workloads_data[workload]["simulation"].keys() and workloads_data[workload]["simulation"][mode]["image_name"] not in image_list:
+                image_list.append(workloads_data[workload]["simulation"][mode]["image_name"])
+
+    return image_list
+
+def get_docker_prefix(sim_mode, simulation_data):
+    if sim_mode not in simulation_data.keys():
+        err(f"{sim_mode} is not a valid simulation type.")
+        exit(1)
+    return simulation_data[sim_mode]["image_name"]
+
+def get_weight_by_cluster_id(exp_cluster_id, simpoints):
+    for simpoint in simpoints:
+        if simpoint["cluster_id"] == exp_cluster_id:
+            return simpoint["weight"]
